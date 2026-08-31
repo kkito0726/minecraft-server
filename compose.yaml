@@ -1,0 +1,48 @@
+# Minecraft server (Paper) — すべてコンテナ内で完結。
+# ホストに Java / mcrcon / mc-monitor などを入れる必要はありません。
+#
+#   起動      : docker compose up -d
+#   コンソール: docker compose logs -f mc
+#   コマンド  : docker compose exec mc rcon-cli list
+#   停止      : docker compose down
+#   設定変更  : .env を編集して docker compose up -d（MC_VERSION もここ）
+#   OP 付与   : .env の MC_OPS に Minecraft ID を書いて docker compose up -d
+services:
+  mc:
+    # itzg/minecraft-server は MC のバージョンに合った JDK を同梱している。
+    # 再現性を優先するならタグを日付付き（例 :2026.8.0-java21）に固定する。
+    image: itzg/minecraft-server:latest
+    container_name: minecraft-server
+    restart: unless-stopped
+    # サーバーコンソールに docker attach で入れるようにする
+    stdin_open: true
+    tty: true
+    ports:
+      # Minecraft 本体のみ公開。RCON(25575) は公開せずコンテナ内からのみ使う。
+      - "25565:25565"
+    environment:
+      EULA: "TRUE"
+      TYPE: "${MC_TYPE:-PAPER}"
+      # LATEST は使わない。コンテナ再作成で勝手にバージョンが上がり、
+      # ワールドの片道アップグレードとクライアント不整合を起こすため。
+      VERSION: "${MC_VERSION:?MC_VERSION is not set. see .env}"
+      # macOS では Docker Desktop の VM メモリ上限がここの上限になる
+      MEMORY: "${MC_MEMORY:-4G}"
+      USE_AIKAR_FLAGS: "TRUE"
+      TZ: "${TZ:-Asia/Tokyo}"
+      MOTD: "${MC_MOTD:-A Minecraft Server on Docker}"
+      DIFFICULTY: "${MC_DIFFICULTY:-normal}"
+      MAX_PLAYERS: "${MC_MAX_PLAYERS:-10}"
+      VIEW_DISTANCE: "${MC_VIEW_DISTANCE:-10}"
+      ONLINE_MODE: "${MC_ONLINE_MODE:-TRUE}"
+      # OP にしたい Minecraft ID をカンマ区切りで .env に書く
+      OPS: "${MC_OPS:-}"
+      ENABLE_RCON: "TRUE"
+      RCON_PASSWORD: "${RCON_PASSWORD:?RCON_PASSWORD is not set. see .env}"
+      # 設定の正は .env / compose 側。起動のたびに server.properties を上書きする
+      # （= data/server.properties を手で書き換えても再起動で戻る。設定変更は .env で行う）
+      OVERRIDE_SERVER_PROPERTIES: "TRUE"
+    volumes:
+      # ワールド・プラグイン・ログ・ops.json をホストから直接扱えるようにする
+      # （server.properties だけは上記 OVERRIDE により毎回再生成される）
+      - ./data:/data
