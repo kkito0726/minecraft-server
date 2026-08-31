@@ -7,6 +7,7 @@
 #   停止      : docker compose down
 #   設定変更  : .env を編集して docker compose up -d（MC_VERSION もここ）
 #   OP 付与   : .env の MC_OPS に Minecraft ID を書いて docker compose up -d
+#   外部公開  : docker compose --profile tunnel up -d（ngrok。README 参照）
 services:
   mc:
     # itzg/minecraft-server は MC のバージョンに合った JDK を同梱している。
@@ -37,6 +38,15 @@ services:
       ONLINE_MODE: "${MC_ONLINE_MODE:-TRUE}"
       # OP にしたい Minecraft ID をカンマ区切りで .env に書く
       OPS: "${MC_OPS:-}"
+      # 参加を許可する Minecraft ID をカンマ区切りで指定。
+      # 空でない値を入れると white-list / enforce-whitelist が自動で TRUE になる。
+      # ngrok などで外部公開するときは必ず設定すること。
+      WHITELIST: "${MC_WHITELIST:-}"
+      # 明示的に FALSE を渡さないと、一度有効化した white-list が
+      # MC_WHITELIST を空に戻しても true のまま残る（= 誰も入れなくなる）。
+      # MC_WHITELIST が空でない場合はイメージ側が TRUE で上書きするので競合しない。
+      ENABLE_WHITELIST: "${MC_ENABLE_WHITELIST:-FALSE}"
+      ENFORCE_WHITELIST: "${MC_ENABLE_WHITELIST:-FALSE}"
       ENABLE_RCON: "TRUE"
       RCON_PASSWORD: "${RCON_PASSWORD:?RCON_PASSWORD is not set. see .env}"
       # 設定の正は .env / compose 側。起動のたびに server.properties を上書きする
@@ -46,3 +56,24 @@ services:
       # ワールド・プラグイン・ログ・ops.json をホストから直接扱えるようにする
       # （server.properties だけは上記 OVERRIDE により毎回再生成される）
       - ./data:/data
+
+  # LAN 外から接続するための TCP トンネル。
+  # profiles を付けているので通常の `docker compose up -d` では起動しない。
+  #   起動  : docker compose --profile tunnel up -d
+  #   アドレス: docker compose logs ngrok
+  #   停止  : docker compose --profile tunnel down
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: minecraft-ngrok
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    environment:
+      # ここで :? は使えない。profile が無効でも compose は全サービスを展開するため、
+      # 未設定だと通常の `docker compose up -d` まで失敗してしまう。
+      # 未設定のまま起動した場合は ngrok 自身が認証エラーを出す。
+      NGROK_AUTHTOKEN: "${NGROK_AUTHTOKEN:-}"
+    # compose ネットワーク経由で mc に直結するため、25565 のホスト公開には依存しない
+    command: ["tcp", "mc:25565", "--log", "stdout"]
+    depends_on:
+      mc:
+        condition: service_healthy
