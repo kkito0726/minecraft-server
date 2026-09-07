@@ -3,10 +3,13 @@
 Paper サーバーを Docker だけで動かす構成です。
 Java・RCON クライアント・バックアップツールはすべてコンテナ内に閉じており、**ホストには何もインストールしません**。
 
+**想定構成: Raspberry Pi 5 (4GB) でサーバーを常時稼働させ、Tailscale 経由で接続する。**
+`.env` の既定値はこの前提でチューニングしてあります。
+
 - サーバー: Paper 26.2（`.env` で変更可）
-- イメージ: [`itzg/minecraft-server`](https://github.com/itzg/docker-minecraft-server)
+- イメージ: [`itzg/minecraft-server`](https://github.com/itzg/docker-minecraft-server)（linux/arm64 対応）
 - 公開ポート: `25565` のみ（RCON 25575 はコンテナ内からのみ）
-- 外部公開: ngrok トンネルをオプションで同梱（`--profile tunnel`）
+- 接続経路: Tailscale（tailnet 内からのみ到達可能。ポート開放は不要）
 
 ## ドキュメント
 
@@ -14,6 +17,7 @@ Java・RCON クライアント・バックアップツールはすべてコン�
 
 | ドキュメント | 内容 |
 |---|---|
+| [docs/raspberry-pi.md](docs/raspberry-pi.md) | Pi 5 のセットアップ、Tailscale、SSD 起動、スワップ、チューニングの根拠 |
 | [docs/backup-restore.md](docs/backup-restore.md) | ワールドのバックアップ取得・復元、バージョンとの関係、保管場所 |
 
 ## 必要なもの
@@ -45,8 +49,8 @@ openssl rand -hex 16
 | `RCON_PASSWORD` | RCON 用パスワード。生成済み。作り直す場合は上記コマンドの出力を貼る |
 | `MC_VERSION` | Minecraft のバージョン。**クライアントと必ず一致させる** |
 | `MC_MEMORY` | 割り当てメモリ。Docker Desktop の VM メモリ上限を超えないこと |
-| `MC_WHITELIST` | 参加を許可する Minecraft ID。外部公開するなら必須 |
-| `NGROK_AUTHTOKEN` | 外部公開する場合のみ。LAN 内だけなら空でよい |
+| `MC_WHITELIST` | 参加を許可する Minecraft ID。設定を強く推奨 |
+| `MC_MEMORY` / `MC_MEM_LIMIT` | JVM ヒープとコンテナ上限。Pi 5 4GB なら `2G` / `3g` |
 
 ## 起動・停止
 
@@ -72,11 +76,23 @@ Minecraft クライアントの「マルチプレイ」→「サーバーを追�
 
 | 接続元 | アドレス |
 |---|---|
-| 同じ PC | `localhost` |
-| 同じ LAN 内の別端末 | `<ホストPCのローカルIP>:25565` |
-| インターネット越し | 後述の「外部から接続する（ngrok）」を参照 |
+| tailnet 内の端末（推奨） | `<Pi の Tailscale ホスト名 or 100.x.y.z>` |
+| 同じ LAN 内の端末 | `<Pi のローカルIP>` |
+| サーバーと同じ機体 | `localhost` |
 
+ポートは既定の `25565` なので、アドレスだけ入力すれば繋がります。
 クライアントのバージョンは `.env` の `MC_VERSION` と一致させてください。
+
+Tailscale の IP は Pi 側で確認できます。
+
+```bash
+tailscale ip -4          # 100.x.y.z
+tailscale status         # MagicDNS のホスト名も出る
+```
+
+MagicDNS を有効にしていれば `minecraft-pi` のようなホスト名でそのまま接続できます。
+tailnet に参加している端末からしか到達できないため、ルーターのポート開放は不要です。
+詳細は [docs/raspberry-pi.md](docs/raspberry-pi.md) を参照してください。
 
 ## サーバーコマンドの実行
 
@@ -164,54 +180,6 @@ docker compose exec mc rcon-cli "whitelist list"
 > リストを空のままホワイトリストだけ有効にすると**誰も入れなくなります**。
 > ID を1つも入れずに有効化したい場合のみ `MC_ENABLE_WHITELIST=TRUE` を使ってください。
 
-## 外部から接続する（ngrok）
-
-ルーターのポート開放をせずに、LAN 外から接続できるようにします。
-ngrok もコンテナで動かすので、ホストに ngrok コマンドをインストールする必要はありません。
-
-> ngrok は Minecraft 向けの最適解ではありません。無料プランではアドレスが接続のたびに変わり、
-> 中継を挟むぶん遅延も乗ります。固定メンバーで遊ぶなら [Tailscale](https://tailscale.com/)、
-> Minecraft 特化なら [playit.gg](https://playit.gg/) の方が扱いやすい選択肢です。
-
-### 手順
-
-1. **先にホワイトリストを設定する。** 公開する以上、`MC_WHITELIST` は必須と考えてください。
-   `MC_ONLINE_MODE=TRUE` は正規アカウントであることしか保証せず、誰が入れるかは制限しません。
-2. [ngrok のダッシュボード](https://dashboard.ngrok.com/get-started/your-authtoken)でトークンを取得し、`.env` に書く。
-
-   ```
-   NGROK_AUTHTOKEN=2abc...
-   ```
-
-3. トンネル付きで起動する。
-
-   ```bash
-   docker compose --profile tunnel up -d
-   ```
-
-4. **割り当てられたアドレスをログから読む。**
-
-   ```bash
-   docker compose logs ngrok | grep -i url
-   ```
-
-   `tcp://0.tcp.ngrok.io:12345` のような行が出ます。
-   クライアントにはスキームを除いた `0.tcp.ngrok.io:12345` を、**ポート番号まで含めて**入力します。
-   ポートが 25565 ではないので、ホスト名だけでは繋がりません。
-
-5. 止めるとき。
-
-   ```bash
-   docker compose --profile tunnel down
-   ```
-
-### 挙動と制約
-
-- `ngrok` サービスには `profiles: ["tunnel"]` を付けてあります。通常の `docker compose up -d` では**起動しません**。外部公開は明示的に `--profile tunnel` を付けたときだけです。
-- ngrok は compose ネットワーク経由で `mc:25565` に直結します。ホスト側の `25565` 公開とは独立しているので、LAN 内プレイと併用できます。
-- 割り当てアドレスがセッションごとに変わるかどうかは契約プランによります。**毎回ログで確認してください。**固定したい場合は ngrok 側で予約アドレスを用意する必要があります。
-- トンネルを開けている間はアドレスを知る誰でも接続を試せます。遊び終わったら閉じるのが安全です。
-
 ## 設定変更
 
 **設定の正は `.env` です。** `compose.yaml` で `OVERRIDE_SERVER_PROPERTIES=TRUE` を指定しているため、
@@ -281,6 +249,12 @@ docker compose restart mc
 **`Done (...)` が出る前にメモリ関連で落ちる**
 `MC_MEMORY` が Docker Desktop に割り当てた VM メモリを超えています。Docker Desktop の Settings → Resources を確認するか `MC_MEMORY` を下げてください。
 
+**コンテナが突然落ちて再起動する**
+`docker inspect -f '{{.State.OOMKilled}}' minecraft-server` が `true` なら、`MC_MEM_LIMIT` を超えています。`MC_MEMORY` を下げるか `MC_MEM_LIMIT` を上げてください。Pi 5 4GB では `2G` / `3g` が上限の目安です。
+
+**カクつく・移動が巻き戻る**
+`docker compose logs mc | grep -c "moved too quickly"` で回数を確認します。これはサーバーがクライアントの座標を拒否して引き戻した回数で、巻き戻りの直接の原因です。対処は [docs/raspberry-pi.md](docs/raspberry-pi.md) を参照してください。
+
 **クライアントから繋がらない**
 `docker compose ps` が `healthy` かを確認し、外部からの疎通はホストに何も入れずにこれで確認できます。
 
@@ -294,9 +268,6 @@ docker run --rm --network host itzg/mc-monitor status --host host.docker.interna
 **ログに `>....[K` のような文字が混じる**
 `compose.yaml` の `tty: true` の副作用です。`docker attach` でコンソールに入るために有効化しています。
 不要なら `tty` と `stdin_open` を消すとログがきれいになります。
-
-**ngrok が起動直後に落ちて再起動を繰り返す**
-`docker compose logs ngrok` を確認します。`ERR_NGROK_4018`（authentication failed）なら `.env` の `NGROK_AUTHTOKEN` が未設定か誤りです。`restart: unless-stopped` を付けているため、直るまで再試行し続けます。
 
 **ホワイトリストに入れたのにサーバーに入れない**
 `docker compose exec mc rcon-cli "whitelist list"` で反映を確認します。ID は大文字小文字まで一致している必要があります。
