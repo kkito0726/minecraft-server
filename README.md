@@ -3,9 +3,22 @@
 Paper サーバーを Docker だけで動かす構成です。
 Java・RCON クライアント・バックアップツールはすべてコンテナ内に閉じており、**ホストには何もインストールしません**。
 
+**想定構成: Raspberry Pi 5 (4GB) でサーバーを常時稼働させ、Tailscale 経由で接続する。**
+`.env` の既定値はこの前提でチューニングしてあります。
+
 - サーバー: Paper 26.2（`.env` で変更可）
-- イメージ: [`itzg/minecraft-server`](https://github.com/itzg/docker-minecraft-server)
+- イメージ: [`itzg/minecraft-server`](https://github.com/itzg/docker-minecraft-server)（linux/arm64 対応）
 - 公開ポート: `25565` のみ（RCON 25575 はコンテナ内からのみ）
+- 接続経路: Tailscale（tailnet 内からのみ到達可能。ポート開放は不要）
+
+## ドキュメント
+
+この README には概要と日常操作だけを置いています。詳細な手順は [docs/](docs/) にあります。
+
+| ドキュメント | 内容 |
+|---|---|
+| [docs/raspberry-pi.md](docs/raspberry-pi.md) | Pi 5 のセットアップ、Tailscale、SSD 起動、スワップ、チューニングの根拠 |
+| [docs/backup-restore.md](docs/backup-restore.md) | ワールドのバックアップ取得・復元、バージョンとの関係、保管場所 |
 
 ## 必要なもの
 
@@ -36,6 +49,8 @@ openssl rand -hex 16
 | `RCON_PASSWORD` | RCON 用パスワード。生成済み。作り直す場合は上記コマンドの出力を貼る |
 | `MC_VERSION` | Minecraft のバージョン。**クライアントと必ず一致させる** |
 | `MC_MEMORY` | 割り当てメモリ。Docker Desktop の VM メモリ上限を超えないこと |
+| `MC_WHITELIST` | 参加を許可する Minecraft ID。設定を強く推奨 |
+| `MC_MEMORY` / `MC_MEM_LIMIT` | JVM ヒープとコンテナ上限。Pi 5 4GB なら `2G` / `3g` |
 
 ## 起動・停止
 
@@ -61,11 +76,23 @@ Minecraft クライアントの「マルチプレイ」→「サーバーを追�
 
 | 接続元 | アドレス |
 |---|---|
-| 同じ PC | `localhost` |
-| 同じ LAN 内の別端末 | `<ホストPCのローカルIP>:25565` |
-| インターネット越し | ルーターで 25565/TCP をポート開放するか、Tailscale 等の VPN を使う |
+| tailnet 内の端末（推奨） | `<Pi の Tailscale ホスト名 or 100.x.y.z>` |
+| 同じ LAN 内の端末 | `<Pi のローカルIP>` |
+| サーバーと同じ機体 | `localhost` |
 
+ポートは既定の `25565` なので、アドレスだけ入力すれば繋がります。
 クライアントのバージョンは `.env` の `MC_VERSION` と一致させてください。
+
+Tailscale の IP は Pi 側で確認できます。
+
+```bash
+tailscale ip -4          # 100.x.y.z
+tailscale status         # MagicDNS のホスト名も出る
+```
+
+MagicDNS を有効にしていれば `minecraft-pi` のようなホスト名でそのまま接続できます。
+tailnet に参加している端末からしか到達できないため、ルーターのポート開放は不要です。
+詳細は [docs/raspberry-pi.md](docs/raspberry-pi.md) を参照してください。
 
 ## サーバーコマンドの実行
 
@@ -126,6 +153,33 @@ RCON は**平文プロトコル**です。暗号化がなく、パスワード�
 
 `RCON_PASSWORD` は `.env` にあり Git 管理外です。値を変えたら `docker compose up -d` で反映します。
 
+## ホワイトリスト
+
+参加できるプレイヤーを限定します。**外部公開する場合は必ず設定してください。**
+
+```
+MC_WHITELIST=Alice,Bob
+```
+
+→ `docker compose up -d`
+
+`MC_WHITELIST` に値を入れると `server.properties` の `white-list` と `enforce-whitelist` が自動で `true` になります。
+空に戻せば両方 `false` に戻ります。
+
+稼働中に足す／外す場合:
+
+```bash
+docker compose exec mc rcon-cli "whitelist add Alice"
+docker compose exec mc rcon-cli "whitelist remove Alice"
+docker compose exec mc rcon-cli "whitelist list"
+```
+
+`data/whitelist.json` の内容は `.env` の値とマージされ、勝手には消えません。
+`.env` の内容だけを正としたい場合は `compose.yaml` に `OVERRIDE_WHITELIST: "TRUE"` を足します。
+
+> リストを空のままホワイトリストだけ有効にすると**誰も入れなくなります**。
+> ID を1つも入れずに有効化したい場合のみ `MC_ENABLE_WHITELIST=TRUE` を使ってください。
+
 ## 設定変更
 
 **設定の正は `.env` です。** `compose.yaml` で `OVERRIDE_SERVER_PROPERTIES=TRUE` を指定しているため、
@@ -151,23 +205,16 @@ docker compose up -d          # 差分があればコンテナが再作成され
 
 ## バックアップ
 
-ワールドは `data/world` 以下にまとまっています（ネザー・エンドも `data/world/dimensions/` の中）。
-停止中にコピーするのが最も安全です。
+ワールドは `data/world` 以下にまとまっています。サーバーを止めてから固めるのが最も確実です。
 
 ```bash
 docker compose down
-tar czf "backup-$(date +%Y%m%d-%H%M%S).tar.gz" data/world
+zip -qr "backup-$(date +%Y%m%d-%H%M%S).zip" data/world data/plugins data/config
 docker compose up -d
 ```
 
-稼働させたままなら、先にディスクへ書き出してから固めます。
-
-```bash
-docker compose exec mc rcon-cli save-off
-docker compose exec mc rcon-cli save-all
-tar czf "backup-$(date +%Y%m%d-%H%M%S).tar.gz" data/world
-docker compose exec mc rcon-cli save-on
-```
+稼働させたまま取る方法、**復元手順（上書きすると壊れます）**、バージョンとの関係、保管場所は
+[docs/backup-restore.md](docs/backup-restore.md) を参照してください。
 
 ## プラグイン（Paper）
 
@@ -190,6 +237,7 @@ docker compose restart mc
     ├── plugins/       プラグイン
     ├── logs/          ログ
     ├── ops.json       OP 一覧（.env の MC_OPS から生成）
+    ├── whitelist.json ホワイトリスト（.env の MC_WHITELIST とマージ）
     └── server.properties  起動のたびに .env から再生成される
 ```
 
@@ -200,6 +248,12 @@ docker compose restart mc
 
 **`Done (...)` が出る前にメモリ関連で落ちる**
 `MC_MEMORY` が Docker Desktop に割り当てた VM メモリを超えています。Docker Desktop の Settings → Resources を確認するか `MC_MEMORY` を下げてください。
+
+**コンテナが突然落ちて再起動する**
+`docker inspect -f '{{.State.OOMKilled}}' minecraft-server` が `true` なら、`MC_MEM_LIMIT` を超えています。`MC_MEMORY` を下げるか `MC_MEM_LIMIT` を上げてください。Pi 5 4GB では `2G` / `3g` が上限の目安です。
+
+**カクつく・移動が巻き戻る**
+`docker compose logs mc | grep -c "moved too quickly"` で回数を確認します。これはサーバーがクライアントの座標を拒否して引き戻した回数で、巻き戻りの直接の原因です。対処は [docs/raspberry-pi.md](docs/raspberry-pi.md) を参照してください。
 
 **クライアントから繋がらない**
 `docker compose ps` が `healthy` かを確認し、外部からの疎通はホストに何も入れずにこれで確認できます。
@@ -215,13 +269,8 @@ docker run --rm --network host itzg/mc-monitor status --host host.docker.interna
 `compose.yaml` の `tty: true` の副作用です。`docker attach` でコンソールに入るために有効化しています。
 不要なら `tty` と `stdin_open` を消すとログがきれいになります。
 
+**ホワイトリストに入れたのにサーバーに入れない**
+`docker compose exec mc rcon-cli "whitelist list"` で反映を確認します。ID は大文字小文字まで一致している必要があります。
+
 **設定を変えたのに反映されない**
 `docker compose restart` ではなく `docker compose up -d` を使ってください。`.env` の変更はコンテナの再作成で反映されます。
-
-## ワールドを作り直す
-
-```bash
-docker compose down
-rm -rf data/world
-docker compose up -d
-```
