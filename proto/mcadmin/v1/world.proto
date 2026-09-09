@@ -1,0 +1,120 @@
+// 複数ワールドの管理と切り替え。
+//
+// ワールドの実体は data/<名前>/ で、稼働させるものは .env の MC_LEVEL で決まる。
+// 切り替えてもディレクトリは移動しないため、切替前のワールドはそのまま残る
+// （2026-09-09 に実機で検証済み）。
+syntax = "proto3";
+
+package mcadmin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "mcadmin/v1/common.proto";
+import "mcadmin/v1/operation.proto";
+
+option go_package = "github.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1";
+
+service WorldService {
+  rpc ListWorlds(ListWorldsRequest) returns (ListWorldsResponse) {}
+  // SwitchWorld は .env の MC_LEVEL を書き換えてコンテナを再作成する。
+  // docker compose restart では .env の変更が反映されない（REQ-117）。
+  rpc SwitchWorld(SwitchWorldRequest) returns (SwitchWorldResponse) {}
+  rpc CreateWorld(CreateWorldRequest) returns (CreateWorldResponse) {}
+  rpc CloneWorld(CloneWorldRequest) returns (CloneWorldResponse) {}
+  rpc RenameWorld(RenameWorldRequest) returns (RenameWorldResponse) {}
+  rpc DeleteWorld(DeleteWorldRequest) returns (DeleteWorldResponse) {}
+  // PurgeQuarantine は退避されたディレクトリを完全に削除する。
+  // システムは自動削除しないため、確認後に利用者が明示的に実行する（REQ-116）。
+  rpc PurgeQuarantine(PurgeQuarantineRequest) returns (PurgeQuarantineResponse) {}
+}
+
+// World は data/ 配下のワールド 1 つ。
+message World {
+  // ディレクトリ名。
+  string name = 1;
+  // .env の MC_LEVEL と一致するか。
+  bool active = 2;
+  int64 size_bytes = 3;
+  // level.dat の Data.LastPlayed。
+  google.protobuf.Timestamp last_played = 4;
+  WorldVersion version = 5;
+  // session.lock が残っているか。停止時に消えないため、これ自体は異常ではない。
+  bool has_session_lock = 6;
+}
+
+// Quarantine は復元や削除で退避されたディレクトリ。
+message Quarantine {
+  // ディレクトリ名（world.broken-20260909-143000 など）。
+  string name = 1;
+  // 退避元のワールド名。
+  string original_level = 2;
+  google.protobuf.Timestamp quarantined_at = 3;
+  int64 size_bytes = 4;
+  // 復元による退避なら true、削除による退避なら false。
+  bool from_restore = 5;
+}
+
+message ListWorldsRequest {}
+
+message ListWorldsResponse {
+  repeated World worlds = 1;
+  repeated Quarantine quarantines = 2;
+  // .env の MC_LEVEL。data/ に対応するディレクトリが無い場合もある。
+  string active_level = 3;
+}
+
+message SwitchWorldRequest {
+  string name = 1;
+}
+
+message SwitchWorldResponse {
+  Operation operation = 1;
+}
+
+message CreateWorldRequest {
+  string name = 1;
+  // 空なら Paper に任せる。指定した場合、生成後に .env から消される（REQ-108）。
+  string seed = 2;
+}
+
+message CreateWorldResponse {
+  Operation operation = 1;
+}
+
+message CloneWorldRequest {
+  string source = 1;
+  string destination = 2;
+}
+
+message CloneWorldResponse {
+  Operation operation = 1;
+}
+
+message RenameWorldRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message RenameWorldResponse {
+  Operation operation = 1;
+}
+
+message DeleteWorldRequest {
+  string name = 1;
+  // name と完全一致していなければ拒否する（REQ-123）。
+  string confirm_name = 2;
+  // true なら即削除せず data/<名前>.deleted-<日時> へ退避する。既定は true。
+  bool quarantine_instead = 3;
+}
+
+message DeleteWorldResponse {
+  Operation operation = 1;
+}
+
+message PurgeQuarantineRequest {
+  // Quarantine.name。
+  string name = 1;
+}
+
+message PurgeQuarantineResponse {
+  int64 freed_bytes = 1;
+}

@@ -1,7 +1,4 @@
 // 管理コンソール（mcadmind）の共通型。
-//
-// このファイルはフェーズ 3 でツールチェーンを検証するために最小限で置いてある。
-// 操作・サーバー・バックアップ・ワールドの各サービスはフェーズ 4 で追加する。
 syntax = "proto3";
 
 package mcadmin.v1;
@@ -25,10 +22,28 @@ enum OperationState {
   OPERATION_STATE_FAILED = 4;
 }
 
+// OperationKind は操作の種類。data/ を変更するものはすべてここに含まれ、
+// 同時にひとつしか実行できない（REQ-101）。
+enum OperationKind {
+  OPERATION_KIND_UNSPECIFIED = 0;
+  OPERATION_KIND_SERVER_START = 1;
+  OPERATION_KIND_SERVER_STOP = 2;
+  OPERATION_KIND_SERVER_RESTART = 3;
+  OPERATION_KIND_BACKUP_CREATE = 4;
+  OPERATION_KIND_BACKUP_RESTORE = 5;
+  OPERATION_KIND_WORLD_SWITCH = 6;
+  OPERATION_KIND_WORLD_CREATE = 7;
+  OPERATION_KIND_WORLD_CLONE = 8;
+  OPERATION_KIND_WORLD_RENAME = 9;
+  OPERATION_KIND_WORLD_DELETE = 10;
+}
+
 // WorldVersion は level.dat から読んだワールドのバージョン。
 //
-// 判定に使うのは data_version（整数）であって name（表示文字列）ではない。
+// 判定に使うのは data_version（整数）であって name（表示文字列）ではない（REQ-412）。
 // 実測値の例: name="26.2" / data_version=4903。
+// level.dat を読めなかった場合は readable=false とし、一覧表示そのものは
+// 継続する（EDGE-001）。
 message WorldVersion {
   // level.dat を読めたかどうか。false のとき他のフィールドは未設定。
   bool readable = 1;
