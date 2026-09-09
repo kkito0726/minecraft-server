@@ -1,0 +1,21 @@
+# proto から Go（バックエンド）と TypeScript（フロントエンド）の型を生成する。
+# 生成物は Git で追跡しない。make gen でいつでも作り直せる。
+version: v2
+clean: true
+plugins:
+  # --- Go ---
+  - remote: buf.build/protocolbuffers/go
+    out: backend/gen
+    opt: paths=source_relative
+  - remote: buf.build/connectrpc/go
+    out: backend/gen
+    opt: paths=source_relative
+
+  # --- TypeScript ---
+  # protoc-gen-es v2 は Connect のクライアント定義も同じファイルに出すため、
+  # protoc-gen-connect-es は不要。
+  - remote: buf.build/bufbuild/es
+    out: frontend/src/gen
+    opt:
+      - target=ts
+      - import_extension=js

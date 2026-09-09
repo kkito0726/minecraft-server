@@ -1,0 +1,11 @@
+# 管理コンソール（mcadmind）の Connect RPC スキーマ定義。
+# 生成: make gen
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

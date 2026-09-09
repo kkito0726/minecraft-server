@@ -1,0 +1,43 @@
+// 管理コンソール（mcadmind）の共通型。
+//
+// このファイルはフェーズ 3 でツールチェーンを検証するために最小限で置いてある。
+// 操作・サーバー・バックアップ・ワールドの各サービスはフェーズ 4 で追加する。
+syntax = "proto3";
+
+package mcadmin.v1;
+
+option go_package = "github.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1";
+
+// LogLevel は操作の進捗ログの深刻度。
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_INFO = 1;
+  LOG_LEVEL_WARN = 2;
+  LOG_LEVEL_ERROR = 3;
+}
+
+// OperationState は時間のかかる操作の状態。
+enum OperationState {
+  OPERATION_STATE_UNSPECIFIED = 0;
+  OPERATION_STATE_PENDING = 1;
+  OPERATION_STATE_RUNNING = 2;
+  OPERATION_STATE_SUCCEEDED = 3;
+  OPERATION_STATE_FAILED = 4;
+}
+
+// WorldVersion は level.dat から読んだワールドのバージョン。
+//
+// 判定に使うのは data_version（整数）であって name（表示文字列）ではない。
+// 実測値の例: name="26.2" / data_version=4903。
+message WorldVersion {
+  // level.dat を読めたかどうか。false のとき他のフィールドは未設定。
+  bool readable = 1;
+  // Data.Version.Name。表示専用。
+  string name = 2;
+  // Data.DataVersion。バージョン比較のキーはこれ。
+  int32 data_version = 3;
+  // Data.Version.Snapshot。
+  bool snapshot = 4;
+  // Data.LevelName。ディレクトリ名と一致しないことがある。
+  string level_name = 5;
+}
