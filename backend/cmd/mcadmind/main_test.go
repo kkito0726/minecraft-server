@@ -91,36 +91,61 @@ func TestParseFlags(t *testing.T) {
 func TestRun(t *testing.T) {
 	t.Parallel()
 
-	t.Run("-version は何もせず終わる", func(t *testing.T) {
-		t.Parallel()
-		var out bytes.Buffer
-		if err := run([]string{"-version"}, &out); err != nil {
-			t.Fatalf("エラーが出ないはずが %v", err)
-		}
-	})
+	built := deps{webuiBuilt: func() bool { return true }}
+	notBuilt := deps{webuiBuilt: func() bool { return false }}
 
-	t.Run("project-dir が不正なら起動しない", func(t *testing.T) {
-		t.Parallel()
-		var out bytes.Buffer
-		err := run([]string{"-project-dir", t.TempDir()}, &out)
-		if err == nil || !strings.Contains(err.Error(), "compose.yaml が見つかりません") {
-			t.Fatalf("compose.yaml のエラーを期待したが %v", err)
-		}
-	})
-
-	t.Run("そろっていればフェーズ 9 の未実装まで到達する", func(t *testing.T) {
-		t.Parallel()
-		if !webuiBuilt() {
-			t.Skip("フロントエンドが未ビルドのためスキップ（make build-front で解消する）")
-		}
+	// compose.yaml と .env がそろったディレクトリを用意する
+	projectDir := func(t *testing.T) string {
+		t.Helper()
 		dir := t.TempDir()
 		for _, f := range []string{"compose.yaml", ".env"} {
 			if err := os.WriteFile(filepath.Join(dir, f), []byte("x"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 		}
+		return dir
+	}
+
+	t.Run("-version は何もせず終わる", func(t *testing.T) {
+		t.Parallel()
 		var out bytes.Buffer
-		err := run([]string{"-project-dir", dir}, &out)
+		if err := run([]string{"-version"}, &out, built); err != nil {
+			t.Fatalf("エラーが出ないはずが %v", err)
+		}
+	})
+
+	t.Run("引数が不正なら起動しない", func(t *testing.T) {
+		t.Parallel()
+		var out bytes.Buffer
+		if err := run([]string{"-nonexistent"}, &out, built); err == nil {
+			t.Error("エラーになるはず")
+		}
+	})
+
+	t.Run("project-dir が不正なら起動しない", func(t *testing.T) {
+		t.Parallel()
+		var out bytes.Buffer
+		err := run([]string{"-project-dir", t.TempDir()}, &out, built)
+		if err == nil || !strings.Contains(err.Error(), "compose.yaml が見つかりません") {
+			t.Fatalf("compose.yaml のエラーを期待したが %v", err)
+		}
+	})
+
+	// フロントエンドを埋め込み忘れたまま起動すると白い画面になり原因が分かりにくい。
+	// 起動時に検出してビルド手順を案内する。
+	t.Run("フロントエンドが未ビルドなら案内して終わる", func(t *testing.T) {
+		t.Parallel()
+		var out bytes.Buffer
+		err := run([]string{"-project-dir", projectDir(t)}, &out, notBuilt)
+		if err == nil || !strings.Contains(err.Error(), "make build-front") {
+			t.Fatalf("ビルド手順の案内を期待したが %v", err)
+		}
+	})
+
+	t.Run("そろっていればフェーズ 9 の未実装まで到達する", func(t *testing.T) {
+		t.Parallel()
+		var out bytes.Buffer
+		err := run([]string{"-project-dir", projectDir(t)}, &out, built)
 		if !errors.Is(err, errNotImplemented) {
 			t.Fatalf("errNotImplemented を期待したが %v", err)
 		}

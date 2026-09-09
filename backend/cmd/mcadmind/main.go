@@ -27,15 +27,25 @@ var version = "dev"
 var errNotImplemented = errors.New("未実装です。現在はプロジェクトの雛形のみです")
 
 func main() {
-	if err := run(os.Args[1:], os.Stdout); err != nil {
+	deps := deps{webuiBuilt: webui.IsBuilt}
+	if err := run(os.Args[1:], os.Stdout, deps); err != nil {
 		fmt.Fprintln(os.Stderr, "mcadmind:", err)
 		os.Exit(1)
 	}
 }
 
+// deps は起動時に必要な外部の問い合わせ先。
+//
+// フロントエンドが埋め込まれているかの判定を引数で受け取るのは、
+// テストの結果が「そのときフロントをビルドしていたか」に左右されないようにするため。
+// パッケージ変数を直接見ると CI とローカルでカバレッジが変わってしまう。
+type deps struct {
+	webuiBuilt func() bool
+}
+
 // run は main から副作用を切り離してテストできるようにしたもの。
 // 引数と出力先を受け取り、プロセスの終了は呼び出し側に任せる。
-func run(args []string, stdout io.Writer) error {
+func run(args []string, stdout io.Writer, d deps) error {
 	opts, err := parseFlags(args, stdout)
 	if err != nil {
 		return err
@@ -50,7 +60,7 @@ func run(args []string, stdout io.Writer) error {
 
 	// フロントエンドが埋め込まれているかを先に確かめる。ビルドを忘れたまま
 	// 起動すると白い画面になり、原因が分かりにくいため。
-	if !webui.IsBuilt() {
+	if !d.webuiBuilt() {
 		return errors.New("フロントエンドがビルドされていません。make build-front を実行してください")
 	}
 
