@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kkito0726/minecraft-server/backend/internal/dotenv"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/config/dotenv"
 )
 
 // .env には日本語のコメントが 37 行以上あり、値の一部は source 互換のために

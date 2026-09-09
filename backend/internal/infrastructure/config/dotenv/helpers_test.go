@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kkito0726/minecraft-server/backend/internal/dotenv"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/config/dotenv"
 )
 
 // loadFixture は実際の .env.example から作ったフィクスチャを読む。

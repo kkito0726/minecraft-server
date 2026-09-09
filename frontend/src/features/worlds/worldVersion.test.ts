@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { create } from '@bufbuild/protobuf'
 
-import { WorldVersionSchema } from '../gen/mcadmin/v1/common_pb.js'
+import { WorldVersionSchema } from '../../gen/mcadmin/v1/common_pb.js'
 import { compareWorldVersions, formatWorldVersion } from './worldVersion.js'
 
 // 実測値: data/world/level.dat は name="26.2" / dataVersion=4903
