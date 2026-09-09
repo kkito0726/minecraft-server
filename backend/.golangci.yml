@@ -1,0 +1,48 @@
+# グローバル開発ルール（関数 50 行以内・ネスト 4 段まで）を機械的に守らせる。
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck      # エラーを握り潰していないか
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - funlen        # 関数 50 行以内（NFR-302）
+    - nestif        # 深いネストを避ける
+    - gocritic
+    - misspell
+    - errorlint     # エラーのラップ漏れ（errors.Is/As が効かなくなる）
+    - bodyclose
+    - noctx         # context を渡し忘れた HTTP リクエスト
+    - copyloopvar
+
+  settings:
+    funlen:
+      lines: 50
+      statements: 40
+    nestif:
+      min-complexity: 5
+
+  exclusions:
+    rules:
+      # テストは記述の都合上、関数長の制限を外す
+      - path: _test\.go
+        linters:
+          - funlen
+      # 生成物は対象外
+      - path: gen/
+        linters:
+          - errcheck
+          - govet
+          - staticcheck
+          - unused
+          - funlen
+          - gocritic
+
+formatters:
+  enable:
+    - gofmt

@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同じブランチへの連続 push では古い実行を打ち切る
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.26'
+  NODE_VERSION: '22'
+
+jobs:
+  proto:
+    name: proto（lint と生成物の同期）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: buf lint
+      - run: buf format --diff --exit-code
+
+      # 生成物はコミットしないが、proto と同期していることは保証する。
+      # 生成し直して差分が出るなら、誰かが proto だけ変えて make gen を忘れている。
+      - name: 生成物が proto と同期しているか
+        run: |
+          buf generate
+          if ! git diff --quiet --exit-code; then
+            echo "::error::proto を変更したら make gen を実行してください"
+            git diff --stat
+            exit 1
+          fi
+
+  backend:
+    name: バックエンド（vet・テスト・カバレッジ）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+
+      - name: gofmt の確認
+        working-directory: backend
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt が必要です: $unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        working-directory: backend
+        run: go vet ./...
+
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          working-directory: backend
+
+      # dist/ が空（.gitkeep のみ）の状態でも通ることを確かめる意味も兼ねる
+      - name: テストとカバレッジ
+        run: make cover
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: go-coverage
+          path: coverage.out
+          retention-days: 7
+
+  frontend:
+    name: フロントエンド（型検査・lint・テスト）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 依存のインストール
+        working-directory: frontend
+        run: npm ci
+
+      - name: 型検査
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: テストとカバレッジ
+        working-directory: frontend
+        run: npm run test:coverage
+
+  build:
+    name: ビルド（Pi 5 向け arm64 を含む）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - working-directory: frontend
+        run: npm ci
+
+      - name: Pi 5 向けにクロスビルドする
+        run: make build-arm64
+
+      # embed したデータは、そのパッケージを参照していないとリンカに削除される。
+      # 参照が外れると Pi へ配置して初めて白い画面で気づくため、ここで検出する。
+      - name: フロントエンドが埋め込まれているか
+        run: |
+          if ! strings mcadmind-arm64 | grep -q 'assets/index-'; then
+            echo "::error::バイナリにフロントエンドが埋め込まれていません"
+            exit 1
+          fi
+          file mcadmind-arm64
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: mcadmind-arm64
+          path: mcadmind-arm64
+          retention-days: 14

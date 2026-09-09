@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* デザイントークン。危険・警告・成功の色はここに集約し、
+   コンポーネント側に 16 進数を直書きしない。 */
+@theme {
+  --color-danger-50: oklch(0.97 0.02 25);
+  --color-danger-500: oklch(0.63 0.21 25);
+  --color-danger-700: oklch(0.48 0.19 25);
+
+  --color-warn-50: oklch(0.97 0.03 85);
+  --color-warn-500: oklch(0.72 0.16 85);
+  --color-warn-700: oklch(0.55 0.13 85);
+
+  --color-ok-50: oklch(0.96 0.03 155);
+  --color-ok-500: oklch(0.65 0.15 155);
+  --color-ok-700: oklch(0.48 0.12 155);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}

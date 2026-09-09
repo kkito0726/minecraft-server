@@ -1,3 +1,23 @@
+# サーバーの設定と実データ
 .env
 data/
+
+# バックアップ（旧形式のリポジトリ直下と、管理コンソールの保管先）
 backup-*.zip
+backups/
+
+# 管理コンソール — バックエンド
+/mcadmind
+/mcadmind-arm64
+backend/internal/webui/dist/*
+!backend/internal/webui/dist/.gitkeep
+coverage.out
+coverage.html
+
+# 管理コンソール — フロントエンド
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+frontend/.vite/
