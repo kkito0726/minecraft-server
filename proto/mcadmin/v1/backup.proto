@@ -1,0 +1,187 @@
+// バックアップの取得・一覧・削除・世代管理と、バージョン検証つきの復元。
+syntax = "proto3";
+
+package mcadmin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "mcadmin/v1/common.proto";
+import "mcadmin/v1/operation.proto";
+
+option go_package = "github.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1";
+
+service BackupService {
+  rpc ListBackups(ListBackupsRequest) returns (ListBackupsResponse) {}
+  rpc CreateBackup(CreateBackupRequest) returns (CreateBackupResponse) {}
+  rpc DeleteBackup(DeleteBackupRequest) returns (DeleteBackupResponse) {}
+  // PreflightRestore は復元前の確認。副作用を一切持たない（REQ-008）。
+  //
+  // アーカイブ内の level.dat を、zip 全体を展開せずに読んでバージョンを判定する。
+  rpc PreflightRestore(PreflightRestoreRequest) returns (PreflightRestoreResponse) {}
+  // RestoreBackup は復元を実行する。
+  //
+  // クライアントが事前確認を通ったと主張しても信用せず、サーバー側で
+  // PreflightRestore を再実行してから進む（REQ-113）。
+  rpc RestoreBackup(RestoreBackupRequest) returns (RestoreBackupResponse) {}
+  rpc GetRetentionPolicy(GetRetentionPolicyRequest) returns (GetRetentionPolicyResponse) {}
+  rpc SetRetentionPolicy(SetRetentionPolicyRequest) returns (SetRetentionPolicyResponse) {}
+  // PruneBackups は保持ポリシーを手動で適用する。dry_run で対象だけ確認できる。
+  rpc PruneBackups(PruneBackupsRequest) returns (PruneBackupsResponse) {}
+}
+
+// BackupMode は取得方式。
+enum BackupMode {
+  BACKUP_MODE_UNSPECIFIED = 0;
+  // 稼働させたまま取る。save-off / save-all / save-on を伴う。既定。
+  BACKUP_MODE_HOT = 1;
+  // 停止してから取る。docker compose down / up を伴う。
+  BACKUP_MODE_COLD = 2;
+}
+
+// VersionVerdict はアーカイブと現在のワールドのバージョン比較の結果。
+//
+// 比較するのは level.dat の DataVersion（整数）どうしであって、
+// MC_VERSION の文字列ではない。文字列と整数の対応表は持てないため（REQ-412）。
+enum VersionVerdict {
+  VERSION_VERDICT_UNSPECIFIED = 0;
+  // DataVersion が一致。承諾なしで復元できる。
+  VERSION_VERDICT_MATCH = 1;
+  // アーカイブの方が古い。復元すると片道アップグレードが再度走る（REQ-110）。
+  VERSION_VERDICT_OLDER_WILL_UPGRADE = 2;
+  // アーカイブの方が新しい。現在の MC_VERSION では開けない可能性が高い（REQ-111）。
+  VERSION_VERDICT_NEWER_INCOMPATIBLE = 3;
+  // どちらかの level.dat を読めなかった。安全側に倒して承諾を求める。
+  VERSION_VERDICT_UNKNOWN = 4;
+}
+
+// RestoreTarget はどのワールド名として復元するか。
+//
+// アーカイブは data/world/... を持つ。利用者が後で MC_LEVEL=creative に
+// 切り替えていると、素直に展開しても data/world が戻るだけで稼働中の
+// ワールドは変化せず「何も起きていないように見える」（REQ-112）。
+enum RestoreTarget {
+  RESTORE_TARGET_UNSPECIFIED = 0;
+  // アーカイブのワールド名で復元し、MC_LEVEL もそちらへ切り替える。既定。
+  RESTORE_TARGET_ARCHIVE_LEVEL = 1;
+  // 展開時にパスを書き換え、現在稼働中のワールド名として復元する。
+  RESTORE_TARGET_CURRENT_LEVEL = 2;
+}
+
+// Backup は保管済みのアーカイブ 1 つ。
+message Backup {
+  // ファイル名（ディレクトリを含まない）。
+  string id = 1;
+  int64 size_bytes = 2;
+  // ファイルの更新時刻。
+  google.protobuf.Timestamp created_at = 3;
+  // ファイル名から読み取ったバージョン。改名できるため信用しない（REQ-413）。
+  string declared_version = 4;
+  // アーカイブのエントリ接頭辞から判定した実際のワールド名。
+  string archive_level = 5;
+  // アーカイブ内の level.dat から読んだバージョン。これが真の値。
+  WorldVersion version = 6;
+  // アーカイブに含まれるルート（data/world、data/plugins など）。
+  repeated string entry_roots = 7;
+}
+
+message ListBackupsRequest {}
+
+message ListBackupsResponse {
+  // 新しい順。
+  repeated Backup backups = 1;
+  // 保管先ディレクトリ（表示用）。
+  string directory = 2;
+  int64 total_size_bytes = 3;
+}
+
+message CreateBackupRequest {
+  // 未指定なら HOT。
+  BackupMode mode = 1;
+  // ファイル名の末尾に付ける短いメモ。空白と記号は除去される。
+  string note = 2;
+}
+
+message CreateBackupResponse {
+  Operation operation = 1;
+}
+
+message DeleteBackupRequest {
+  string backup_id = 1;
+}
+
+message DeleteBackupResponse {
+  int64 freed_bytes = 1;
+}
+
+message PreflightRestoreRequest {
+  string backup_id = 1;
+}
+
+message PreflightRestoreResponse {
+  Backup backup = 1;
+  // .env の MC_LEVEL。
+  string current_level = 2;
+  // 稼働中ワールドの level.dat から読んだバージョン。
+  WorldVersion current_world_version = 3;
+  // .env の MC_VERSION。表示と補助的な警告にのみ使う。
+  string configured_mc_version = 4;
+  VersionVerdict verdict = 5;
+  // アーカイブのワールド名が現在稼働中のものと違う。
+  bool level_name_mismatch = 6;
+  // 利用者に提示する警告文（日本語）。
+  repeated string warnings = 7;
+  // verdict が MATCH でない、または名前が食い違う場合に真。
+  bool requires_confirmation = 8;
+  // 展開に必要な容量と、実際の空き容量。
+  int64 required_bytes = 9;
+  int64 available_bytes = 10;
+}
+
+message RestoreBackupRequest {
+  string backup_id = 1;
+  // 未指定なら ARCHIVE_LEVEL。
+  RestoreTarget target = 2;
+  // requires_confirmation が真のとき、これが真でなければ拒否する（REQ-109）。
+  bool acknowledge_version_warning = 3;
+  // 復元先のワールド名と完全一致していなければ拒否する（REQ-123）。
+  string confirm_level_name = 4;
+}
+
+message RestoreBackupResponse {
+  Operation operation = 1;
+}
+
+// RetentionPolicy はバックアップの保持条件。
+//
+// 世代数と日数の両方を満たさないものだけを削除し、設定がどうであれ
+// 最も新しい 1 世代は必ず残す（EDGE-103）。
+message RetentionPolicy {
+  // 残す世代数。1 以上（EDGE-104）。
+  int32 keep_count = 1;
+  // 保持日数。0 で無効。
+  int32 keep_days = 2;
+}
+
+message GetRetentionPolicyRequest {}
+
+message GetRetentionPolicyResponse {
+  RetentionPolicy policy = 1;
+}
+
+message SetRetentionPolicyRequest {
+  RetentionPolicy policy = 1;
+}
+
+message SetRetentionPolicyResponse {
+  RetentionPolicy policy = 1;
+}
+
+message PruneBackupsRequest {
+  // 真なら削除せず対象だけ返す。
+  bool dry_run = 1;
+}
+
+message PruneBackupsResponse {
+  // 削除された（または dry_run で削除対象となった）ファイル名。
+  repeated string deleted_ids = 1;
+  int64 freed_bytes = 2;
+}

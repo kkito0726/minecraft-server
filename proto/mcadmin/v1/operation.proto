@@ -1,0 +1,105 @@
+// 時間のかかる操作の進捗管理。
+//
+// 復元は stop_grace_period の 60 秒に Paper の起動を足して分単位でかかるため、
+// 利用者は必ずブラウザを再読み込みする。したがって進捗は React の状態ではなく
+// サーバー側のリソースとして持ち、識別子で再取得できるようにする（REQ-017）。
+syntax = "proto3";
+
+package mcadmin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "mcadmin/v1/common.proto";
+
+option go_package = "github.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1";
+
+// OperationService は進行中・完了済みの操作を参照する。
+//
+// v1 に中断（Cancel）は設けない。復元の途中で止めると「退避済みかつ展開途中」
+// という最も復旧が困難な状態を作るため（REQ-417）。
+service OperationService {
+  // GetOperation は識別子で操作を取得する。
+  rpc GetOperation(GetOperationRequest) returns (GetOperationResponse) {}
+  // GetActiveOperation は進行中の操作を返す。識別子を保持していないクライアント
+  // （別端末、localStorage を消した場合）が現在の状況を知るための入口（REQ-019）。
+  rpc GetActiveOperation(GetActiveOperationRequest) returns (GetActiveOperationResponse) {}
+  // ListOperations は直近の操作履歴を返す（REQ-020）。
+  rpc ListOperations(ListOperationsRequest) returns (ListOperationsResponse) {}
+  // WatchOperation は進捗を逐次配信する。
+  //
+  // from_seq 以降の記録済みイベントを再送してから追従する。これが無いと
+  // 再読み込み直後の画面がスピナーだけになる（REQ-127）。
+  rpc WatchOperation(WatchOperationRequest) returns (stream WatchOperationResponse) {}
+}
+
+// Operation は 1 回の操作の状態。
+message Operation {
+  // ULID。
+  string id = 1;
+  OperationKind kind = 2;
+  OperationState state = 3;
+  google.protobuf.Timestamp started_at = 4;
+  // 未完了のあいだは未設定。
+  google.protobuf.Timestamp finished_at = 5;
+  // 1 始まり。
+  int32 step_index = 6;
+  int32 step_total = 7;
+  // 現在のステップ名（日本語）。
+  string current_step = 8;
+  // 全ステップの名前。開始時点で確定する。
+  repeated string step_names = 9;
+  // アーカイブの読み書きの進捗。不明な場合は 0。
+  int64 bytes_done = 10;
+  int64 bytes_total = 11;
+  // 失敗時のみ設定。error_code は安定した識別子、error_message は日本語。
+  string error_code = 12;
+  string error_message = 13;
+  // 操作固有の付随情報。backup_id / world_name / quarantine_path など。
+  map<string, string> attributes = 14;
+}
+
+// WatchOperationResponse は進捗の 1 イベント。
+//
+// snapshot を常に同梱するのは、1 イベントだけ受け取っても完全な状態を
+// 復元できるようにするため。取りこぼしても表示が壊れない。
+message WatchOperationResponse {
+  // 操作内で 1 始まり単調増加。再接続時の位置指定に使う。
+  int64 seq = 1;
+  google.protobuf.Timestamp at = 2;
+  LogLevel level = 3;
+  // ログ行（日本語）。
+  string message = 4;
+  Operation snapshot = 5;
+}
+
+message GetOperationRequest {
+  string operation_id = 1;
+}
+
+message GetOperationResponse {
+  Operation operation = 1;
+}
+
+message GetActiveOperationRequest {}
+
+message GetActiveOperationResponse {
+  // 進行中の操作があるか。false のとき operation は未設定。
+  bool present = 1;
+  Operation operation = 2;
+}
+
+message ListOperationsRequest {
+  // 0 または未指定なら既定値（50 件）。
+  int32 limit = 1;
+}
+
+message ListOperationsResponse {
+  // 新しい順。
+  repeated Operation operations = 1;
+}
+
+message WatchOperationRequest {
+  string operation_id = 1;
+  // この位置以降のイベントから配信する。0 なら最初から再送する。
+  // 再接続時は最後に受け取った seq + 1 を指定する（REQ-128）。
+  int64 from_seq = 2;
+}

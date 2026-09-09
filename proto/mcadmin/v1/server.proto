@@ -1,0 +1,94 @@
+// Minecraft サーバーの状態取得と起動・停止。
+syntax = "proto3";
+
+package mcadmin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "mcadmin/v1/common.proto";
+import "mcadmin/v1/operation.proto";
+
+option go_package = "github.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1";
+
+service ServerService {
+  // GetStatus はコンテナとサーバーの現在の状態を返す（REQ-001）。
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse) {}
+  // GetConfig は .env の設定のうち、公開を許可したキーだけを返す。
+  //
+  // RCON_PASSWORD / ADMIN_TOKEN、および server.properties の rcon.password と
+  // management-server-secret は絶対に含めない（REQ-403）。
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {}
+  rpc StartServer(StartServerRequest) returns (StartServerResponse) {}
+  rpc StopServer(StopServerRequest) returns (StopServerResponse) {}
+  rpc RestartServer(RestartServerRequest) returns (RestartServerResponse) {}
+}
+
+// ContainerState は docker compose ps から読んだコンテナの状態。
+enum ContainerState {
+  CONTAINER_STATE_UNSPECIFIED = 0;
+  CONTAINER_STATE_RUNNING = 1;
+  CONTAINER_STATE_EXITED = 2;
+  CONTAINER_STATE_RESTARTING = 3;
+  // コンテナ自体が存在しない（docker compose down 済み）。
+  CONTAINER_STATE_MISSING = 4;
+}
+
+// SavingState はワールドの保存が有効かどうかの推定値。
+//
+// RCON には保存状態を問い合わせる手段がないため実測できない。
+// save-on が冪等であることを利用して無条件に再送する設計であり、
+// ここに出るのはあくまで推定である（REQ-105、REQ-106）。
+enum SavingState {
+  SAVING_STATE_UNSPECIFIED = 0;
+  // 通常。保存は有効と推定される。
+  SAVING_STATE_ASSUMED_ON = 1;
+  // 中断された操作が検出されており、save-off が残っている可能性がある。
+  SAVING_STATE_SUSPECT_OFF = 2;
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  ContainerState container_state = 1;
+  // イメージ同梱のヘルスチェックの結果。
+  bool healthy = 2;
+  google.protobuf.Timestamp container_started_at = 3;
+  // .env の MC_VERSION。
+  string configured_version = 4;
+  // .env の MC_LEVEL。
+  string active_level = 5;
+  // 稼働中ワールドの level.dat から読んだバージョン。
+  WorldVersion active_world_version = 6;
+  // list コマンドの出力を解釈できなかった場合は -1（EDGE-002）。
+  int32 online_players = 7;
+  int32 max_players = 8;
+  SavingState saving_state = 9;
+  // 前回の実行が操作の途中で終了した形跡がある（REQ-107）。
+  bool interrupted_operation_detected = 10;
+  // 進行中の操作。無ければ未設定。
+  Operation active_operation = 11;
+}
+
+message GetConfigRequest {}
+
+message GetConfigResponse {
+  // 公開を許可したキーのみ。
+  map<string, string> values = 1;
+}
+
+message StartServerRequest {}
+
+message StartServerResponse {
+  Operation operation = 1;
+}
+
+message StopServerRequest {}
+
+message StopServerResponse {
+  Operation operation = 1;
+}
+
+message RestartServerRequest {}
+
+message RestartServerResponse {
+  Operation operation = 1;
+}
