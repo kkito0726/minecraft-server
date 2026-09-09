@@ -74,7 +74,9 @@ func parseFlags(args []string, stdout io.Writer) (options, error) {
 		return options{}, fmt.Errorf("引数を解釈できません: %w", err)
 	}
 	if *showVersion {
-		fmt.Fprintln(stdout, "mcadmind", version)
+		if _, err := fmt.Fprintln(stdout, "mcadmind", version); err != nil {
+			return options{}, fmt.Errorf("バージョンを出力できません: %w", err)
+		}
 		return options{done: true}, nil
 	}
 

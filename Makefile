@@ -116,7 +116,15 @@ e2e: build ## E2E テストを実行する
 
 .PHONY: lint
 lint: ensure-embed ## Go とフロントエンドの静的検査
+	cd $(BACKEND_DIR) && gofmt -l . | (! grep .) || (echo "gofmt が必要です"; exit 1)
 	cd $(BACKEND_DIR) && go vet ./...
+	@# golangci-lint は CI で必ず走る。ローカルに無ければ案内だけ出して続行する
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		cd $(BACKEND_DIR) && golangci-lint run ./...; \
+	else \
+		echo "golangci-lint が未導入のためスキップします（brew install golangci-lint）"; \
+		echo "CI では実行されるので、push 前に入れておくことを推奨します"; \
+	fi
 	cd $(FRONT_DIR) && npm run lint
 
 .PHONY: typecheck
