@@ -10,6 +10,11 @@
 #   停止      : docker compose down
 #   設定変更  : .env を編集して docker compose up -d（MC_VERSION もここ）
 #   OP 付与   : .env の MC_OPS に Minecraft ID を書いて docker compose up -d
+# プロジェクト名を固定する。省略すると Compose はディレクトリ名から推測するため、
+# 別の場所（systemd 配下の管理コンソールなど）から叩いたときに別プロジェクトの
+# コンテナが二重に立ち上がる。手動操作と管理コンソールを同じプロジェクトに揃える。
+name: minecraft-server
+
 services:
   mc:
     # itzg/minecraft-server は MC のバージョンに合った JDK を同梱している。
@@ -46,6 +51,15 @@ services:
       # LATEST は使わない。コンテナ再作成で勝手にバージョンが上がり、
       # ワールドの片道アップグレードとクライアント不整合を起こすため。
       VERSION: "${MC_VERSION:?MC_VERSION is not set. see .env}"
+      # 起動するワールド。server.properties の level-name にマップされ、
+      # 実体は data/<名前>/ になる。OVERRIDE_SERVER_PROPERTIES=TRUE なので
+      # data/server.properties を手で書き換えても毎回ここで上書きされる。
+      # 値を変えて docker compose up -d するとワールドが切り替わる。
+      # 切替前のワールドのディレクトリは消えないので、いつでも戻せる。
+      LEVEL: "${MC_LEVEL:-world}"
+      # 新規ワールド生成時のシード。既存のワールドには影響しない。
+      # 生成が終わったら .env 側を空に戻すこと（残っていると紛らわしい）。
+      SEED: "${MC_SEED:-}"
       # Pi 5 (4GB) 想定。MEMORY は -Xms と -Xmx の両方に効く。
       # OS に 600MB 程度残す必要があるので 2G より上げないこと。
       MEMORY: "${MC_MEMORY:-2G}"

@@ -298,8 +298,8 @@ Raspberry Pi 5 (4GB) 上で `docker compose` により常時稼働している P
 
 | # | 内容 | 影響範囲 | 検証方法 |
 |---|---|---|---|
-| 1 | **`LEVEL` 指定時にワールドが `data/<名前>/` に作られるか。** itzg のドキュメントは「`level-name` にマップされる」「world セーブの切替に使える」と述べるが、ディスク上の位置は明記していない | REQ-012, REQ-117, REQ-118 | `.env` に `MC_LEVEL=test` を設定して `docker compose up -d` を実行し、`data/test/` が生成され `data/world/` が無傷で残ることを確認する。**この確認が完了するまで後続の実装に進まない**。失敗時は「ライブラリを `data/worlds/<名前>/` に置き、アクティブなものを `data/world` へ移動する」方式へ切り替える（proto・進捗モデル・フロントエンドは無変更） |
-| 2 | `rcon-cli list` の出力書式 | REQ-001, EDGE-002 | 実サーバーで出力を確認。解釈できない場合は「不明」として扱う設計により、機能の欠損は生じない |
+| ~~1~~ | ~~`LEVEL` 指定時にワールドが `data/<名前>/` に作られるか~~ | REQ-012, REQ-117, REQ-118 | **✅ 2026-09-09 に実機で検証済み（解消）。** `MC_LEVEL=test` → `docker compose up -d` でログに `Preparing level "test"` が出て `Done (10.140s)!` で起動、`data/test/`（6.6MB、`dimensions/`・`level.dat`・`players/` を含む）が生成された。同時に `data/world/` はファイル一覧の SHA256・`level.dat` の SHA256 とも**ベースラインと完全一致**（72 ファイル / 30MB のまま 1 バイトも変化なし）。`MC_LEVEL=world` に戻すと `Preparing level "world"` で元のワールドが起動し、コンテナは healthy になった。`data/server.properties` の `level-name` も追随して書き換わることを確認。**フォールバック（`mv` 方式）は不要** |
+| ~~2~~ | ~~`rcon-cli list` の出力書式~~ | REQ-001, EDGE-002 | **✅ 2026-09-09 に実機で確認済み（解消）。** Paper 26.2 の出力は `There are 0 of a max of 5 players online:` の形式。正規表現 `There are (\d+) of a max of (\d+) players online` で解釈できる。ただし将来のバージョンで変わりうるため、EDGE-002 の「解釈できない場合は『不明』として扱う」設計は維持する |
 | 3 | `MC_VERSION` の文字列と `DataVersion` の整数の対応 | REQ-109〜REQ-111 | **対応表は持たない。** 判定は「アーカイブ内のワールド」と「現在ディスク上のワールド」の `DataVersion` 比較のみで行い、`MC_VERSION` の文字列は表示と補助的な警告に留める |
 | 4 | `docker compose ps --format json` の出力形状 | REQ-001, EDGE-003 | 必要なフィールドのみを解釈し、単一オブジェクトと行区切り JSON の双方を受理する |
 | 5 | NBT デコードに用いるライブラリの API 安定性 | REQ-412 | 差し替え可能な境界の背後に隔離する（REQ-416 と同趣旨）。代替は自前の走査実装（必要な型は文字列・整数・長整数・複合の 4 種のみ） |
