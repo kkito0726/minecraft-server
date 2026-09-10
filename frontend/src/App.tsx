@@ -3,7 +3,8 @@ import { NavLink, Navigate, Route, BrowserRouter as Router, Routes } from 'react
 import { useMemo } from 'react'
 
 import { AppShell } from './components/templates'
-import { TokenGate } from './components/organisms'
+import { OperationBanner, TokenGate } from './components/organisms'
+import { OperationProvider } from './features/operations'
 import { verifyToken } from './features/auth/verify'
 import { createQueryClient } from './lib/queryClient'
 import { BackupsPage, ServerPage, WorldsPage } from './pages/placeholders'
@@ -20,9 +21,8 @@ const NAV = [
  * 入れ子の順序に意味がある。TokenGate を Router の外に置くのは、
  * 認証が通るまではどのルートも描画させないため。QueryClientProvider が
  * 最も外側なのは、ゲート自身の確認も同じ設定で動かすため。
- *
- * 操作の進捗購読（OperationProvider）はフェーズ 14 で AppShell の
- * banner に差し込む。
+ * OperationProvider はゲートの内側に置く。認証が通る前に購読を
+ * 始めても Unauthenticated で弾かれるだけになる。
  */
 export function App() {
   const queryClient = useMemo(() => createQueryClient(), [])
@@ -30,16 +30,22 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TokenGate verify={verifyToken}>
-        <Router>
-          <AppShell brand="Minecraft サーバー管理コンソール" nav={<MainNav />}>
-            <Routes>
-              <Route path="/" element={<ServerPage />} />
-              <Route path="/worlds" element={<WorldsPage />} />
-              <Route path="/backups" element={<BackupsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </AppShell>
-        </Router>
+        <OperationProvider>
+          <Router>
+            <AppShell
+              brand="Minecraft サーバー管理コンソール"
+              nav={<MainNav />}
+              banner={<OperationBanner />}
+            >
+              <Routes>
+                <Route path="/" element={<ServerPage />} />
+                <Route path="/worlds" element={<WorldsPage />} />
+                <Route path="/backups" element={<BackupsPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </AppShell>
+          </Router>
+        </OperationProvider>
       </TokenGate>
     </QueryClientProvider>
   )
