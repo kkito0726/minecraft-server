@@ -76,7 +76,8 @@ type ConfigSnapshot interface {
 
 // WorldRepository はワールドディレクトリの読み書き。
 type WorldRepository interface {
-	List(ctx context.Context) ([]world.World, error)
+	// List はワールドの一覧を返す。activeLevel と一致するものに印を付ける。
+	List(ctx context.Context, activeLevel world.Name) ([]world.World, error)
 	Exists(ctx context.Context, name world.Name) (bool, error)
 	// Copy は session.lock を除いて複製する。
 	Copy(ctx context.Context, src, dst world.Name, progress Progress) error

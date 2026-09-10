@@ -13,6 +13,18 @@ var ErrActiveWorld = errors.New("稼働中のワールドです。先に別の�
 // ErrInvalidQuarantine は退避ディレクトリの名前として解釈できないことを表す。
 var ErrInvalidQuarantine = errors.New("退避ディレクトリの名前ではありません")
 
+// ErrConfirmationMismatch は削除の確認入力が対象と一致しないことを表す。
+//
+// 打ち間違いは利用者が自分で直せる。内部エラーに丸めず、
+// 何が違うのかをそのまま伝える。
+var ErrConfirmationMismatch = errors.New("確認の名前が一致していません")
+
+// ErrNotFound は対象が見つからないことを表す。
+var ErrNotFound = errors.New("見つかりません")
+
+// ErrAlreadyExists は同じ名前のものが既にあることを表す。
+var ErrAlreadyExists = errors.New("同じ名前のワールドが既にあります")
+
 // QuarantineKind は退避の理由。
 type QuarantineKind int
 

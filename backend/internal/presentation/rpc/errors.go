@@ -8,6 +8,7 @@ import (
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
@@ -28,10 +29,16 @@ func toConnectError(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, world.ErrActiveWorld):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
-	case errors.Is(err, worldfs.ErrNotFound):
+	case errors.Is(err, worldfs.ErrNotFound), errors.Is(err, world.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, worldfs.ErrAlreadyExists):
+	case errors.Is(err, worldfs.ErrAlreadyExists), errors.Is(err, world.ErrAlreadyExists):
 		return connect.NewError(connect.CodeAlreadyExists, err)
+	// 打ち間違いや容量不足は利用者が自分で対処できる。
+	// 内部エラーに丸めず、そのまま伝える。
+	case errors.Is(err, world.ErrConfirmationMismatch):
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, worldctl.ErrInsufficientSpace):
+		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, world.ErrInvalidName),
 		errors.Is(err, backup.ErrInvalidID),
 		errors.Is(err, backup.ErrInvalidRetentionPolicy):

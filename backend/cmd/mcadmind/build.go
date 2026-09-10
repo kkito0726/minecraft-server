@@ -16,9 +16,11 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/reconcile"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/serverctl"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/config/dotenv"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/console/rcon"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/container/compose"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/leveldat"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/lockfile"
 	adminhttp "github.com/kkito0726/minecraft-server/backend/internal/presentation/http"
@@ -85,32 +87,39 @@ func build(ctx context.Context, opts options, logger *slog.Logger) (*app, error)
 	if err != nil {
 		return nil, err
 	}
-	status, lifecycle, ops, reconciler := deps.status, deps.lifecycle, deps.ops, deps.reconciler
 
-	server, err := buildServer(settings, status, lifecycle, ops, logger)
+	server, err := buildServer(settings, deps, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	return &app{server: server, reconciler: reconciler, status: status, logger: logger}, nil
+	return &app{
+		server: server, reconciler: deps.reconciler,
+		status: deps.status, logger: logger,
+	}, nil
 }
 
 // deps は組み立てた依存の束。
 type deps struct {
 	status     *serverctl.StatusUseCase
 	lifecycle  *serverctl.LifecycleUseCase
+	worlds     *worldctl.UseCase
 	ops        *operations.Manager
 	reconciler *reconcile.Reconciler
 }
 
 // buildDeps はインフラとユースケースを組み立てる。
-func buildDeps(
-	ctx context.Context,
-	opts options,
-	s settings,
-	config *dotenv.Adapter,
-	logger *slog.Logger,
-) (deps, error) {
+// infra は外部と話す実装の束。
+type infra struct {
+	runtime *compose.Runner
+	console *rcon.Client
+	levels  *leveldat.Adapter
+	worlds  *worldfs.Repository
+	lock    *lockfile.Lock
+}
+
+// buildInfra はインフラ層を組み立てる。
+func buildInfra(opts options, s settings) (infra, error) {
 	dataDir := filepath.Join(opts.projectDir, dataDirName)
 
 	runtime := compose.NewRunner(compose.Config{
@@ -119,42 +128,86 @@ func buildDeps(
 		ProjectName: composeProjectName,
 		Service:     composeService,
 	})
-	console := rcon.NewClient(runtime)
 	levels := leveldat.NewAdapter(dataDir)
-	lock := lockfile.NewLock(filepath.Join(dataDir, lockFileName))
 
+	worldRepo, err := worldfs.New(worldfs.Config{DataDir: dataDir, Versions: levels})
+	if err != nil {
+		return infra{}, err
+	}
+
+	return infra{
+		runtime: runtime,
+		console: rcon.NewClient(runtime),
+		levels:  levels,
+		worlds:  worldRepo,
+		lock:    lockfile.NewLock(filepath.Join(dataDir, lockFileName)),
+	}, nil
+}
+
+func buildDeps(
+	ctx context.Context,
+	opts options,
+	s settings,
+	config *dotenv.Adapter,
+	logger *slog.Logger,
+) (deps, error) {
+	in, err := buildInfra(opts, s)
+	if err != nil {
+		return deps{}, err
+	}
 	// 操作の寿命はアプリの寿命に紐づける。HTTP リクエストの context を
 	// 引き継ぐと、レスポンスを返した時点で復元やバックアップが死ぬ。
-	ops, err := operations.NewManager(operations.Config{Lock: lock, BaseCtx: ctx})
+	ops, err := operations.NewManager(operations.Config{Lock: in.lock, BaseCtx: ctx})
 	if err != nil {
 		return deps{}, err
 	}
 
+	return buildUseCases(in, config, ops, logger)
+}
+
+// buildUseCases はユースケース層を組み立てる。
+func buildUseCases(
+	in infra,
+	config *dotenv.Adapter,
+	ops *operations.Manager,
+	logger *slog.Logger,
+) (deps, error) {
 	status, err := serverctl.NewStatusUseCase(serverctl.StatusConfig{
-		Runtime: runtime, Console: console, Config: config, Levels: levels,
+		Runtime: in.runtime, Console: in.console, Config: config, Levels: in.levels,
 	})
 	if err != nil {
 		return deps{}, err
 	}
 
 	lifecycle, err := serverctl.NewLifecycleUseCase(serverctl.LifecycleConfig{
-		Runtime: runtime, Console: console, Operations: ops,
+		Runtime: in.runtime, Console: in.console, Operations: ops,
+	})
+	if err != nil {
+		return deps{}, err
+	}
+
+	worlds, err := worldctl.New(worldctl.Config{
+		Runtime: in.runtime, Console: in.console, Worlds: in.worlds,
+		Config: config, Levels: in.levels, Operations: ops,
 	})
 	if err != nil {
 		return deps{}, err
 	}
 
 	reconciler, err := reconcile.New(reconcile.Config{
-		Console: console,
-		Health:  healthChecker{runtime: runtime},
-		Lock:    lock,
+		Console: in.console,
+		Health:  healthChecker{runtime: in.runtime},
+		Lock:    in.lock,
 		Logger:  logger,
 	})
 	if err != nil {
 		return deps{}, err
 	}
 
-	return deps{status: status, lifecycle: lifecycle, ops: ops, reconciler: reconciler}, nil
+	return deps{
+		status: status, lifecycle: lifecycle, worlds: worlds,
+		ops: ops, reconciler: reconciler,
+	}, nil
 }
 
 // settings は .env から読んだ管理コンソールの設定。
@@ -195,13 +248,7 @@ func loadSettings(ctx context.Context, config *dotenv.Adapter) (settings, error)
 	return settings{token: token, addr: addr, dockerBin: resolved}, nil
 }
 
-func buildServer(
-	s settings,
-	status *serverctl.StatusUseCase,
-	lifecycle *serverctl.LifecycleUseCase,
-	ops *operations.Manager,
-	logger *slog.Logger,
-) (*adminhttp.Server, error) {
+func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, error) {
 	interceptor, err := auth.NewInterceptor(s.token)
 	if err != nil {
 		return nil, err
@@ -210,12 +257,16 @@ func buildServer(
 
 	handlers := map[string]http.Handler{}
 	serverPath, serverHandler := mcadminv1connect.NewServerServiceHandler(
-		rpc.NewServerHandler(status, lifecycle, ops, publicConfigKeys), withAuth)
+		rpc.NewServerHandler(d.status, d.lifecycle, d.ops, publicConfigKeys), withAuth)
 	handlers[serverPath] = serverHandler
 
 	opPath, opHandler := mcadminv1connect.NewOperationServiceHandler(
-		rpc.NewOperationHandler(ops), withAuth)
+		rpc.NewOperationHandler(d.ops), withAuth)
 	handlers[opPath] = opHandler
+
+	worldPath, worldHandler := mcadminv1connect.NewWorldServiceHandler(
+		rpc.NewWorldHandler(d.worlds), withAuth)
+	handlers[worldPath] = worldHandler
 
 	assets, err := webui.Assets()
 	if err != nil {
