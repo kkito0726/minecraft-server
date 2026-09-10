@@ -1,5 +1,5 @@
 import { formatWorldVersion } from '../../features/worlds'
-import { formatBytes, formatDateTime } from '../../features/worlds/format'
+import { formatBytes, formatDateTime } from '../../lib/format'
 import type { World } from '../../gen/mcadmin/v1/world_pb'
 import { Badge, Button } from '../atoms'
 

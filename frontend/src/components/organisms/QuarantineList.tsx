@@ -1,4 +1,4 @@
-import { formatBytes, formatDateTime } from '../../features/worlds/format'
+import { formatBytes, formatDateTime } from '../../lib/format'
 import type { Quarantine } from '../../gen/mcadmin/v1/world_pb'
 import { Badge, Button } from '../atoms'
 

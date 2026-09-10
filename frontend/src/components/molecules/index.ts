@@ -1,3 +1,7 @@
+export { CheckboxField } from './CheckboxField'
+export type { CheckboxFieldProps } from './CheckboxField'
+export { ChoiceGroup } from './ChoiceGroup'
+export type { Choice, ChoiceGroupProps } from './ChoiceGroup'
 export { ConfirmInput } from './ConfirmInput'
 export { isConfirmed } from './confirmation'
 export type { ConfirmInputProps } from './ConfirmInput'

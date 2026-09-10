@@ -10,6 +10,8 @@ export const queryKeys = {
   worlds: ['worlds'] as const,
   backups: ['backups'] as const,
   retention: ['retention'] as const,
+  /** 復元の事前確認。バックアップの id を後ろに足して使う。 */
+  preflight: ['preflight'] as const,
 }
 
 /** 操作の完了時に無効化するキー。 */
