@@ -128,6 +128,41 @@ describe('begin', () => {
     expect(s.lastSeq).toBe(0n)
   })
 
+  /**
+   * 同じ操作を二度差し込むとログが消える。定期的な探索と変更系の応答が
+   * どちらも begin を呼ぶため、サーバーが操作を作ってから応答が返るまでの
+   * 間に探索が当たると起きる。しかも setWatching は同じ値なので購読が
+   * 張り直されず、再送でログが埋め直されることもない。
+   */
+  it('同じ操作を二度差し込んでもログを消さない', () => {
+    let s = operationReducer(initialState, { type: 'begin', operation: op({ id: 'op-2' }) })
+    s = operationReducer(s, { type: 'event', event: event(1, '一', op({ id: 'op-2' })) })
+    s = operationReducer(s, { type: 'event', event: event(2, '二', op({ id: 'op-2' })) })
+
+    const before = s
+    s = operationReducer(s, { type: 'begin', operation: op({ id: 'op-2' }) })
+
+    expect(s).toBe(before)
+    expect(s.log).toHaveLength(2)
+    expect(s.lastSeq).toBe(2n)
+  })
+
+  // 応答に含まれる snapshot は PENDING。取り込むと表示が巻き戻る。
+  it('二度目の差し込みで状態を巻き戻さない', () => {
+    let s = operationReducer(initialState, { type: 'begin', operation: op({ id: 'op-2' }) })
+    s = operationReducer(s, {
+      type: 'event',
+      event: event(1, '一', op({ id: 'op-2', state: OperationState.RUNNING, stepIndex: 3 })),
+    })
+    s = operationReducer(s, {
+      type: 'begin',
+      operation: op({ id: 'op-2', state: OperationState.PENDING, stepIndex: 0 }),
+    })
+
+    expect(s.operation?.state).toBe(OperationState.RUNNING)
+    expect(s.operation?.stepIndex).toBe(3)
+  })
+
   it('直後のイベントを seq=1 から受け取れる', () => {
     let s = operationReducer(initialState, { type: 'begin', operation: op({ id: 'op-2' }) })
     s = operationReducer(s, {
