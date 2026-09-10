@@ -31,6 +31,41 @@ func TestContainerStateIsUp(t *testing.T) {
 	}
 }
 
+// 停止の完了待ちに使う。再起動中を「停止」と誤判定すると、
+// down が終わる前に次の手順（退避や .env の書き換え）へ進んでしまう。
+func TestContainerStateIsStopped(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		state server.ContainerState
+		want  bool
+	}{
+		{server.ContainerMissing, true},
+		{server.ContainerExited, true},
+		{server.ContainerRunning, false},
+		{server.ContainerRestarting, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.state.String(), func(t *testing.T) {
+			t.Parallel()
+			if got := tt.state.IsStopped(); got != tt.want {
+				t.Errorf("IsStopped() = %v。%v のはず", got, tt.want)
+			}
+		})
+	}
+
+	// IsUp と IsStopped は同時に真にならない
+	for _, s := range []server.ContainerState{
+		server.ContainerRunning, server.ContainerExited,
+		server.ContainerRestarting, server.ContainerMissing,
+	} {
+		if s.IsUp() && s.IsStopped() {
+			t.Errorf("%v が IsUp と IsStopped の両方で真", s)
+		}
+	}
+}
+
 // 状態の名前はそのまま画面に出る。空にならないこと。
 func TestContainerStateString(t *testing.T) {
 	t.Parallel()
