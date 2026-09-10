@@ -101,7 +101,9 @@ type Progress func(done, total int64)
 // 読めなかった場合はエラーではなく「読めない」を表す WorldVersion を返す。
 // 破損したワールドがあっても一覧表示そのものは継続する。
 type LevelReader interface {
+	// ReadWorld は data/<名前>/level.dat を読む。
 	ReadWorld(ctx context.Context, name world.Name) shared.WorldVersion
+	// Read は任意の入力から読む。アーカイブ内の level.dat に使う。
 	Read(ctx context.Context, r io.Reader) shared.WorldVersion
 }
 
