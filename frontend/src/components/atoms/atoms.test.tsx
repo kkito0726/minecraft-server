@@ -42,8 +42,22 @@ describe('ProgressBar', () => {
 })
 
 describe('Spinner', () => {
-  it('描画できる', () => {
-    const { container } = render(<Spinner />)
-    expect(container.firstChild).toBeTruthy()
+  it('既定では処理中であることを読み上げる', () => {
+    render(<Spinner />)
+    expect(screen.getByRole('status', { name: '処理中' })).toBeInTheDocument()
+  })
+
+  it('説明を差し替えられる', () => {
+    render(<Spinner label="確認しています" />)
+    expect(screen.getByRole('status', { name: '確認しています' })).toBeInTheDocument()
+  })
+
+  /**
+   * すでに状況を読み上げている領域の中に置くときは隠す。
+   * ライブリージョンが入れ子になると同じ進捗が二重に読み上げられる。
+   */
+  it('飾りとして使うときは支援技術から隠す', () => {
+    render(<Spinner decorative />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

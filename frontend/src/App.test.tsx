@@ -9,6 +9,21 @@ import { App } from './App'
 const verify = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock('./features/auth/verify', () => ({ verifyToken: verify }))
 
+// 進捗の購読も差し替える。ここでの関心は認証と画面の切り替えであって、
+// 実際の通信ではない。差し替えないと jsdom から本物の fetch が飛ぶ。
+const active = vi.hoisted(() => vi.fn(async () => null))
+vi.mock('./features/operations/watch', () => ({
+  createOperationSource: () => ({
+    active,
+    watch: () => ({
+      // eslint-disable-next-line require-yield
+      async *[Symbol.asyncIterator]() {
+        return
+      },
+    }),
+  }),
+}))
+
 afterEach(() => {
   window.localStorage.clear()
   window.history.pushState({}, '', '/')
