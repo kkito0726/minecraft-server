@@ -12,6 +12,36 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/container/compose"
 )
 
+// launcherPath は全テストで共有するスタブ docker の実体。
+//
+// テストごとに実行可能ファイルを書いて即 exec すると、Linux で
+// "text file busy" になる。並行する別テストの fork が、書き込み中の
+// ファイル記述子を継承してしまうため（Go の既知の挙動）。
+//
+// 実体は TestMain で 1 回だけ書き、以後は誰も書き込まない。
+// 各テストはそこへのシンボリックリンクを自分のディレクトリに作る。
+// 振る舞いの違いは、リンクと同じディレクトリに置く behavior.sh で与える。
+var launcherPath string
+
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "fake-docker-*")
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+
+	launcherPath = filepath.Join(dir, "fake-docker")
+	launcher := "#!/bin/sh\n" +
+		`d=$(dirname "$0")` + "\n" +
+		`printf '%s\n' "$*" >> "$d/argv.log"` + "\n" +
+		`. "$d/behavior.sh"` + "\n"
+	if err := os.WriteFile(launcherPath, []byte(launcher), 0o700); err != nil {
+		panic(err)
+	}
+
+	os.Exit(m.Run())
+}
+
 // newRunner は argv を記録するスタブ docker を使う Runner を作る。
 //
 // 実際の docker を使わないのは、CI で動かすためだけではない。
@@ -22,12 +52,14 @@ func newRunner(t *testing.T, script string) (*compose.Runner, string) {
 
 	dir := t.TempDir()
 	argvLog := filepath.Join(dir, "argv.log")
-	bin := filepath.Join(dir, "fake-docker")
 
-	full := "#!/bin/sh\n" +
-		"printf '%s\\n' \"$*\" >> " + argvLog + "\n" +
-		script + "\n"
-	if err := os.WriteFile(bin, []byte(full), 0o700); err != nil {
+	// 振る舞いはデータファイルとして置く。実行はしないので書き込みが競合しない。
+	if err := os.WriteFile(filepath.Join(dir, "behavior.sh"), []byte(script+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	bin := filepath.Join(dir, "fake-docker")
+	if err := os.Symlink(launcherPath, bin); err != nil {
 		t.Fatal(err)
 	}
 
