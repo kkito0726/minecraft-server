@@ -143,9 +143,19 @@ describe('RestoreDialog', () => {
       warnings: ['アーカイブのワールド名が現在稼働中のものと違います。'],
     }
 
-    it('名前が食い違うことを両方の名前つきで伝える', () => {
+    // 文言の出典はドメイン層にある。画面は言い直さず、そのまま出す。
+    it('サーバーが組み立てた警告をそのまま出す', () => {
       renderDialog(mismatch)
-      expect(screen.getAllByText(/creative/).length).toBeGreaterThan(0)
+      expect(
+        screen.getByText('アーカイブのワールド名が現在稼働中のものと違います。'),
+      ).toBeInTheDocument()
+    })
+
+    // どちらを選ぶと何が起きるかを、両方の名前つきで示す。
+    it('復元先の選択肢が両方のワールド名を示す', () => {
+      renderDialog(mismatch)
+      expect(screen.getByRole('radio', { name: /world/ })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: /creative/ })).toBeInTheDocument()
     })
 
     it('稼働中の名前で復元すると打ち込む名前が変わる', async () => {

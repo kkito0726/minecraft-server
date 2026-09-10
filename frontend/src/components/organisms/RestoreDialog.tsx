@@ -254,15 +254,11 @@ function RestoreSummary({ preflight }: { preflight: PreflightRestoreResponse }) 
         </span>
       </p>
 
-      {preflight.levelNameMismatch && (
-        <p className="text-gray-700">
-          アーカイブのワールド名は{' '}
-          <code className="rounded bg-white px-1">{preflight.backup?.archiveLevel || '不明'}</code>{' '}
-          で、稼働中の <code className="rounded bg-white px-1">{preflight.currentLevel}</code>{' '}
-          と違います。そのまま戻すと、稼働中のワールドは何も変わりません。
-        </p>
-      )}
-
+      {/*
+        警告文はサーバーが組み立てたものをそのまま出す。名前の食い違いも
+        バージョンの判定も、文言の出典はドメイン層の 1 箇所にある。
+        ここで言い直すと、同じことを二度言う画面になって読み飛ばされる。
+      */}
       {preflight.warnings.length > 0 && (
         <ul className="list-disc pl-5">
           {preflight.warnings.map((warning) => (
