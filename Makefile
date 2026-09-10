@@ -126,6 +126,14 @@ lint: ensure-embed ## Go とフロントエンドの静的検査
 		echo "CI では実行されるので、push 前に入れておくことを推奨します"; \
 	fi
 	cd $(FRONT_DIR) && npm run lint
+	@# 配置用のシェルは実機でしか動かせないので、せめて構文だけは毎回見る
+	@for f in deploy/*.sh $(FRONT_DIR)/e2e/fixtures/*.sh; do \
+		[ -e "$$f" ] || continue; \
+		bash -n "$$f" || exit 1; \
+	done
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		shellcheck deploy/*.sh 2>/dev/null || exit 1; \
+	fi
 
 .PHONY: typecheck
 typecheck: ## TypeScript の型検査

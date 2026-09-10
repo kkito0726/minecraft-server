@@ -1,0 +1,56 @@
+# 管理コンソール（mcadmind）を systemd で常駐させる。
+#
+# このファイルは deploy/install.sh がひな形として使い、@PLACEHOLDER@ を
+# 実際の値に置き換えてから /etc/systemd/system/ へ書き出す。
+# 手で置く場合も、置き換えを済ませてから配置すること。
+
+[Unit]
+Description=Minecraft サーバー管理コンソール (mcadmind)
+Documentation=https://github.com/kkito0726/minecraft-server
+# docker が動いていなければ何もできない。Requires にして道連れにする。
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+# 起動直後に落ち続けるときは諦める。docker 側の問題を握りつぶさない。
+# systemd 229 以降、この 2 つは [Service] ではなく [Unit] に置く。
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=@USER@
+Group=@GROUP@
+# docker.sock を触るために docker グループが要る。
+# コンテナに docker.sock をマウントする代わりにホストで動かすのは、
+# マウントが実質 root 権限になるのと、ホストとコンテナでパスが
+# 食い違うのを避けるため。
+SupplementaryGroups=docker
+
+WorkingDirectory=@PROJECT_DIR@
+ExecStart=@BIN@ -project-dir @PROJECT_DIR@
+
+# EnvironmentFile は使わない。
+# systemd の .env 解釈はシェルのクォート規則と一致せず、
+# MC_MOTD="§a…" や行内の # で挙動が食い違う。mcadmind は
+# 書き込みのためにどのみち .env を自分で読むので、読み方も 1 つに保つ。
+
+Restart=on-failure
+RestartSec=5s
+
+# --- 権限の絞り込み ---
+# 強すぎる設定は Pi の実機で初めて壊れるので、確実に要るものだけにする。
+NoNewPrivileges=true
+PrivateTmp=true
+# /usr と /boot と /etc を読み取り専用にする。/var は書けるので
+# docker.sock はそのまま使える。
+ProtectSystem=full
+# 書き込む必要があるのはプロジェクトディレクトリだけ
+# （.env・data/・backups/）。
+ReadWritePaths=@PROJECT_DIR@
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mcadmind
+
+[Install]
+WantedBy=multi-user.target
