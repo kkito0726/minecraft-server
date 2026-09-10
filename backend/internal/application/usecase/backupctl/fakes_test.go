@@ -45,9 +45,10 @@ func (r *recorder) list() []string {
 type fakeRuntime struct {
 	rec    *recorder
 	status server.ContainerStatus
+	upErr  error
 }
 
-func (f *fakeRuntime) Up(context.Context, port.LogSink) error   { f.rec.add("Up"); return nil }
+func (f *fakeRuntime) Up(context.Context, port.LogSink) error   { f.rec.add("Up"); return f.upErr }
 func (f *fakeRuntime) Down(context.Context, port.LogSink) error { f.rec.add("Down"); return nil }
 
 func (f *fakeRuntime) Status(context.Context) (server.ContainerStatus, error) {
@@ -141,11 +142,13 @@ type fakeStore struct {
 	// entries は保管中のアーカイブ。ID をキーにする。
 	entries map[string]port.StoredBackup
 	// createdLevels は Create に渡されたワールド名を記録する。
-	createdLevels []string
-	createErr     error
-	inspectErr    error
-	levelDat      string
-	info          port.ArchiveInfo
+	createdLevels   []string
+	createErr       error
+	inspectErr      error
+	extractErr      error
+	extractRewrites []string
+	levelDat        string
+	info            port.ArchiveInfo
 }
 
 func newStore(rec *recorder) *fakeStore {
@@ -216,6 +219,38 @@ func (f *fakeStore) Delete(_ context.Context, id backup.ID) (int64, error) {
 	return entry.SizeBytes, nil
 }
 
+func (f *fakeStore) Extract(
+	_ context.Context, _ backup.ID, rewriteLevel string, progress port.Progress,
+) error {
+	f.rec.add("Extract")
+
+	f.mu.Lock()
+	f.extractRewrites = append(f.extractRewrites, rewriteLevel)
+	f.mu.Unlock()
+
+	if f.extractErr != nil {
+		return f.extractErr
+	}
+	if progress != nil {
+		progress(2048, 2048)
+	}
+	return nil
+}
+
+// rewrites は Extract に渡された書き換え先を返す。
+func (f *fakeStore) rewrites() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	var out []string
+	for _, r := range f.extractRewrites {
+		if r != "" {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 func (f *fakeStore) Inspect(context.Context, backup.ID) (port.ArchiveInfo, error) {
 	if f.inspectErr != nil {
 		return port.ArchiveInfo{}, f.inspectErr
@@ -258,6 +293,122 @@ func (f *fakeStore) levels() []string {
 	copy(out, f.createdLevels)
 	return out
 }
+
+// fakeWorlds はワールドディレクトリの偽物。
+type fakeWorlds struct {
+	mu          sync.Mutex
+	rec         *recorder
+	existing    map[string]bool
+	quarantines []world.Quarantine
+	available   int64
+}
+
+func newWorlds(rec *recorder) *fakeWorlds {
+	return &fakeWorlds{rec: rec, existing: map[string]bool{}, available: 1 << 40}
+}
+
+func (f *fakeWorlds) add(names ...string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, n := range names {
+		f.existing[n] = true
+	}
+}
+
+func (f *fakeWorlds) has(name string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.existing[name]
+}
+
+func (f *fakeWorlds) List(context.Context, world.Name) ([]world.World, error) { return nil, nil }
+
+func (f *fakeWorlds) Exists(_ context.Context, name world.Name) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.existing[name.String()], nil
+}
+
+func (f *fakeWorlds) Copy(context.Context, world.Name, world.Name, port.Progress) error {
+	f.rec.add("Copy")
+	return nil
+}
+
+func (f *fakeWorlds) Rename(context.Context, world.Name, world.Name) error {
+	f.rec.add("Rename")
+	return nil
+}
+
+func (f *fakeWorlds) Quarantine(
+	_ context.Context, name world.Name, kind world.QuarantineKind,
+) (world.Quarantine, error) {
+	f.rec.add("Quarantine")
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.existing, name.String())
+
+	q, err := world.ParseQuarantine(world.NewQuarantineName(name, kind, time.Now()), 1024)
+	if err != nil {
+		return world.Quarantine{}, err
+	}
+	f.quarantines = append(f.quarantines, q)
+	return q, nil
+}
+
+func (f *fakeWorlds) Restore(_ context.Context, _ world.Quarantine, to world.Name) error {
+	f.rec.add("RestoreQuarantine")
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.existing[to.String()] = true
+	return nil
+}
+
+func (f *fakeWorlds) Remove(_ context.Context, name world.Name) error {
+	f.rec.add("Remove")
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.existing, name.String())
+	return nil
+}
+
+func (f *fakeWorlds) ListQuarantines(context.Context) ([]world.Quarantine, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]world.Quarantine, len(f.quarantines))
+	copy(out, f.quarantines)
+	return out, nil
+}
+
+func (f *fakeWorlds) RemoveQuarantine(_ context.Context, q world.Quarantine) (int64, error) {
+	f.rec.add("RemoveQuarantine")
+	return q.SizeBytes(), nil
+}
+
+func (f *fakeWorlds) AvailableBytes(context.Context) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.available, nil
+}
+
+// readableVersion は稼働中の Paper 26.2 と同じバージョンを返す。
+//
+// 既定を「読める」にするのは、復元の正常系が
+// 「アーカイブと現在のワールドが一致している」場合だからである。
+func readableVersion(t *testing.T) shared.WorldVersion {
+	t.Helper()
+
+	dv, err := shared.NewDataVersion(4903)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return shared.NewWorldVersion("26.2", dv, false, "world")
+}
+
+// stoppedState はコンテナが存在しない状態を返す。
+func stoppedState() server.ContainerState { return server.ContainerMissing }
 
 type fakeLevels struct {
 	version shared.WorldVersion
@@ -336,7 +487,11 @@ type harness struct {
 	config  *fakeConfig
 	lock    *fakeLock
 	runtime *fakeRuntime
+	worlds  *fakeWorlds
 }
+
+// now は取得日時に使う固定の時刻。
+func (h *harness) now() time.Time { return time.Now() }
 
 func newHarness(t *testing.T, running bool, values map[string]string) *harness {
 	t.Helper()
@@ -353,6 +508,7 @@ func newHarness(t *testing.T, running bool, values map[string]string) *harness {
 
 	runtime := &fakeRuntime{rec: rec, status: server.ContainerStatus{State: state}}
 	store := newStore(rec)
+	worlds := newWorlds(rec)
 	config := newConfig(rec, values)
 	lock := &fakeLock{}
 
@@ -365,8 +521,9 @@ func newHarness(t *testing.T, running bool, values map[string]string) *harness {
 		Runtime:    runtime,
 		Console:    &fakeConsole{rec: rec},
 		Store:      store,
+		Worlds:     worlds,
 		Config:     config,
-		Levels:     &fakeLevels{version: shared.UnreadableWorldVersion()},
+		Levels:     &fakeLevels{version: readableVersion(t)},
 		Operations: mgr,
 	})
 	if err != nil {
@@ -375,7 +532,7 @@ func newHarness(t *testing.T, running bool, values map[string]string) *harness {
 
 	return &harness{
 		uc: uc, ops: mgr, rec: rec, store: store,
-		config: config, lock: lock, runtime: runtime,
+		config: config, lock: lock, runtime: runtime, worlds: worlds,
 	}
 }
 

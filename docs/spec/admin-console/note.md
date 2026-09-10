@@ -143,6 +143,10 @@ docker compose up -d
 | 27MB のワールドの zip | 11.4MB（`flate.BestSpeed`）。取得は 1 秒未満 |
 | 取得したアーカイブのルート集合 | `data/world` `data/plugins` `data/config` `data/bukkit.yml` `data/spigot.yml` の 5 つと完全一致。`server.properties` は含まれない |
 | 展開して稼働中の `data/world` と比較 | 差分は `session.lock` のみ（71 対 72 ファイル） |
+| 復元後、バックアップ後に増やしたファイル | **消える**。退避してから展開しているため。上書き展開なら残ってしまう |
+| その増やしたファイルの退避先 | `data/<名前>.broken-<日時>/` に残る。`mv` であって `rm` ではないので戻せる |
+| `RESTORE_TARGET_CURRENT_LEVEL` の書き換え | アーカイブの `data/restoretest/...` が `data/restoretest2/...` として展開され、`MC_LEVEL` は変わらない。他のワールドのディレクトリは触られない |
+| ワールドを複製して `MC_LEVEL` を切り替えたあとの `level.dat` | `LevelName` が新しい名前に書き換わる。Paper が起動時に `server.properties` の `level-name` を反映するため |
 | 取得の開始直後に `kill -9` | ロックファイルが**サイズ 0 で残る**（`O_CREATE｜O_EXCL` の直後、メタデータ書き込み前）。再起動時に中断として検出され、ロックは削除され、`save-on` が再送された |
 
 `save-on` がログに出ないという性質は重要である。「起動時に無条件で再送する」という

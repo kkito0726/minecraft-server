@@ -8,7 +8,7 @@ import (
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
-	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/backupctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
@@ -38,7 +38,12 @@ func toConnectError(err error) error {
 	// 内部エラーに丸めず、そのまま伝える。
 	case errors.Is(err, world.ErrConfirmationMismatch):
 		return connect.NewError(connect.CodeInvalidArgument, err)
-	case errors.Is(err, worldctl.ErrInsufficientSpace):
+	// 承諾がまだ、という状態は画面が直せる。伏せずにそのまま返す。
+	case errors.Is(err, backupctl.ErrConfirmationRequired),
+		errors.Is(err, backupctl.ErrUnknownArchiveLevel),
+		errors.Is(err, backupctl.ErrInvalidMode):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	case errors.Is(err, port.ErrInsufficientSpace):
 		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, world.ErrInvalidName),
 		errors.Is(err, backup.ErrInvalidID),

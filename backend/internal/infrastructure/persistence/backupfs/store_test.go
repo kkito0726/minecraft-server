@@ -562,3 +562,158 @@ func namesOf(entries []port.StoredBackup) []string {
 	}
 	return out
 }
+
+// 取得したアーカイブを展開して元に戻せる。フェーズの検証条件そのもの。
+func TestExtractRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	root := newProject(t)
+	store := newStore(t, root)
+
+	id := mustID(t, "backup-26.2-world-20260910-143000.zip")
+	if _, err := store.Create(context.Background(), id, mustName(t, "world"), nil); err != nil {
+		t.Fatal(err)
+	}
+
+	// 取得後にワールドを壊し、展開で元に戻ることを確かめる
+	if err := os.RemoveAll(filepath.Join(root, "data", "world")); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(root, "data", "world", "後から増えたもの.txt"), "新しい")
+
+	if err := store.Extract(context.Background(), id, "", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{
+		"world/level.dat",
+		"world/dimensions/minecraft/overworld/r.0.0.mca",
+		"plugins/Essentials.jar",
+		"bukkit.yml",
+	} {
+		if _, err := os.Stat(filepath.Join(root, "data", rel)); err != nil {
+			t.Errorf("%s が戻っていない: %v", rel, err)
+		}
+	}
+	if got := readFile(t, filepath.Join(root, "data", "world", "level.dat")); got != "level" {
+		t.Errorf("level.dat の中身が %q", got)
+	}
+}
+
+// 復元先のワールド名を書き換えて展開できる。
+//
+// これが無いと、利用者が MC_LEVEL=creative に切り替えている状態で
+// data/world が戻るだけになり、稼働中のワールドは何も変わらない。
+func TestExtractRewritesLevelName(t *testing.T) {
+	t.Parallel()
+
+	root := newProject(t)
+	store := newStore(t, root)
+
+	id := mustID(t, "backup-26.2-world-20260910-143000.zip")
+	if _, err := store.Create(context.Background(), id, mustName(t, "world"), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(root, "data", "world")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.Extract(context.Background(), id, "creative", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(root, "data", "creative", "level.dat")); err != nil {
+		t.Errorf("data/creative へ展開されていない: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "data", "world")); !os.IsNotExist(err) {
+		t.Error("書き換えたのに data/world が作られている")
+	}
+	// ワールド以外は書き換えの対象外
+	if _, err := os.Stat(filepath.Join(root, "data", "plugins", "Essentials.jar")); err != nil {
+		t.Errorf("plugins が展開されていない: %v", err)
+	}
+}
+
+// 書き換え先を指定しても、アーカイブのワールド名と同じなら何も変わらない。
+func TestExtractRewriteToSameName(t *testing.T) {
+	t.Parallel()
+
+	root := newProject(t)
+	store := newStore(t, root)
+
+	id := mustID(t, "backup-26.2-world-20260910-143000.zip")
+	if _, err := store.Create(context.Background(), id, mustName(t, "world"), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(root, "data", "world")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.Extract(context.Background(), id, "world", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "data", "world", "level.dat")); err != nil {
+		t.Errorf("展開されていない: %v", err)
+	}
+}
+
+// 展開の進捗が通知される。30MB のワールドで無反応にしないため。
+func TestExtractReportsProgress(t *testing.T) {
+	t.Parallel()
+
+	root := newProject(t)
+	store := newStore(t, root)
+
+	id := mustID(t, "backup-26.2-world-20260910-143000.zip")
+	if _, err := store.Create(context.Background(), id, mustName(t, "world"), nil); err != nil {
+		t.Fatal(err)
+	}
+
+	var calls int
+	if err := store.Extract(context.Background(), id, "", func(int64, int64) { calls++ }); err != nil {
+		t.Fatal(err)
+	}
+	if calls == 0 {
+		t.Error("進捗が 1 度も通知されていない")
+	}
+}
+
+// 存在しないアーカイブの展開は失敗する。
+func TestExtractMissing(t *testing.T) {
+	t.Parallel()
+
+	root := newProject(t)
+	err := newStore(t, root).Extract(
+		context.Background(), mustID(t, "backup-26.2-world-20260901-000000.zip"), "", nil)
+	if err == nil {
+		t.Fatal("エラーになるはず")
+	}
+}
+
+// アーカイブのワールド名を判定できないときは書き換えられない。
+func TestExtractRewriteWithoutArchiveLevel(t *testing.T) {
+	t.Parallel()
+
+	root := newProject(t)
+	dir := filepath.Join(root, "backups")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeZip(t, filepath.Join(dir, "backup-26.2-world-20260901-000000.zip"),
+		map[string]string{"data/bukkit.yml": "bukkit"})
+
+	id := mustID(t, "backup-26.2-world-20260901-000000.zip")
+	if err := newStore(t, root).Extract(context.Background(), id, "creative", nil); err == nil {
+		t.Fatal("エラーになるはず")
+	}
+}
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}

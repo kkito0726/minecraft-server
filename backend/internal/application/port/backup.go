@@ -57,4 +57,12 @@ type BackupStore interface {
 	Inspect(ctx context.Context, id backup.ID) (ArchiveInfo, error)
 	// OpenLevelDat はアーカイブ内の level.dat を、展開せずに開く。
 	OpenLevelDat(ctx context.Context, id backup.ID) (io.ReadCloser, error)
+	// Extract はアーカイブを data/ の親ディレクトリへ展開する。
+	//
+	// rewriteLevel が空でなければ、アーカイブ内のワールド名を
+	// その名前へ書き換えて展開する。利用者が別のワールドへ
+	// 切り替えている場合に、稼働中のワールドを置き換えるために使う。
+	//
+	// 危険なエントリが 1 つでもあれば 1 バイトも書かずに拒否する。
+	Extract(ctx context.Context, id backup.ID, rewriteLevel string, progress Progress) error
 }

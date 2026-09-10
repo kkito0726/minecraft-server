@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
-	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
 )
@@ -29,7 +29,7 @@ func TestToConnectError(t *testing.T) {
 		{"既に存在する", worldfs.ErrAlreadyExists, connect.CodeAlreadyExists},
 		{"名前が不正", world.ErrInvalidName, connect.CodeInvalidArgument},
 		{"確認名の不一致", world.ErrConfirmationMismatch, connect.CodeInvalidArgument},
-		{"容量不足", worldctl.ErrInsufficientSpace, connect.CodeResourceExhausted},
+		{"容量不足", port.ErrInsufficientSpace, connect.CodeResourceExhausted},
 		{"見つからない（ドメイン）", world.ErrNotFound, connect.CodeNotFound},
 		{"既に存在（ドメイン）", world.ErrAlreadyExists, connect.CodeAlreadyExists},
 		{"中断", context.Canceled, connect.CodeCanceled},
@@ -74,7 +74,7 @@ func TestActionableErrorsKeepTheirMessage(t *testing.T) {
 		world.ErrConfirmationMismatch,
 		world.ErrActiveWorld,
 		world.ErrInvalidName,
-		worldctl.ErrInsufficientSpace,
+		port.ErrInsufficientSpace,
 	}
 
 	for _, err := range tests {

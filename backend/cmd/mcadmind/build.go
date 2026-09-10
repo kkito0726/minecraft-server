@@ -212,7 +212,7 @@ func buildUseCases(
 
 	backups, err := backupctl.New(backupctl.Config{
 		Runtime: in.runtime, Console: in.console, Store: in.backups,
-		Config: config, Levels: in.levels, Operations: ops,
+		Worlds: in.worlds, Config: config, Levels: in.levels, Operations: ops,
 	})
 	if err != nil {
 		return deps{}, err

@@ -13,10 +13,6 @@ import (
 )
 
 // BackupHandler は BackupService のハンドラ。
-//
-// PreflightRestore と RestoreBackup は未実装のまま残す。復元は退避と
-// ロールバックの順序という別の不変条件を持つため、取得・世代管理とは
-// 分けて実装する。
 type BackupHandler struct {
 	mcadminv1connect.UnimplementedBackupServiceHandler
 
@@ -121,6 +117,75 @@ func (h *BackupHandler) PruneBackups(
 		DeletedIds: ids,
 		FreedBytes: result.FreedBytes,
 	}), nil
+}
+
+// PreflightRestore は復元前の確認を返す。副作用を持たない。
+func (h *BackupHandler) PreflightRestore(
+	ctx context.Context,
+	req *connect.Request[mcadminv1.PreflightRestoreRequest],
+) (*connect.Response[mcadminv1.PreflightRestoreResponse], error) {
+	pre, err := h.backups.PreflightRestore(ctx, req.Msg.GetBackupId())
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
+	return connect.NewResponse(&mcadminv1.PreflightRestoreResponse{
+		Backup:               backupToProto(pre.Backup),
+		CurrentLevel:         pre.CurrentLevel.String(),
+		CurrentWorldVersion:  worldVersionToProto(pre.CurrentVersion),
+		ConfiguredMcVersion:  pre.ConfiguredVersion,
+		Verdict:              verdictToProto(pre.Decision.Verdict),
+		LevelNameMismatch:    pre.Decision.LevelNameMismatch,
+		Warnings:             pre.Decision.Warnings,
+		RequiresConfirmation: pre.Decision.RequiresConfirmation,
+		RequiredBytes:        pre.RequiredBytes,
+		AvailableBytes:       pre.AvailableBytes,
+	}), nil
+}
+
+// RestoreBackup は復元を実行する。
+//
+// 画面が事前確認を通ったと主張しても信用せず、ユースケースが
+// サーバー側で PreflightRestore を再実行してから進む（REQ-113）。
+func (h *BackupHandler) RestoreBackup(
+	ctx context.Context,
+	req *connect.Request[mcadminv1.RestoreBackupRequest],
+) (*connect.Response[mcadminv1.RestoreBackupResponse], error) {
+	handle, err := h.backups.Restore(ctx, backupctl.RestoreRequest{
+		BackupID:                  req.Msg.GetBackupId(),
+		Target:                    restoreTargetFromProto(req.Msg.GetTarget()),
+		AcknowledgeVersionWarning: req.Msg.GetAcknowledgeVersionWarning(),
+		ConfirmLevelName:          req.Msg.GetConfirmLevelName(),
+	})
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&mcadminv1.RestoreBackupResponse{
+		Operation: operationToProto(handle.Snapshot()),
+	}), nil
+}
+
+// restoreTargetFromProto は復元先の指定を写す。未指定はアーカイブのワールド名。
+func restoreTargetFromProto(t mcadminv1.RestoreTarget) backupctl.RestoreTarget {
+	if t == mcadminv1.RestoreTarget_RESTORE_TARGET_CURRENT_LEVEL {
+		return backupctl.TargetCurrentLevel
+	}
+	return backupctl.TargetArchiveLevel
+}
+
+func verdictToProto(v backup.Verdict) mcadminv1.VersionVerdict {
+	switch v {
+	case backup.VerdictMatch:
+		return mcadminv1.VersionVerdict_VERSION_VERDICT_MATCH
+	case backup.VerdictOlderWillUpgrade:
+		return mcadminv1.VersionVerdict_VERSION_VERDICT_OLDER_WILL_UPGRADE
+	case backup.VerdictNewerIncompatible:
+		return mcadminv1.VersionVerdict_VERSION_VERDICT_NEWER_INCOMPATIBLE
+	case backup.VerdictUnknown:
+		return mcadminv1.VersionVerdict_VERSION_VERDICT_UNKNOWN
+	default:
+		return mcadminv1.VersionVerdict_VERSION_VERDICT_UNSPECIFIED
+	}
 }
 
 // backupModeFromProto は取得方式を写す。未指定は HOT。
