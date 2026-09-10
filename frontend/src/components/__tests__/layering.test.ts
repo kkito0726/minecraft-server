@@ -82,6 +82,40 @@ describe('molecules', () => {
     )
     expect(offending).toEqual([])
   })
+
+  // molecules が通信を知ると、organisms との境界が消える。
+  // 「業務上の意味を持ち、フックを使う」のは organisms の役割。
+  it.each(files)('$path は通信層を import しない', ({ source }) => {
+    const offending = importsOf(source).filter(
+      (i) =>
+        i.includes('@connectrpc') ||
+        i.includes('@tanstack/react-query') ||
+        i.includes('/lib/transport'),
+    )
+    expect(offending).toEqual([])
+  })
+})
+
+describe('organisms', () => {
+  const files = sourceFilesIn('organisms')
+
+  it('コンポーネントが存在する', () => {
+    expect(files.length).toBeGreaterThan(0)
+  })
+
+  // organisms は通信を知ってよい。知ってはいけないのはルーティング。
+  // ルートに対応するのは pages の役割で、organisms は置かれた場所を知らない。
+  it.each(files)('$path はルーティングを import しない', ({ source }) => {
+    const offending = importsOf(source).filter((i) => i.includes('react-router'))
+    expect(offending).toEqual([])
+  })
+
+  it.each(files)('$path は templates と pages を import しない', ({ source }) => {
+    const offending = importsOf(source).filter(
+      (i) => i.includes('templates') || i.includes('/pages/'),
+    )
+    expect(offending).toEqual([])
+  })
 })
 
 describe('templates', () => {

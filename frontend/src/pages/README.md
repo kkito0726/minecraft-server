@@ -4,4 +4,4 @@
 
 `ServerPage` (`/`) / `WorldsPage` (`/worlds`) / `BackupsPage` (`/backups`)。
 
-フェーズ 15 以降で実装する。
+現在は `placeholders.tsx` の仮置き。中身はフェーズ 15〜17 で実装する。
