@@ -171,6 +171,9 @@ describe('BackupsPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '削除する' }))
     await waitFor(() => expect(pruneBackups).toHaveBeenCalledWith({ dryRun: false }))
+
+    // 消したあとは予定ではなく実際に消えたものを出す。
+    expect(await screen.findByText(/削除しました/)).toBeInTheDocument()
   })
 
   it('削除は二度押しで消す', async () => {

@@ -7,7 +7,7 @@ import {
   RestoreDialog,
   RetentionSettings,
 } from '../components/organisms'
-import type { RestoreRequestInput } from '../components/organisms'
+import type { PruneResult, RestoreRequestInput } from '../components/organisms'
 import { Button } from '../components/atoms'
 import {
   useBackups,
@@ -167,7 +167,7 @@ function RetentionSection({
 }) {
   const save = useSetRetentionPolicy()
   const prune = usePruneBackups()
-  const [preview, setPreview] = useState<string[] | null>(null)
+  const [pruned, setPruned] = useState<PruneResult | null>(null)
 
   if (!policy) {
     return null
@@ -187,11 +187,23 @@ function RetentionSection({
         onSave={(next) => save.mutate(next)}
       />
 
+      {/*
+        消したあとは予定ではなく実際に消えたものを出す。確認のあとに
+        取得が走れば保持ポリシーが先に適用され、対象は変わりうる。
+      */}
       <PrunePanel
-        preview={preview}
+        result={pruned}
         disabled={disabled || prune.isPending}
-        onPreview={() => prune.mutate(true, { onSuccess: (res) => setPreview(res.deletedIds) })}
-        onApply={() => prune.mutate(false, { onSuccess: () => setPreview(null) })}
+        onPreview={() =>
+          prune.mutate(true, {
+            onSuccess: (res) => setPruned({ kind: 'preview', ids: res.deletedIds }),
+          })
+        }
+        onApply={() =>
+          prune.mutate(false, {
+            onSuccess: (res) => setPruned({ kind: 'applied', ids: res.deletedIds }),
+          })
+        }
       />
     </section>
   )
