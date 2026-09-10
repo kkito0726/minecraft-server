@@ -5,47 +5,34 @@
 // 本番環境に Node のプロセスは不要。
 //
 // 設定はリポジトリ直下の .env から読む。systemd の EnvironmentFile= は使わない。
-// systemd の .env 解釈はシェルのクォート規則と一致せず、MC_MOTD="..." のような行や
-// 行内の # で挙動が食い違うため（どのみち書き込みのために自分で読む必要がある）。
+// systemd の .env 解釈はシェルのクォート規則と完全には一致せず、
+// MC_MOTD="..." のような行や行内の # で挙動が食い違うため
+// （どのみち書き込みのために自分で読む必要がある）。
 package main
 
 import (
+	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
-	"path/filepath"
-
-	"github.com/kkito0726/minecraft-server/backend/internal/presentation/webui"
+	"os/signal"
+	"syscall"
 )
 
 // version はリリースビルド時に -ldflags で埋め込む。
 var version = "dev"
 
-// errNotImplemented はフェーズ 9 で HTTP サーバーの起動に置き換わる。
-var errNotImplemented = errors.New("未実装です。現在はプロジェクトの雛形のみです")
-
 func main() {
-	deps := deps{webuiBuilt: webui.IsBuilt}
-	if err := run(os.Args[1:], os.Stdout, deps); err != nil {
+	if err := run(os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "mcadmind:", err)
 		os.Exit(1)
 	}
 }
 
-// deps は起動時に必要な外部の問い合わせ先。
-//
-// フロントエンドが埋め込まれているかの判定を引数で受け取るのは、
-// テストの結果が「そのときフロントをビルドしていたか」に左右されないようにするため。
-// パッケージ変数を直接見ると CI とローカルでカバレッジが変わってしまう。
-type deps struct {
-	webuiBuilt func() bool
-}
-
 // run は main から副作用を切り離してテストできるようにしたもの。
-// 引数と出力先を受け取り、プロセスの終了は呼び出し側に任せる。
-func run(args []string, stdout io.Writer, d deps) error {
+func run(args []string, stdout io.Writer) error {
 	opts, err := parseFlags(args, stdout)
 	if err != nil {
 		return err
@@ -54,57 +41,23 @@ func run(args []string, stdout io.Writer, d deps) error {
 		return nil
 	}
 
-	if err := validateProjectDir(opts.projectDir); err != nil {
+	logger := newLogger(opts.logLevel)
+
+	// シグナルで終わる context を先に作る。操作の寿命をこれに紐づけるため、
+	// 組み立てより前に用意する必要がある。
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	app, err := build(ctx, opts, logger)
+	if err != nil {
 		return err
 	}
-
-	// フロントエンドが埋め込まれているかを先に確かめる。ビルドを忘れたまま
-	// 起動すると白い画面になり、原因が分かりにくいため。
-	if !d.webuiBuilt() {
-		return errors.New("フロントエンドがビルドされていません。make build-front を実行してください")
-	}
-
-	// TODO(フェーズ 9): 依存の組み立てと HTTP サーバーの起動をここに実装する。
-	return fmt.Errorf("%w（project-dir=%s）", errNotImplemented, opts.projectDir)
+	return app.Run(ctx)
 }
 
-type options struct {
-	projectDir string
-	// done は -version のように「表示して正常終了する」場合に真になる。
-	done bool
+func newLogger(level slog.Level) *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 }
 
-func parseFlags(args []string, stdout io.Writer) (options, error) {
-	fs := flag.NewFlagSet("mcadmind", flag.ContinueOnError)
-	fs.SetOutput(stdout)
-	projectDir := fs.String("project-dir", ".", "compose.yaml と .env があるディレクトリ")
-	showVersion := fs.Bool("version", false, "バージョンを表示して終了する")
-
-	if err := fs.Parse(args); err != nil {
-		return options{}, fmt.Errorf("引数を解釈できません: %w", err)
-	}
-	if *showVersion {
-		if _, err := fmt.Fprintln(stdout, "mcadmind", version); err != nil {
-			return options{}, fmt.Errorf("バージョンを出力できません: %w", err)
-		}
-		return options{done: true}, nil
-	}
-
-	abs, err := filepath.Abs(*projectDir)
-	if err != nil {
-		return options{}, fmt.Errorf("project-dir の絶対パスを解決できません: %w", err)
-	}
-	return options{projectDir: abs}, nil
-}
-
-// validateProjectDir は compose.yaml と .env の存在を確認する。
-// systemd 配下では作業ディレクトリがリポジトリと一致しないため、
-// 起動時に確かめておかないと後続の docker compose が分かりにくい形で失敗する。
-func validateProjectDir(dir string) error {
-	for _, name := range []string{"compose.yaml", ".env"} {
-		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
-			return fmt.Errorf("%s が見つかりません (%s): %w", name, dir, err)
-		}
-	}
-	return nil
-}
+// errNotConfigured は設定の不足を表す。
+var errNotConfigured = errors.New("設定が不足しています")
