@@ -24,6 +24,12 @@ import (
 var launcherPath string
 
 func TestMain(m *testing.M) {
+	// os.Exit は defer を走らせないため、後始末を関数に閉じてから終了する。
+	code := runTests(m)
+	os.Exit(code)
+}
+
+func runTests(m *testing.M) int {
 	dir, err := os.MkdirTemp("", "fake-docker-*")
 	if err != nil {
 		panic(err)
@@ -39,7 +45,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	os.Exit(m.Run())
+	return m.Run()
 }
 
 // newRunner は argv を記録するスタブ docker を使う Runner を作る。
