@@ -4,4 +4,5 @@
 
 `ServerPage` (`/`) / `WorldsPage` (`/worlds`) / `BackupsPage` (`/backups`)。
 
-現在は `placeholders.tsx` の仮置き。中身はフェーズ 15〜17 で実装する。
+どの画面もデータ取得と組み立てだけを行い、細かい見た目は organisms に置く。
+復元だけは事前確認を取り直してからダイアログを出すため、その取得も pages が持つ。

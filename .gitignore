@@ -3,8 +3,10 @@
 data/
 
 # バックアップ（旧形式のリポジトリ直下と、管理コンソールの保管先）
-backup-*.zip
-backups/
+# 先頭の / でリポジトリ直下に限定する。付けないと
+# frontend/src/features/backups/ のようなソースまで巻き込む。
+/backup-*.zip
+/backups/
 
 # 管理コンソール — バックエンド
 /mcadmind
