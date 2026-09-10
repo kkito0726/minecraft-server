@@ -17,7 +17,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kkito0726/minecraft-server/backend/internal/webui"
+	"github.com/kkito0726/minecraft-server/backend/internal/presentation/webui"
 )
 
 // version はリリースビルド時に -ldflags で埋め込む。

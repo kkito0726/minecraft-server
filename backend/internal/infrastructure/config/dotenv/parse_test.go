@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kkito0726/minecraft-server/backend/internal/dotenv"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/config/dotenv"
 )
 
 func parse(t *testing.T, s string) *dotenv.File {

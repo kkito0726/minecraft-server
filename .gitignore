@@ -9,8 +9,8 @@ backups/
 # 管理コンソール — バックエンド
 /mcadmind
 /mcadmind-arm64
-backend/internal/webui/dist/*
-!backend/internal/webui/dist/.gitkeep
+backend/internal/presentation/webui/dist/*
+!backend/internal/presentation/webui/dist/.gitkeep
 coverage.out
 coverage.html
 

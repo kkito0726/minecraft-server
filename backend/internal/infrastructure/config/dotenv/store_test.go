@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kkito0726/minecraft-server/backend/internal/dotenv"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/config/dotenv"
 )
 
 // newStore はフィクスチャを置いた一時ディレクトリと Store を用意する。

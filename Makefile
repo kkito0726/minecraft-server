@@ -12,7 +12,7 @@ SHELL := /bin/bash
 BIN_NAME    := mcadmind
 BACKEND_DIR := backend
 FRONT_DIR   := frontend
-EMBED_DIR   := $(BACKEND_DIR)/internal/webui/dist
+EMBED_DIR   := $(BACKEND_DIR)/internal/presentation/webui/dist
 COVER_MIN   ?= 80
 VERSION     ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS     := -s -w -X main.version=$(VERSION)

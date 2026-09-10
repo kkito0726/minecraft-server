@@ -1,4 +1,4 @@
-import type { WorldVersion } from '../gen/mcadmin/v1/common_pb.js'
+import type { WorldVersion } from '../../gen/mcadmin/v1/common_pb.js'
 
 /**
  * ワールドのバージョンを画面表示用の文字列にする。

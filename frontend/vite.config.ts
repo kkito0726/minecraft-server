@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // ビルド成果物は Go の embed パッケージへ直接出す。
 // Go の //go:embed は親ディレクトリを参照できないため、backend 側に置く必要がある。
-const GO_EMBED_DIR = '../backend/internal/webui/dist'
+const GO_EMBED_DIR = '../backend/internal/presentation/webui/dist'
 
 // 開発時は Vite の dev サーバーが /rpc を mcadmind へ中継する。
 // 本番では mcadmind 自身が静的ファイルと /rpc の両方を提供するので中継は不要。
