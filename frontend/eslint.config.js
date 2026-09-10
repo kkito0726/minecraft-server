@@ -37,4 +37,10 @@ export default tseslint.config(
     files: ['**/*.test.{ts,tsx}', 'e2e/**/*.ts', 'src/test/**/*.ts'],
     rules: { 'max-lines-per-function': 'off' },
   },
+  {
+    // E2E は Node 上で動く。mcadmind を起動し、プロジェクトの
+    // ディレクトリを直接覗くので、ブラウザの大域変数だけでは足りない。
+    files: ['e2e/**/*.ts'],
+    languageOptions: { globals: { ...globals.node } },
+  },
 )

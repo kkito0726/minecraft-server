@@ -122,6 +122,44 @@ jobs:
         working-directory: frontend
         run: npm run test:coverage
 
+  e2e:
+    name: E2E（実バイナリ + 偽 docker）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - working-directory: frontend
+        run: npm ci
+
+      - name: ブラウザを入れる
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # E2E は実物の mcadmind に対して実行する。docker は
+      # e2e/fixtures/fake-docker.sh に差し替えるので、この job に
+      # docker は要らない（CI で実コンテナを起動すると数分かかる）。
+      - name: ビルドと E2E
+        run: make e2e
+
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
   build:
     name: ビルド（Pi 5 向け arm64 を含む）
     runs-on: ubuntu-latest
