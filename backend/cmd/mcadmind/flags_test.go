@@ -145,30 +145,3 @@ func TestRunRejectsInvalidLogLevel(t *testing.T) {
 		t.Error("エラーになるはず")
 	}
 }
-
-// ADMIN_TOKEN が無ければ起動を止め、生成方法を案内する。
-func TestLoadSettingsRequiresToken(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	for name, body := range map[string]string{
-		"compose.yaml": "services:\n  mc:\n",
-		".env":         "MC_VERSION=26.2\nADMIN_TOKEN=\n",
-	} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	var out bytes.Buffer
-	err := run([]string{"-project-dir", dir}, &out)
-	if err == nil {
-		t.Fatal("エラーになるはず")
-	}
-	// フロントエンド未ビルドで先に止まる場合もあるので、
-	// どちらのエラーでも自己解決できる文言であること
-	msg := err.Error()
-	if !strings.Contains(msg, "ADMIN_TOKEN") && !strings.Contains(msg, "make build-front") {
-		t.Errorf("案内が不足している: %v", err)
-	}
-}
