@@ -15,6 +15,13 @@ vi.mock('./features/server/client', () => ({
   serverClient: { getStatus, startServer: vi.fn(), stopServer: vi.fn(), restartServer: vi.fn() },
 }))
 
+const listWorlds = vi.hoisted(() =>
+  vi.fn(async () => ({ worlds: [], quarantines: [], activeLevel: 'world' })),
+)
+vi.mock('./features/worlds/client', () => ({
+  worldClient: { listWorlds, purgeQuarantine: vi.fn() },
+}))
+
 // 進捗の購読も差し替える。ここでの関心は認証と画面の切り替えであって、
 // 実際の通信ではない。差し替えないと jsdom から本物の fetch が飛ぶ。
 const active = vi.hoisted(() => vi.fn(async () => null))
@@ -64,7 +71,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'バックアップ' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('link', { name: 'ワールド' }))
-    expect(await screen.findByRole('heading', { name: 'ワールドの管理' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ワールド' })).toBeInTheDocument()
   })
 
   // 知らないパスで真っ白にしない。リロードで /backups を開いたときも同じ経路を通る。
