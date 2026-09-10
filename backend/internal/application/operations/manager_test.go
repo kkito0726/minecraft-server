@@ -150,6 +150,99 @@ func TestLockFileRecordsOperation(t *testing.T) {
 	waitIdle(t, m)
 }
 
+// 操作は呼び出し元の context に紐づかない。
+//
+// HTTP ハンドラから起動すると、リクエストが返った時点で context が
+// キャンセルされる。操作の本体がそれを引き継ぐと、復元やバックアップが
+// 開始直後に死ぬ。「操作はサーバー側のリソース」という設計の前提そのもの。
+func TestOperationSurvivesCallerContextCancel(t *testing.T) {
+	t.Parallel()
+
+	m := newManager(t)
+	proceed := make(chan struct{})
+	observed := make(chan error, 1)
+
+	// リクエストの context を模す
+	callerCtx, cancelCaller := context.WithCancel(context.Background())
+
+	h, err := m.Start(callerCtx, operation.KindBackupCreate, steps(),
+		func(ctx context.Context, r operations.Reporter) error {
+			// 呼び出し元がキャンセルされるのを待ってから続行する
+			<-proceed
+			observed <- ctx.Err()
+			return r.Step()
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// HTTP ハンドラが返った状況を再現
+	cancelCaller()
+	time.Sleep(50 * time.Millisecond)
+	close(proceed)
+
+	select {
+	case ctxErr := <-observed:
+		if ctxErr != nil {
+			t.Errorf("操作の context が %v。呼び出し元のキャンセルを引き継いではいけない", ctxErr)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("操作が進まない")
+	}
+
+	snap := waitFinishedSnapshot(t, m, h.ID())
+	if snap.State != operation.StateSucceeded {
+		t.Errorf("State が %v（%s）。成功のはず", snap.State, snap.ErrorMessage)
+	}
+}
+
+// アプリの停止時には操作も止まる。ぶら下がった goroutine を残さない。
+func TestOperationStopsOnShutdown(t *testing.T) {
+	t.Parallel()
+
+	baseCtx, shutdown := context.WithCancel(context.Background())
+	m, err := operations.NewManager(operations.Config{
+		Lock:    lockfile.NewLock(filepath.Join(t.TempDir(), ".lock")),
+		BaseCtx: baseCtx,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	started := make(chan struct{})
+	h, err := m.Start(context.Background(), operation.KindBackupCreate, steps(),
+		func(ctx context.Context, _ operations.Reporter) error {
+			close(started)
+			<-ctx.Done()
+			return ctx.Err()
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	<-started
+	shutdown()
+
+	snap := waitFinishedSnapshot(t, m, h.ID())
+	if snap.State != operation.StateFailed {
+		t.Errorf("State が %v。停止で中断されるはず", snap.State)
+	}
+}
+
+func waitFinishedSnapshot(t *testing.T, m *operations.Manager, id operation.ID) operation.Snapshot {
+	t.Helper()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if snap, ok := m.Get(id); ok && snap.State.IsTerminal() {
+			return snap
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("操作が終わらない")
+	return operation.Snapshot{}
+}
+
 // 進行中の操作を識別子なしで取得できる。
 // 別端末や localStorage を消した後でも現在の状況が分かる必要がある。
 func TestActive(t *testing.T) {

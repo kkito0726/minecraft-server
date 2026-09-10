@@ -63,6 +63,13 @@ type IDGenerator interface {
 type Config struct {
 	// Lock はプロセスをまたぐ排他。
 	Lock port.OperationLock
+	// BaseCtx は操作の寿命を決める context。
+	//
+	// 操作は呼び出し元（HTTP リクエスト）の context を引き継がない。
+	// 引き継ぐとレスポンスを返した時点でキャンセルされ、復元や
+	// バックアップが開始直後に死ぬ。アプリの停止でだけ中断させる。
+	// nil なら context.Background()。
+	BaseCtx context.Context
 	// HistoryLimit は保持する完了済み操作の数。0 なら既定値。
 	HistoryLimit int
 	// Clock は現在時刻。nil ならシステム時計。
@@ -73,9 +80,11 @@ type Config struct {
 
 // Manager は操作の実行と進捗の配信を管理する。
 type Manager struct {
-	cfg   Config
-	clock Clock
-	ids   IDGenerator
+	cfg Config
+	// baseCtx は操作の寿命。呼び出し元の context とは切り離す。
+	baseCtx context.Context
+	clock   Clock
+	ids     IDGenerator
 
 	// mu は状態全体を守る。操作の本体は mu を持たずに実行する。
 	mu sync.Mutex
@@ -111,8 +120,14 @@ func NewManager(cfg Config) (*Manager, error) {
 		ids = &timeIDGenerator{clock: clock}
 	}
 
+	baseCtx := cfg.BaseCtx
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
+
 	return &Manager{
 		cfg:         cfg,
+		baseCtx:     baseCtx,
 		clock:       clock,
 		ids:         ids,
 		subscribers: map[string][]*subscriber{},
@@ -123,12 +138,22 @@ func NewManager(cfg Config) (*Manager, error) {
 //
 // 本体は別の goroutine で走り、Start は開始した時点で返る。
 // 呼び出し側は Handle の識別子で進捗を購読する。
+//
+// ctx は開始の可否を判断するまでにしか使わない。**操作の本体は
+// ctx を引き継がない。** HTTP ハンドラから呼ぶとレスポンスを返した
+// 時点でキャンセルされ、復元やバックアップが開始直後に死ぬためで、
+// 「操作はサーバー側のリソース」という設計の前提そのものにあたる。
+// 本体は BaseCtx（アプリの寿命）に紐づく。
 func (m *Manager) Start(
 	ctx context.Context,
 	kind operation.Kind,
 	stepNames []string,
 	fn Func,
 ) (Handle, error) {
+	if err := ctx.Err(); err != nil {
+		return Handle{}, err
+	}
+
 	// スナップショットはロック下で取る。goroutine を起こしてから読むと、
 	// 本体が既にステップを進めていて競合する。
 	op, snapshot, err := m.begin(kind, stepNames)
@@ -136,7 +161,7 @@ func (m *Manager) Start(
 		return Handle{}, err
 	}
 
-	go m.run(ctx, op, fn)
+	go m.run(m.baseCtx, op, fn)
 	return Handle{snapshot: snapshot}, nil
 }
 
