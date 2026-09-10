@@ -13,10 +13,6 @@ function Placeholder({ title }: { title: string }) {
   )
 }
 
-export function WorldsPage() {
-  return <Placeholder title="ワールドの管理" />
-}
-
 export function BackupsPage() {
   return <Placeholder title="バックアップ" />
 }

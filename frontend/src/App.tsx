@@ -7,7 +7,8 @@ import { InterruptedBanner, OperationBanner, TokenGate } from './components/orga
 import { OperationProvider } from './features/operations'
 import { verifyToken } from './features/auth/verify'
 import { createQueryClient } from './lib/queryClient'
-import { BackupsPage, WorldsPage } from './pages/placeholders'
+import { BackupsPage } from './pages/placeholders'
+import { WorldsPage } from './pages/WorldsPage'
 import { ServerPage } from './pages/ServerPage'
 
 const NAV = [
