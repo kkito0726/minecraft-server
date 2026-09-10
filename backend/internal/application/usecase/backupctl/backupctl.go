@@ -45,8 +45,20 @@ const (
 	startTimeout = 300 * time.Second
 )
 
-// ErrInvalidMode は取得方式が未知であることを表す。
-var ErrInvalidMode = errors.New("バックアップの取得方式が不正です")
+var (
+	// ErrInvalidMode は取得方式が未知であることを表す。
+	ErrInvalidMode = errors.New("バックアップの取得方式が不正です")
+	// ErrConfirmationRequired はバージョンや名前の警告が承諾されていないことを表す。
+	ErrConfirmationRequired = errors.New("復元の内容が承諾されていません")
+	// ErrUnknownArchiveLevel はアーカイブ内のワールド名を判定できないことを表す。
+	ErrUnknownArchiveLevel = errors.New("アーカイブに含まれるワールドの名前を判定できません")
+)
+
+// restoreMargin は展開に必要な空き容量の余裕。
+//
+// 展開後のサイズちょうどで始めると、途中でディスクが埋まって
+// 中断した状態が残る。復元の途中で止まるのが最悪なので余裕を取る。
+const restoreMargin = 1.2
 
 // Mode は取得方式。
 type Mode int
@@ -63,6 +75,7 @@ type Config struct {
 	Runtime    port.ContainerRuntime
 	Console    port.ServerConsole
 	Store      port.BackupStore
+	Worlds     port.WorldRepository
 	Config     port.ServerConfig
 	Levels     port.LevelReader
 	Operations *operations.Manager
@@ -78,8 +91,8 @@ type UseCase struct {
 // New は UseCase を作る。
 func New(cfg Config) (*UseCase, error) {
 	if cfg.Runtime == nil || cfg.Console == nil || cfg.Store == nil ||
-		cfg.Config == nil || cfg.Operations == nil {
-		return nil, errors.New("runtime / console / store / config / operations が必要です")
+		cfg.Worlds == nil || cfg.Config == nil || cfg.Operations == nil {
+		return nil, errors.New("runtime / console / store / worlds / config / operations が必要です")
 	}
 	if cfg.Clock == nil {
 		cfg.Clock = systemClock{}

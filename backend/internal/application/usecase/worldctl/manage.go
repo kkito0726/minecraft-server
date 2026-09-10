@@ -2,10 +2,10 @@ package worldctl
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 )
@@ -13,9 +13,6 @@ import (
 // copyHeadroom は複製に必要とする空き容量の余裕。
 // 途中で容量が尽きると中途半端なディレクトリが残る。
 const copyHeadroom = 1.1
-
-// ErrInsufficientSpace は空き容量が足りないことを表す。
-var ErrInsufficientSpace = errors.New("空き容量が足りません")
 
 // Listing はワールドと退避の一覧。
 type Listing struct {
@@ -218,7 +215,7 @@ func (u *UseCase) checkSpaceFor(ctx context.Context, source world.Name) error {
 	}
 	if available < need {
 		return fmt.Errorf(
-			"%w（必要 %d バイト、空き %d バイト）", ErrInsufficientSpace, need, available)
+			"%w（必要 %d バイト、空き %d バイト）", port.ErrInsufficientSpace, need, available)
 	}
 	return nil
 }

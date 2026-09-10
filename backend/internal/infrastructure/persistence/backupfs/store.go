@@ -155,7 +155,7 @@ func (s *Store) Inspect(ctx context.Context, id backup.ID) (port.ArchiveInfo, er
 	}
 
 	return port.ArchiveInfo{
-		Level:       levelNameOf(manifest.LevelDir),
+		Level:       manifest.LevelDir,
 		EntryRoots:  manifest.Roots,
 		TotalBytes:  manifest.TotalBytes,
 		HasLevelDat: manifest.LevelDatEntry != "",
@@ -177,16 +177,56 @@ func (s *Store) OpenLevelDat(ctx context.Context, id backup.ID) (io.ReadCloser, 
 	return archive.OpenEntry(ctx, s.pathOf(id), manifest.LevelDatEntry)
 }
 
-func (s *Store) pathOf(id backup.ID) string {
-	return filepath.Join(s.cfg.BackupDir, id.String())
+// Extract はアーカイブを ProjectDir へ展開する。
+//
+// エントリ名は data/... なので、展開先の基点はプロジェクトディレクトリになる。
+// 危険なエントリが 1 つでもあれば archive.Extract が 1 バイトも書かずに拒否する。
+//
+// rewriteLevel が空でなければ、アーカイブ内のワールド名をその名前へ
+// 書き換えて展開する。これが無いと、利用者が別のワールドへ切り替えている
+// 状態でアーカイブのワールドが戻るだけになり、稼働中のワールドは
+// 変化しないまま「復元したのに何も起きない」ことになる。
+func (s *Store) Extract(
+	ctx context.Context, id backup.ID, rewriteLevel string, progress port.Progress,
+) error {
+	opts, err := s.rewriteOptions(ctx, id, rewriteLevel)
+	if err != nil {
+		return err
+	}
+	return archive.Extract(ctx, s.pathOf(id), s.cfg.ProjectDir, opts, archive.Progress(progress))
 }
 
-// levelNameOf は "data/world" から "world" を取り出す。
-func levelNameOf(levelDir string) string {
-	if levelDir == "" {
-		return ""
+func (s *Store) rewriteOptions(
+	ctx context.Context, id backup.ID, rewriteLevel string,
+) (archive.ExtractOptions, error) {
+	if rewriteLevel == "" {
+		return archive.ExtractOptions{}, nil
 	}
-	return filepath.Base(levelDir)
+
+	manifest, err := archive.Inspect(ctx, s.pathOf(id))
+	if err != nil {
+		return archive.ExtractOptions{}, err
+	}
+	if manifest.LevelDir == "" {
+		return archive.ExtractOptions{}, fmt.Errorf(
+			"%s に含まれるワールドの名前を判定できないため、復元先を書き換えられません", id)
+	}
+
+	if manifest.LevelDir == rewriteLevel {
+		return archive.ExtractOptions{}, nil
+	}
+
+	// Manifest.LevelDir は data/ を除いたワールド名なので、
+	// エントリ名に合わせて data/ を付け直す。
+	// 末尾に / を付けるのは data/world が data/worldbackup に
+	// 誤って一致するのを防ぐため。
+	from := dataDirName + "/" + manifest.LevelDir + "/"
+	to := dataDirName + "/" + rewriteLevel + "/"
+	return archive.ExtractOptions{RewritePrefix: map[string]string{from: to}}, nil
+}
+
+func (s *Store) pathOf(id backup.ID) string {
+	return filepath.Join(s.cfg.BackupDir, id.String())
 }
 
 var _ port.BackupStore = (*Store)(nil)

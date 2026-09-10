@@ -9,6 +9,7 @@ package port
 
 import (
 	"context"
+	"errors"
 	"io"
 	"time"
 
@@ -93,6 +94,12 @@ type WorldRepository interface {
 	// AvailableBytes は data/ の空き容量を返す。
 	AvailableBytes(ctx context.Context) (int64, error)
 }
+
+// ErrInsufficientSpace は空き容量が足りないことを表す。
+//
+// 空き容量を知っているのは AvailableBytes を持つこの層なので、
+// 判定するユースケースそれぞれに同じ番兵を置かず、ここに 1 つだけ持つ。
+var ErrInsufficientSpace = errors.New("空き容量が足りません")
 
 // Progress は進捗の通知。総量が不明な場合 total は 0。
 type Progress func(done, total int64)
