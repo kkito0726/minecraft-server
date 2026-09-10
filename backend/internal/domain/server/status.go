@@ -37,6 +37,15 @@ func (s ContainerState) String() string {
 // RCON を伴う手順を行ってよいかの判断に使う。
 func (s ContainerState) IsUp() bool { return s == ContainerRunning }
 
+// IsStopped は停止しきっているかを返す。
+//
+// docker compose down の完了待ちに使う。down はコンテナを削除するので
+// 通常は ContainerMissing になるが、stop だけされた状態も停止として扱う。
+// 再起動中は「これから動く」ので停止とみなさない。
+func (s ContainerState) IsStopped() bool {
+	return s == ContainerMissing || s == ContainerExited
+}
+
 // ContainerStatus はコンテナの状態一式。
 type ContainerStatus struct {
 	State     ContainerState
