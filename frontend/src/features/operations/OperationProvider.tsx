@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 
 import { OperationContext } from './context'
+import { useInvalidateOnFinish } from './useInvalidateOnFinish'
 import { useOperationStream } from './useOperationStream'
 import { createOperationSource } from './watch'
 import type { OperationSource } from './watch'
@@ -16,6 +17,7 @@ export function OperationProvider({ source, children }: OperationProviderProps) 
   // 参照が変わるたびに購読が張り直される。1 回だけ作る。
   const resolved = useMemo(() => source ?? createOperationSource(), [source])
   const stream = useOperationStream(resolved)
+  useInvalidateOnFinish(stream)
 
   return <OperationContext.Provider value={stream}>{children}</OperationContext.Provider>
 }

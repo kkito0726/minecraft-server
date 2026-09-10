@@ -50,6 +50,15 @@ export function operationReducer(
     case 'event':
       return applyEvent(state, action.event)
     case 'begin':
+      // 同じ操作を二度差し込まない。定期的な探索と変更系の応答は
+      // どちらも begin を呼ぶため、サーバーが操作を作ってから
+      // 応答が返るまでの間に探索が当たると二重になる。
+      //
+      // 状態ごと据え置くのが要点。応答に含まれる snapshot は
+      // PENDING なので、取り込むと RUNNING の表示が巻き戻る。
+      if (state.operation?.id === action.operation.id) {
+        return state
+      }
       // 別の操作の始まり。進行中の操作のイベントではないので
       // ログと seq を初期化する。
       return { operation: action.operation, log: [], lastSeq: 0n }

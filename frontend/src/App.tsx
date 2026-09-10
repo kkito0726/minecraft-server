@@ -3,11 +3,12 @@ import { NavLink, Navigate, Route, BrowserRouter as Router, Routes } from 'react
 import { useMemo } from 'react'
 
 import { AppShell } from './components/templates'
-import { OperationBanner, TokenGate } from './components/organisms'
+import { InterruptedBanner, OperationBanner, TokenGate } from './components/organisms'
 import { OperationProvider } from './features/operations'
 import { verifyToken } from './features/auth/verify'
 import { createQueryClient } from './lib/queryClient'
-import { BackupsPage, ServerPage, WorldsPage } from './pages/placeholders'
+import { BackupsPage, WorldsPage } from './pages/placeholders'
+import { ServerPage } from './pages/ServerPage'
 
 const NAV = [
   { to: '/', label: 'サーバー' },
@@ -35,7 +36,12 @@ export function App() {
             <AppShell
               brand="Minecraft サーバー管理コンソール"
               nav={<MainNav />}
-              banner={<OperationBanner />}
+              banner={
+                <>
+                  <InterruptedBanner />
+                  <OperationBanner />
+                </>
+              }
             >
               <Routes>
                 <Route path="/" element={<ServerPage />} />

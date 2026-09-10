@@ -4,11 +4,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
-import { OperationProvider } from '../../features/operations'
 import type { OperationSource } from '../../features/operations'
 import { LogLevel, OperationKind, OperationState } from '../../gen/mcadmin/v1/common_pb'
 import { OperationSchema, WatchOperationResponseSchema } from '../../gen/mcadmin/v1/operation_pb'
 import type { Operation } from '../../gen/mcadmin/v1/operation_pb'
+import { withProviders } from '../../test/providers'
 import { OperationBanner } from './OperationBanner'
 
 function op(overrides: MessageInitShape<typeof OperationSchema> = {}): Operation {
@@ -24,8 +24,15 @@ function op(overrides: MessageInitShape<typeof OperationSchema> = {}): Operation
 }
 
 function sourceOf(active: Operation | null, events: ReturnType<typeof line>[]): OperationSource {
+  let remaining = active
   return {
-    active: async () => active,
+    // サーバーは終端に達した操作を「進行中」として返さない。
+    // 一度渡したら以降は無いものとして振る舞わせる。
+    active: async () => {
+      const current = remaining
+      remaining = null
+      return current
+    },
     watch: () => ({
       async *[Symbol.asyncIterator]() {
         for (const e of events) {
@@ -46,11 +53,7 @@ function line(seq: number, message: string, level: LogLevel, snapshot: Operation
 }
 
 function renderBanner(source: OperationSource) {
-  return render(
-    <OperationProvider source={source}>
-      <OperationBanner />
-    </OperationProvider>,
-  )
+  return render(withProviders(<OperationBanner />, source))
 }
 
 describe('OperationBanner', () => {
