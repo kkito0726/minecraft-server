@@ -148,6 +148,8 @@ free -h
 身内サーバーならチート対策を緩めるデメリットは実質ない。
 このファイルは `server.properties` と違って `.env` から再生成されないため、
 直接編集すれば残る（再起動後に値が残っているか一度確認すること）。
+**再生成されない = 失うと戻せない**ので、`data/spigot.yml` と `data/bukkit.yml` は
+バックアップ対象に入れてある（[backup-restore.md](backup-restore.md)）。
 
 ## 検討したが入れなかったもの
 
@@ -160,3 +162,51 @@ Pi では魅力的だが、実装が knockd によるポートノックで `AUTO
 **ワールドを名前付きボリュームに移す** — Pi の Linux では bind mount に
 macOS のような仮想ファイルシステムのオーバーヘッドがない。移すメリットがないうえ、
 [backup-restore.md](backup-restore.md) の手順が壊れる。
+
+## 管理コンソールを常駐させる
+
+バックアップと復元、ワールドの切り替えをブラウザから行う `mcadmind` を
+systemd で常駐させる。置き方と使い方は [admin-console.md](admin-console.md)。
+ここでは Pi 固有の前提だけを書く。
+
+### コンテナではなくホストで動かす
+
+`docker.sock` をコンテナへマウントすれば同じことはできるが、採らなかった。
+
+- マウントは実質 root 権限を渡すのと変わらない
+- ホストとコンテナでパスが食い違い、`data/` の位置が一致しない
+
+代わりに Go の静的バイナリを Pi へ置く。`CGO_ENABLED=0` なので依存が無く、
+Pi 側に Go も Node も要らない。
+
+```bash
+make build-arm64                     # 開発機で
+scp mcadmind-arm64 pi@<host>:~/minecraft-server/
+```
+
+### docker グループが要る
+
+`docker compose` を叩くので、動かすユーザーが `docker` グループに入っている必要がある。
+
+```bash
+sudo usermod -aG docker $USER        # 反映にはログインし直す
+```
+
+ユニットにも `SupplementaryGroups=docker` を入れてあるが、手動で `docker` を
+叩けるようにもしておくと切り分けが楽になる。
+
+### メモリの余地
+
+MC が実 RSS で約 2.7GB を使う 4GB 機なので、`mcadmind` に残る余地は多くない。
+zip の作成と展開は常に 32KB のバッファで流し、ファイル全体をメモリに載せない
+実装にしてある。それでも、バックアップ中に MC が重くなるのは避けられない。
+**人がいない時間帯に取るのが望ましい。**
+
+### 到達経路
+
+`ADMIN_ADDR` は `0.0.0.0:8787`。`compose.yaml` が 25565 を `0.0.0.0` に
+バインドしているのと同じ理由で、到達境界は Tailscale が持つ。
+`127.0.0.1` にすると Mac のブラウザから開けず、原因も分かりにくい。
+
+**tailnet に参加できること ≠ 管理してよいこと**なので、`ADMIN_TOKEN` を別の層として
+必ず設定する（`MC_WHITELIST` が別レイヤーの制御として要るのと同じ構図）。
