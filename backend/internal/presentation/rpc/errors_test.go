@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
 )
@@ -27,6 +28,10 @@ func TestToConnectError(t *testing.T) {
 		{"見つからない", worldfs.ErrNotFound, connect.CodeNotFound},
 		{"既に存在する", worldfs.ErrAlreadyExists, connect.CodeAlreadyExists},
 		{"名前が不正", world.ErrInvalidName, connect.CodeInvalidArgument},
+		{"確認名の不一致", world.ErrConfirmationMismatch, connect.CodeInvalidArgument},
+		{"容量不足", worldctl.ErrInsufficientSpace, connect.CodeResourceExhausted},
+		{"見つからない（ドメイン）", world.ErrNotFound, connect.CodeNotFound},
+		{"既に存在（ドメイン）", world.ErrAlreadyExists, connect.CodeAlreadyExists},
 		{"中断", context.Canceled, connect.CodeCanceled},
 		{"時間切れ", context.DeadlineExceeded, connect.CodeDeadlineExceeded},
 		{"想定外", errors.New("何かが壊れた"), connect.CodeInternal},
@@ -57,6 +62,32 @@ func TestToConnectErrorUnwraps(t *testing.T) {
 	wrapped := errors.Join(errors.New("文脈"), operations.ErrBusy)
 	if got := connect.CodeOf(toConnectError(wrapped)); got != connect.CodeFailedPrecondition {
 		t.Errorf("コードが %v", got)
+	}
+}
+
+// 利用者が自分で対処できるエラーは、内部エラーに丸めない。
+// 打ち間違いに対して「サーバーのログを確認してください」と返すのは不親切。
+func TestActionableErrorsKeepTheirMessage(t *testing.T) {
+	t.Parallel()
+
+	tests := []error{
+		world.ErrConfirmationMismatch,
+		world.ErrActiveWorld,
+		world.ErrInvalidName,
+		worldctl.ErrInsufficientSpace,
+	}
+
+	for _, err := range tests {
+		t.Run(err.Error(), func(t *testing.T) {
+			t.Parallel()
+			got := toConnectError(err)
+			if strings.Contains(got.Error(), "サーバーのログ") {
+				t.Errorf("内部エラーに丸められている: %v", got)
+			}
+			if !strings.Contains(got.Error(), err.Error()) {
+				t.Errorf("元のメッセージが失われている: %v", got)
+			}
+		})
 	}
 }
 
