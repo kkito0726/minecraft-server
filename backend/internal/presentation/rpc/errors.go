@@ -29,7 +29,8 @@ func toConnectError(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, world.ErrActiveWorld):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
-	case errors.Is(err, worldfs.ErrNotFound), errors.Is(err, world.ErrNotFound):
+	case errors.Is(err, worldfs.ErrNotFound), errors.Is(err, world.ErrNotFound),
+		errors.Is(err, backup.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, worldfs.ErrAlreadyExists), errors.Is(err, world.ErrAlreadyExists):
 		return connect.NewError(connect.CodeAlreadyExists, err)

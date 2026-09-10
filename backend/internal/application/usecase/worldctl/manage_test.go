@@ -3,6 +3,7 @@ package worldctl_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -397,5 +398,31 @@ func TestInvalidNamesRejected(t *testing.T) {
 	}
 	if _, err := h.uc.Delete(ctx, bad, bad, true); err == nil {
 		t.Error("Delete が不正な名前を受理した")
+	}
+}
+
+// 複製の間はロックに save-off の事実が記録される。
+//
+// 記録が無いと、複製の途中でプロセスが落ちたとき、次の起動で
+// 「save-off が残っているかもしれない」と気づく手段が無くなる。
+func TestCloneRecordsSaveDisabled(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, "world")
+
+	handle, err := h.uc.Clone(context.Background(), "world", "backup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap := h.wait(t, handle.ID()); snap.State != operation.StateSucceeded {
+		t.Fatalf("失敗した: %s", snap.ErrorMessage)
+	}
+
+	history := h.lock.saveDisabledHistory()
+	if !slices.Contains(history, true) {
+		t.Fatalf("SaveDisabled の記録が %v。途中で真になるはず", history)
+	}
+	if history[len(history)-1] {
+		t.Errorf("SaveDisabled の記録が %v。最後は偽のはず", history)
 	}
 }

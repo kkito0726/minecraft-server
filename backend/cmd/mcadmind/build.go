@@ -14,7 +14,9 @@ import (
 
 	"github.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1/mcadminv1connect"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/reconcile"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/backupctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/serverctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/config/dotenv"
@@ -22,6 +24,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/container/compose"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/leveldat"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/backupfs"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/lockfile"
 	adminhttp "github.com/kkito0726/minecraft-server/backend/internal/presentation/http"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/http/auth"
@@ -34,12 +37,14 @@ const (
 	keyAdminToken     = "ADMIN_TOKEN"
 	keyAdminAddr      = "ADMIN_ADDR"
 	keyAdminDockerBin = "ADMIN_DOCKER_BIN"
+	keyAdminBackupDir = "ADMIN_BACKUP_DIR"
 )
 
 // 既定値。
 const (
 	defaultAddr        = "0.0.0.0:8787"
 	defaultDockerBin   = "docker"
+	defaultBackupDir   = "backups"
 	composeProjectName = "minecraft-server"
 	composeService     = "mc"
 	dataDirName        = "data"
@@ -78,7 +83,7 @@ func build(ctx context.Context, opts options, logger *slog.Logger) (*app, error)
 
 	config := dotenv.NewAdapter(filepath.Join(opts.projectDir, ".env"))
 
-	settings, err := loadSettings(ctx, config)
+	settings, err := loadSettings(ctx, opts.projectDir, config)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +109,7 @@ type deps struct {
 	status     *serverctl.StatusUseCase
 	lifecycle  *serverctl.LifecycleUseCase
 	worlds     *worldctl.UseCase
+	backups    *backupctl.UseCase
 	ops        *operations.Manager
 	reconciler *reconcile.Reconciler
 }
@@ -116,6 +122,7 @@ type infra struct {
 	levels  *leveldat.Adapter
 	worlds  *worldfs.Repository
 	lock    *lockfile.Lock
+	backups *backupfs.Store
 }
 
 // buildInfra はインフラ層を組み立てる。
@@ -135,12 +142,21 @@ func buildInfra(opts options, s settings) (infra, error) {
 		return infra{}, err
 	}
 
+	backupStore, err := backupfs.New(backupfs.Config{
+		ProjectDir: opts.projectDir,
+		BackupDir:  s.backupDir,
+	})
+	if err != nil {
+		return infra{}, err
+	}
+
 	return infra{
 		runtime: runtime,
 		console: rcon.NewClient(runtime),
 		levels:  levels,
 		worlds:  worldRepo,
 		lock:    lockfile.NewLock(filepath.Join(dataDir, lockFileName)),
+		backups: backupStore,
 	}, nil
 }
 
@@ -194,6 +210,14 @@ func buildUseCases(
 		return deps{}, err
 	}
 
+	backups, err := backupctl.New(backupctl.Config{
+		Runtime: in.runtime, Console: in.console, Store: in.backups,
+		Config: config, Levels: in.levels, Operations: ops,
+	})
+	if err != nil {
+		return deps{}, err
+	}
+
 	reconciler, err := reconcile.New(reconcile.Config{
 		Console: in.console,
 		Health:  healthChecker{runtime: in.runtime},
@@ -205,7 +229,7 @@ func buildUseCases(
 	}
 
 	return deps{
-		status: status, lifecycle: lifecycle, worlds: worlds,
+		status: status, lifecycle: lifecycle, worlds: worlds, backups: backups,
 		ops: ops, reconciler: reconciler,
 	}, nil
 }
@@ -215,9 +239,11 @@ type settings struct {
 	token     string
 	addr      string
 	dockerBin string
+	// backupDir はアーカイブの保管先。相対パスはプロジェクトディレクトリ基準。
+	backupDir string
 }
 
-func loadSettings(ctx context.Context, config *dotenv.Adapter) (settings, error) {
+func loadSettings(ctx context.Context, projectDir string, config *dotenv.Adapter) (settings, error) {
 	snapshot, err := config.Load(ctx)
 	if err != nil {
 		return settings{}, err
@@ -245,7 +271,26 @@ func loadSettings(ctx context.Context, config *dotenv.Adapter) (settings, error)
 		return settings{}, fmt.Errorf("docker が見つかりません (%s): %w", dockerBin, err)
 	}
 
-	return settings{token: token, addr: addr, dockerBin: resolved}, nil
+	return settings{
+		token: token, addr: addr, dockerBin: resolved,
+		backupDir: backupDirFrom(snapshot, projectDir),
+	}, nil
+}
+
+// backupDirFrom は保管先を解決する。
+//
+// 相対パスはプロジェクトディレクトリ基準で解決する。systemd 配下では
+// 作業ディレクトリがリポジトリと一致しないため、プロセスの cwd を
+// 基準にすると保管先が思わぬ場所になる。
+func backupDirFrom(snapshot port.ConfigSnapshot, projectDir string) string {
+	dir, _ := snapshot.Get(keyAdminBackupDir)
+	if dir == "" {
+		dir = defaultBackupDir
+	}
+	if filepath.IsAbs(dir) {
+		return dir
+	}
+	return filepath.Join(projectDir, dir)
 }
 
 func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, error) {
@@ -267,6 +312,10 @@ func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, er
 	worldPath, worldHandler := mcadminv1connect.NewWorldServiceHandler(
 		rpc.NewWorldHandler(d.worlds), withAuth)
 	handlers[worldPath] = worldHandler
+
+	backupPath, backupHandler := mcadminv1connect.NewBackupServiceHandler(
+		rpc.NewBackupHandler(d.backups), withAuth)
+	handlers[backupPath] = backupHandler
 
 	assets, err := webui.Assets()
 	if err != nil {

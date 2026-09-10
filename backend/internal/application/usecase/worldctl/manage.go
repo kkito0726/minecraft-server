@@ -163,15 +163,21 @@ func (u *UseCase) runClone(
 
 	// 稼働中なら保存を止めてから複製する。save-on は defer で必ず戻す。
 	// 忘れると以降の変更がディスクに書かれないのに症状が出ない。
+	//
+	// 記録は save-off の前に立て、save-on の後に降ろす。逆順にすると、
+	// その隙間でプロセスが落ちたときに「保存は正常」と誤って記録され、
+	// 次の起動での復旧の手がかりが消える。
 	if u.shouldPauseSaving(ctx) {
-		if err := u.cfg.Console.SaveOff(ctx); err != nil {
-			return err
-		}
+		r.MarkSaveDisabled(true)
 		defer func() {
 			if err := u.cfg.Console.SaveOn(ctx); err != nil {
 				r.Logf(operation.LevelError, "保存の再開に失敗しました: %v", err)
 			}
+			r.MarkSaveDisabled(false)
 		}()
+		if err := u.cfg.Console.SaveOff(ctx); err != nil {
+			return err
+		}
 		if err := u.cfg.Console.SaveAll(ctx); err != nil {
 			return err
 		}

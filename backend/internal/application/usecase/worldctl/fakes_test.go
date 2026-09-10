@@ -274,3 +274,63 @@ type fakeLevels struct{ version shared.WorldVersion }
 
 func (f *fakeLevels) ReadWorld(context.Context, world.Name) shared.WorldVersion { return f.version }
 func (f *fakeLevels) Read(context.Context, io.Reader) shared.WorldVersion       { return f.version }
+
+// fakeLock は排他の偽物。save-off の記録がいつ切り替わったかを覚える。
+//
+// MarkSaveDisabled は「複製の途中で落ちたことを次の起動で検出する」
+// ための唯一の手段なので、呼ばれていることを検証できるようにする。
+type fakeLock struct {
+	mu       sync.Mutex
+	meta     port.LockMeta
+	held     bool
+	saveFlag []bool
+}
+
+func (f *fakeLock) Acquire(meta port.LockMeta) (port.LockHandle, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.held {
+		return nil, port.ErrLocked
+	}
+	f.held = true
+	f.meta = meta
+	f.saveFlag = append(f.saveFlag, meta.SaveDisabled)
+	return &fakeHandle{lock: f}, nil
+}
+
+func (f *fakeLock) Update(meta port.LockMeta) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.meta = meta
+	f.saveFlag = append(f.saveFlag, meta.SaveDisabled)
+	return nil
+}
+
+func (f *fakeLock) Inspect() (port.LockMeta, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.meta, f.held, nil
+}
+
+func (f *fakeLock) IsStale(port.LockMeta) bool { return false }
+
+func (f *fakeLock) ForceRemove() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.held = false
+	return nil
+}
+
+func (f *fakeLock) saveDisabledHistory() []bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]bool, len(f.saveFlag))
+	copy(out, f.saveFlag)
+	return out
+}
+
+type fakeHandle struct{ lock *fakeLock }
+
+func (h *fakeHandle) Release() error { return h.lock.ForceRemove() }

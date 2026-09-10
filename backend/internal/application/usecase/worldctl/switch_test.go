@@ -3,7 +3,6 @@ package worldctl_test
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/server"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/shared"
-	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/lockfile"
 )
 
 type harness struct {
@@ -24,6 +22,7 @@ type harness struct {
 	config  *fakeConfig
 	runtime *fakeRuntime
 	con     *fakeConsole
+	lock    *fakeLock
 }
 
 func (h *harness) console() *fakeConsole { return h.con }
@@ -42,9 +41,8 @@ func newHarness(t *testing.T, running bool, names ...string) *harness {
 	worlds := newWorlds(rec, names...)
 	config := newConfig(rec, map[string]string{"MC_LEVEL": "world", "MC_VERSION": "26.2"})
 
-	mgr, err := operations.NewManager(operations.Config{
-		Lock: lockfile.NewLock(filepath.Join(t.TempDir(), ".lock")),
-	})
+	lock := &fakeLock{}
+	mgr, err := operations.NewManager(operations.Config{Lock: lock})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +57,7 @@ func newHarness(t *testing.T, running bool, names ...string) *harness {
 
 	return &harness{
 		uc: uc, ops: mgr, rec: rec, worlds: worlds,
-		config: config, runtime: runtime, con: console,
+		config: config, runtime: runtime, con: console, lock: lock,
 	}
 }
 

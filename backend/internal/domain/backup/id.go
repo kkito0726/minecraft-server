@@ -38,3 +38,6 @@ func (id ID) String() string { return id.value }
 
 // IsValid は有効な ID かを返す。ゼロ値は無効。
 func (id ID) IsValid() bool { return id.value != "" }
+
+// ErrNotFound は指定されたバックアップが保管先に無いことを表す。
+var ErrNotFound = errors.New("バックアップが見つかりません")

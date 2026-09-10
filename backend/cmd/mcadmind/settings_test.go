@@ -11,7 +11,7 @@ import (
 )
 
 // writeEnv は .env を用意する。
-func writeEnv(t *testing.T, lines string) *dotenv.Adapter {
+func writeEnv(t *testing.T, lines string) (string, *dotenv.Adapter) {
 	t.Helper()
 
 	dir := t.TempDir()
@@ -19,7 +19,16 @@ func writeEnv(t *testing.T, lines string) *dotenv.Adapter {
 	if err := os.WriteFile(path, []byte(lines), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return dotenv.NewAdapter(path)
+	return dir, dotenv.NewAdapter(path)
+}
+
+// loadFrom は一時的な .env から設定を読む。
+func loadFrom(t *testing.T, lines string) (settings, string, error) {
+	t.Helper()
+
+	dir, config := writeEnv(t, lines)
+	s, err := loadSettings(context.Background(), dir, config)
+	return s, dir, err
 }
 
 // ADMIN_TOKEN が無ければ起動を止め、生成方法を案内する。
@@ -33,7 +42,7 @@ func TestLoadSettingsRequiresToken(t *testing.T) {
 		"MC_VERSION=26.2\n",
 		"MC_VERSION=26.2\nADMIN_TOKEN=\n",
 	} {
-		_, err := loadSettings(context.Background(), writeEnv(t, env))
+		_, _, err := loadFrom(t, env)
 		if err == nil {
 			t.Fatal("エラーになるはず")
 		}
@@ -50,8 +59,7 @@ func TestLoadSettingsRequiresToken(t *testing.T) {
 func TestLoadSettingsDefaults(t *testing.T) {
 	t.Parallel()
 
-	got, err := loadSettings(context.Background(),
-		writeEnv(t, "ADMIN_TOKEN="+strings.Repeat("a", 64)+"\n"))
+	got, _, err := loadFrom(t, "ADMIN_TOKEN="+strings.Repeat("a", 64)+"\n")
 	if err != nil {
 		t.Fatalf("loadSettings に失敗: %v", err)
 	}
@@ -76,7 +84,7 @@ func TestLoadSettingsOverrides(t *testing.T) {
 	env := "ADMIN_TOKEN=" + strings.Repeat("b", 64) + "\n" +
 		"ADMIN_ADDR=127.0.0.1:9999\n"
 
-	got, err := loadSettings(context.Background(), writeEnv(t, env))
+	got, _, err := loadFrom(t, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +101,7 @@ func TestLoadSettingsRequiresDocker(t *testing.T) {
 	env := "ADMIN_TOKEN=" + strings.Repeat("c", 64) + "\n" +
 		"ADMIN_DOCKER_BIN=definitely-not-a-real-binary-name\n"
 
-	_, err := loadSettings(context.Background(), writeEnv(t, env))
+	_, _, err := loadFrom(t, env)
 	if err == nil {
 		t.Fatal("エラーになるはず")
 	}
@@ -106,8 +114,9 @@ func TestLoadSettingsRequiresDocker(t *testing.T) {
 func TestLoadSettingsMissingFile(t *testing.T) {
 	t.Parallel()
 
-	adapter := dotenv.NewAdapter(filepath.Join(t.TempDir(), ".env"))
-	if _, err := loadSettings(context.Background(), adapter); err == nil {
+	dir := t.TempDir()
+	adapter := dotenv.NewAdapter(filepath.Join(dir, ".env"))
+	if _, err := loadSettings(context.Background(), dir, adapter); err == nil {
 		t.Error("エラーになるはず")
 	}
 }
@@ -140,12 +149,52 @@ func TestBuildInfra(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := buildInfra(options{projectDir: dir}, settings{dockerBin: "/bin/echo"})
+	got, err := buildInfra(options{projectDir: dir}, settings{
+		dockerBin: "/bin/echo",
+		backupDir: filepath.Join(dir, "backups"),
+	})
 	if err != nil {
 		t.Fatalf("buildInfra に失敗: %v", err)
 	}
 	if got.runtime == nil || got.console == nil || got.levels == nil ||
-		got.worlds == nil || got.lock == nil {
+		got.worlds == nil || got.lock == nil || got.backups == nil {
 		t.Errorf("組み立てが不完全: %+v", got)
+	}
+	if got.backups.Directory() != filepath.Join(dir, "backups") {
+		t.Errorf("保管先が %q", got.backups.Directory())
+	}
+}
+
+// 保管先の既定は プロジェクトディレクトリ配下の backups/。
+//
+// 相対パスをプロセスの作業ディレクトリ基準で解決すると、systemd 配下で
+// 思わぬ場所にバックアップが溜まる。基準は必ずプロジェクトディレクトリ。
+func TestLoadSettingsResolvesBackupDir(t *testing.T) {
+	t.Parallel()
+
+	token := "ADMIN_TOKEN=" + strings.Repeat("d", 64) + "\n"
+
+	got, dir, err := loadFrom(t, token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(dir, "backups"); got.backupDir != want {
+		t.Errorf("backupDir が %q。%q のはず", got.backupDir, want)
+	}
+
+	got, dir, err = loadFrom(t, token+"ADMIN_BACKUP_DIR=保管\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(dir, "保管"); got.backupDir != want {
+		t.Errorf("backupDir が %q。%q のはず", got.backupDir, want)
+	}
+
+	got, _, err = loadFrom(t, token+"ADMIN_BACKUP_DIR=/mnt/usb/backups\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.backupDir != "/mnt/usb/backups" {
+		t.Errorf("絶対パスが %q。そのまま使うはず", got.backupDir)
 	}
 }
