@@ -60,6 +60,12 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: backend/go.sum
 
+      # //go:embed all:dist は対象が 0 件だとコンパイルに失敗する。
+      # dist/ の中身は生成物なので追跡しておらず、.gitkeep だけを追跡している。
+      # ここを飛ばすと go vet の時点で「no matching files found」で落ちる。
+      - name: 埋め込み先を用意する
+        run: make ensure-embed
+
       - name: gofmt の確認
         working-directory: backend
         run: |
@@ -136,6 +142,9 @@ jobs:
 
       - working-directory: frontend
         run: npm ci
+
+      - name: 埋め込み先を用意する
+        run: make ensure-embed
 
       - name: Pi 5 向けにクロスビルドする
         run: make build-arm64
