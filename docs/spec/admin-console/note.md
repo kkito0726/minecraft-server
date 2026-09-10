@@ -134,6 +134,21 @@ unzip -qo backup-26.2-20260901-003000.zip
 docker compose up -d
 ```
 
+### 実機で測ったこと（2026-09-10、Paper 26.2 稼働中）
+
+| 確認したこと | 結果 |
+|---|---|
+| 保存が有効な状態で `save-on` を再送 | `Saving is already turned on` を返して終了コード 0。**サーバー側のログには何も出ない**。冪等であることを実測で確認 |
+| HOT 取得で実際に届いたコマンド | `Automatic saving is now disabled` → `Saved the game` → `Automatic saving is now enabled` の 3 行がサーバーログに並ぶ |
+| 27MB のワールドの zip | 11.4MB（`flate.BestSpeed`）。取得は 1 秒未満 |
+| 取得したアーカイブのルート集合 | `data/world` `data/plugins` `data/config` `data/bukkit.yml` `data/spigot.yml` の 5 つと完全一致。`server.properties` は含まれない |
+| 展開して稼働中の `data/world` と比較 | 差分は `session.lock` のみ（71 対 72 ファイル） |
+| 取得の開始直後に `kill -9` | ロックファイルが**サイズ 0 で残る**（`O_CREATE｜O_EXCL` の直後、メタデータ書き込み前）。再起動時に中断として検出され、ロックは削除され、`save-on` が再送された |
+
+`save-on` がログに出ないという性質は重要である。「起動時に無条件で再送する」という
+回復設計は、**送ったことがサーバーログから確認できない**ことを前提にしている。
+確認できるのは `rcon-cli` の終了コードと戻り値の文言だけ。
+
 ### 手順から抽出した不変条件
 
 1. **`save-on` を忘れると以降の変更がディスクに書かれない。しかも症状が何も出ない。** docs 自身が `trap` の使用を指示している。
