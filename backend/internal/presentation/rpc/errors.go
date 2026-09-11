@@ -11,6 +11,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/backupctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/archive"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
 )
 
@@ -49,13 +50,35 @@ func toConnectError(err error) error {
 		errors.Is(err, backup.ErrInvalidID),
 		errors.Is(err, backup.ErrInvalidRetentionPolicy):
 		return connect.NewError(connect.CodeInvalidArgument, err)
+	// 安全でないアーカイブは利用者が包み直せる。エントリ名は
+	// 利用者自身の zip から来たものなので、伝えても内部は漏れない。
+	case errors.Is(err, archive.ErrUnsafeEntry):
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, context.Canceled):
 		return connect.NewError(connect.CodeCanceled, errors.New("操作が中断されました"))
 	case errors.Is(err, context.DeadlineExceeded):
 		return connect.NewError(connect.CodeDeadlineExceeded, errors.New("時間内に完了しませんでした"))
 	default:
 		// 想定外。詳細はログにのみ残し、画面には一般的な文言を出す。
-		return connect.NewError(connect.CodeInternal,
-			errors.New("処理に失敗しました。サーバーのログを確認してください"))
+		// 原因は internalError が運び、LoggingInterceptor が記録する。
+		return connect.NewError(connect.CodeInternal, &internalError{cause: err})
 	}
 }
+
+// internalError は画面に伏せた原因を、記録のために運ぶ。
+//
+// Connect はエラーの Error() をそのままクライアントへ送る。だから
+// メッセージは一般的な文言でなければならない一方、原因を捨てると
+// サーバー側でも何が起きたか分からなくなる。表に出す文字列と、
+// 内部に残す原因を別々に持たせることで両立させる。
+type internalError struct {
+	cause error
+}
+
+// Error はクライアントへ送られる文言。内部の詳細を含めてはいけない。
+func (e *internalError) Error() string {
+	return "処理に失敗しました。サーバーのログを確認してください"
+}
+
+// Unwrap は伏せた原因を返す。記録にのみ使う。
+func (e *internalError) Unwrap() error { return e.cause }

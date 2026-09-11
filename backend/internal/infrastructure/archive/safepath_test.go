@@ -85,3 +85,53 @@ func TestCheckMode(t *testing.T) {
 		}
 	}
 }
+
+/*
+zip -r out.zip data のように data ディレクトリごと固めると、
+アーカイブに "data/" というエントリが入る。
+
+path.Clean は末尾の / を落とすので "data/" は "data" になり、
+"data/" 配下かどうかの判定に落ちてしまう。1 つでも違反があれば
+アーカイブ全体を拒否する作りなので、**zip 全体が復元できなくなる**。
+
+手で作った zip を持ち込んだときにだけ起きる。管理コンソール自身が
+作るアーカイブにはこのエントリが無いため、気づく機会が無かった。
+*/
+func TestSafeEntryNameAcceptsBareDataDirectory(t *testing.T) {
+	t.Parallel()
+
+	for _, input := range []string{"data/", `data\`, "./data/"} {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := safeEntryName(input)
+			if err != nil {
+				t.Fatalf("%q を拒否した: %v", input, err)
+			}
+			if got != "data" {
+				t.Errorf("正規化の結果が %q（期待 %q）", got, "data")
+			}
+		})
+	}
+}
+
+// ディレクトリとして書かれていない "data" は data/ の外にある
+// ただのファイルなので、通してはいけない。
+func TestSafeEntryNameRejectsFileNamedData(t *testing.T) {
+	t.Parallel()
+
+	if _, err := safeEntryName("data"); !errors.Is(err, ErrUnsafeEntry) {
+		t.Errorf("data という名前のファイルを受理した: %v", err)
+	}
+}
+
+// 緩めた結果、別のディレクトリまで通していないこと。
+func TestSafeEntryNameStillRejectsOtherRoots(t *testing.T) {
+	t.Parallel()
+
+	for _, input := range []string{"MyWorld/", "plugins/", "/", "../data/"} {
+		if _, err := safeEntryName(input); !errors.Is(err, ErrUnsafeEntry) {
+			t.Errorf("%q を受理した: %v", input, err)
+		}
+	}
+}

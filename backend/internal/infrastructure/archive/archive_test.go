@@ -452,3 +452,48 @@ func writeFiles(t *testing.T, root string, files map[string]string) {
 		}
 	}
 }
+
+// zip -r out.zip data で作ったアーカイブが丸ごと拒否されないこと。
+func TestInspectAcceptsArchiveWithBareDataEntry(t *testing.T) {
+	t.Parallel()
+
+	src := writeZipOrdered(t, []zipEntry{
+		{name: "data/"},
+		{name: "data/world/"},
+		{name: "data/world/level.dat", body: "nbt"},
+	})
+
+	m, err := archive.Inspect(context.Background(), src)
+	if err != nil {
+		t.Fatalf("拒否された: %v", err)
+	}
+	if m.LevelDir != "world" {
+		t.Errorf("ワールド名を取れていない: %q", m.LevelDir)
+	}
+	// ディレクトリのエントリは数に入れない。
+	if m.EntryCount != 1 {
+		t.Errorf("エントリ数が %d（期待 1）", m.EntryCount)
+	}
+}
+
+func TestExtractAcceptsArchiveWithBareDataEntry(t *testing.T) {
+	t.Parallel()
+
+	src := writeZipOrdered(t, []zipEntry{
+		{name: "data/"},
+		{name: "data/world/"},
+		{name: "data/world/level.dat", body: "nbt"},
+	})
+	dest := t.TempDir()
+
+	if err := archive.Extract(context.Background(), src, dest, archive.ExtractOptions{}, nil); err != nil {
+		t.Fatalf("展開できなかった: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(dest, "data/world/level.dat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "nbt" {
+		t.Errorf("中身が違う: %q", got)
+	}
+}
