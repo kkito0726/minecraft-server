@@ -47,7 +47,6 @@ export function useOperationStream(source: OperationSource): OperationStream {
   // 購読の副作用が張り直されてストリームが切れる。
   const lastSeq = useRef(0n)
   lastSeq.current = state.lastSeq
-
   useDiscovery(source, watching, dispatch, setWatching)
   useSubscription(source, watching, lastSeq, dispatch)
 
@@ -134,7 +133,14 @@ function useSubscription(
     const controller = new AbortController()
     const timers = new Set<ReturnType<typeof setTimeout>>()
 
-    void follow(source, operationId, lastSeq, dispatch, controller.signal, timers)
+    void follow({
+      source,
+      operationId,
+      lastSeq,
+      dispatch,
+      signal: controller.signal,
+      timers,
+    })
 
     return () => {
       controller.abort()
@@ -149,40 +155,60 @@ function useSubscription(
 /**
  * 切れるまで読み、切れたら待って続きから読み直す。
  *
- * 終わり方が 3 通りあり、それぞれ扱いが違う。
+ * 終わり方が 4 通りあり、それぞれ扱いが違う。
  *
- *  1. 反復子が正常に終わる → 操作が終端に達してサーバーが閉じた。
- *     **繋ぎ直さない。** ここで繋ぎ直すと、接続 → 再送 → 切断 を
- *     延々と繰り返してサーバーを叩き続ける。
- *  2. 自分の中断による Canceled → 画面から外れた。何もしない。
- *  3. それ以外の例外 → 本当に切れた。待ってから続きを取り直す。
+ *  1. 反復子が正常に終わり、**操作も終端に達している** → サーバーが
+ *     終わったから閉じた。繋ぎ直さない。ここで繋ぎ直すと、接続 →
+ *     再送 → 切断 を延々と繰り返してサーバーを叩き続ける。
+ *  2. 反復子が正常に終わったが、操作はまだ終端に達していない →
+ *     終わったから閉じたのではない。**続きから取り直す。**
+ *     サーバーは購読者ごとのバッファが溢れると最後のイベントを
+ *     送れないまま閉じる。展開の進捗はファイル 1 つごとに出るので、
+ *     ファイル数の多いワールドでは現実に起きる。ここで諦めると、
+ *     操作は終わっているのに画面が実行中のまま固まり、変更系の
+ *     ボタンが全部押せなくなる。再読み込みするまで戻らない。
+ *  3. 自分の中断による Canceled → 画面から外れた。何もしない。
+ *  4. 操作が見つからない → 履歴からも消えた。追いかけようがない。
+ *  5. それ以外の例外 → 本当に切れた。待ってから続きを取り直す。
  */
-async function follow(
-  source: OperationSource,
-  operationId: string,
-  lastSeq: { current: bigint },
-  dispatch: Dispatch<OperationAction>,
-  signal: AbortSignal,
-  timers: Set<ReturnType<typeof setTimeout>>,
-): Promise<void> {
+async function follow(args: {
+  source: OperationSource
+  operationId: string
+  lastSeq: { current: bigint }
+  dispatch: Dispatch<OperationAction>
+  signal: AbortSignal
+  timers: Set<ReturnType<typeof setTimeout>>
+}): Promise<void> {
+  const { source, operationId, lastSeq, dispatch, signal, timers } = args
   let delay = BACKOFF_START_MS
 
   while (!signal.aborted) {
     try {
+      // 終端に達したかは、受け取ったイベントそのものから判断する。
+      // 描画後の state を見ると、最後のイベントを処理した直後には
+      // まだ更新されておらず、終わっているのに繋ぎ直してしまう。
+      let sawTerminal = false
       for await (const event of source.watch(operationId, lastSeq.current, signal)) {
         if (signal.aborted) {
           return
         }
         dispatch({ type: 'event', event })
+        sawTerminal = event.snapshot !== undefined && isTerminal(event.snapshot)
       }
-      return
+      if (sawTerminal) {
+        return
+      }
     } catch (err) {
       if (signal.aborted || isCanceled(err)) {
         return
       }
-      await sleep(delay, timers)
-      delay = Math.min(delay * 2, BACKOFF_MAX_MS)
+      if (isNotFound(err)) {
+        return
+      }
     }
+
+    await sleep(delay, timers)
+    delay = Math.min(delay * 2, BACKOFF_MAX_MS)
   }
 }
 
@@ -198,4 +224,14 @@ function sleep(ms: number, timers: Set<ReturnType<typeof setTimeout>>): Promise<
 
 function isCanceled(err: unknown): boolean {
   return err instanceof ConnectError && err.code === Code.Canceled
+}
+
+/**
+ * 操作が履歴からも消えた。
+ *
+ * 追いかける先が無いので繋ぎ直さない。繰り返しても同じ答えしか
+ * 返ってこないため、待って叩き続けるだけになる。
+ */
+function isNotFound(err: unknown): boolean {
+  return err instanceof ConnectError && err.code === Code.NotFound
 }

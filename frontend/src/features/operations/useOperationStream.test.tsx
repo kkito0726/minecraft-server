@@ -109,7 +109,9 @@ describe('再接続', () => {
         events: [event(1, '一'), event(2, '二')],
         breaksWith: new ConnectError('切れました', Code.Unavailable),
       },
-      { events: [event(3, '三')] },
+      // 2 本目で終端に達する。ここが実行中のままだと、閉じられた理由が
+      // 分からないので取り直しが続く（それが正しい振る舞い）。
+      { events: [event(3, '三', op({ state: OperationState.SUCCEEDED }))] },
     ])
     const { result } = renderHook(() => useOperationStream(source))
 
@@ -320,5 +322,83 @@ describe('別の経路で始まった操作', () => {
 
     expect(lookups).toBe(before)
     expect(result.current.log).toHaveLength(1)
+  })
+})
+
+/*
+サーバーが「終端に達した」以外の理由でストリームを閉じることがある。
+
+購読者ごとのバッファが溢れると、サーバーは最後のイベントを送れないまま
+チャネルを閉じる。展開の進捗はファイル 1 つごとに 1 イベント出るので、
+ファイル数の多いワールドを復元しているあいだにタブが重いと現実に起きる。
+
+このとき正常終了として繋ぎ直さないと、画面は実行中のまま止まる。
+**操作は終わっているのに、変更系のボタンが全部押せないまま戻らない。**
+再読み込みするまで直らないので、利用者には原因が分からない。
+*/
+describe('終端に達していないのに閉じられたとき', () => {
+  it('続きから繋ぎ直す', async () => {
+    const running = op({ state: OperationState.RUNNING, stepIndex: 2 })
+    const done = op({ state: OperationState.SUCCEEDED, stepIndex: 4 })
+
+    const source = sourceOf(running, [
+      // 1 本目: 実行中のまま閉じられる（最後のイベントが落ちた状態）
+      { events: [event(1, '停止しています', running)] },
+      // 2 本目: 繋ぎ直すと続きが届く
+      { events: [event(2, '完了しました', done)] },
+    ])
+
+    const { result } = renderHook(() => useOperationStream(source))
+
+    // まず実行中として映る。ここで止まってしまうのが今回の不具合。
+    await waitFor(() => expect(result.current.operation?.stepIndex).toBe(2))
+    expect(result.current.isBusy).toBe(true)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000)
+    })
+
+    await waitFor(() =>
+      expect(result.current.operation?.state).toBe(OperationState.SUCCEEDED),
+    )
+    expect(result.current.isBusy).toBe(false)
+    // 最初からではなく、受け取った続きから取り直している。
+    // サーバーは fromSeq 以上を返すので 1 件重なるが、reducer が落とす。
+    expect(source.calls).toEqual([0n, 1n])
+  })
+
+  it('終端に達していれば繋ぎ直さない', async () => {
+    const done = op({ state: OperationState.SUCCEEDED, stepIndex: 4 })
+    const source = sourceOf(done, [{ events: [event(1, '完了しました', done)] }])
+
+    const { result } = renderHook(() => useOperationStream(source))
+
+    await waitFor(() => expect(result.current.operation?.state).toBe(OperationState.SUCCEEDED))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000)
+    })
+    // 繋ぎ直すと、接続 → 再送 → 切断 を延々と繰り返すことになる。
+    expect(source.calls).toEqual([0n])
+  })
+
+  // 1 件も受け取らずに閉じられた場合も、諦めずに取り直す。
+  it('1 件も届かずに閉じられても繋ぎ直す', async () => {
+    const running = op({ state: OperationState.RUNNING })
+    const done = op({ state: OperationState.SUCCEEDED })
+
+    const source = sourceOf(running, [
+      { events: [] },
+      { events: [event(1, '完了しました', done)] },
+    ])
+
+    const { result } = renderHook(() => useOperationStream(source))
+
+    await waitFor(() => expect(source.calls).toHaveLength(1))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000)
+    })
+    await waitFor(() =>
+      expect(result.current.operation?.state).toBe(OperationState.SUCCEEDED),
+    )
   })
 })

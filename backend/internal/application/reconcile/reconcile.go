@@ -150,6 +150,35 @@ func (r *Reconciler) sendSaveOn(ctx context.Context, reason string) {
 	r.logger.Info("save-on を送信しました", "reason", reason)
 }
 
+/*
+savingIsIntentionallyOff は、実行中の操作が意図して保存を止めているかを返す。
+
+hot バックアップは save-off のまま zip を固める。その間コンテナは
+healthy のままなので通常は遷移が起きないが、I/O 負荷でヘルスチェックが
+一度落ちて戻ると「非 healthy → healthy」になる。Pi では起こりうる。
+
+そこで save-on を送ると、**zip を書いている最中に保存が再開される**。
+書き込み途中の region ファイルが取り込まれ、静かに壊れたバックアップが
+できあがる。save-off がそもそも防いでいたはずのものになる。
+
+判断できないとき（ロックを読めない、ロックが無い）は送る側に倒す。
+送りすぎは冪等なので無害だが、送らなすぎは save-off の残留につながる。
+*/
+func (r *Reconciler) savingIsIntentionallyOff() bool {
+	if r.cfg.Lock == nil {
+		return false
+	}
+	meta, found, err := r.cfg.Lock.Inspect()
+	if err != nil || !found {
+		return false
+	}
+	// 死んだプロセスのロックは中断の跡。むしろ送らないといけない。
+	if r.cfg.Lock.IsStale(meta) {
+		return false
+	}
+	return meta.SaveDisabled
+}
+
 // Loop は healthy への遷移を監視して save-on を送り直す。
 //
 // ctx がキャンセルされるまで動き続ける。
@@ -177,7 +206,7 @@ func (r *Reconciler) Loop(ctx context.Context) {
 
 		// 非 healthy から healthy への遷移でだけ送る。
 		// 合格が続く間に送り続けると、無駄な RCON 呼び出しが増える。
-		if healthy && !wasHealthy {
+		if healthy && !wasHealthy && !r.savingIsIntentionallyOff() {
 			r.sendSaveOn(ctx, "healthy への遷移")
 		}
 		wasHealthy = healthy

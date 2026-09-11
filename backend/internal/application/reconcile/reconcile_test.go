@@ -278,3 +278,77 @@ func TestNewValidatesConfig(t *testing.T) {
 }
 
 var _ = server.SavingAssumedOn
+
+/*
+バックアップの最中に save-on を送り返してはいけない。
+
+hot バックアップは save-off でワールドの保存を止めてから zip を固める。
+その間コンテナは healthy のままなので通常は遷移が起きないが、負荷で
+ヘルスチェックが一度落ちて戻ると「非 healthy → healthy」になる。
+Pi では I/O 負荷でこれが起こりうる。
+
+そこで save-on を送ると、**zip を書いている最中に保存が再開される**。
+書き込み途中の region ファイルが取り込まれ、静かに壊れたバックアップが
+できあがる。save-off がそもそも防いでいたはずのものになる。
+
+生きているロックが「保存を止めている」と言っている間は送らない。
+*/
+func TestLoopDoesNotResendWhileBackupHoldsSaveOff(t *testing.T) {
+	t.Parallel()
+
+	lockPath := filepath.Join(t.TempDir(), ".lock")
+	h, err := lockfile.Acquire(lockPath, lockfile.Meta{
+		OperationID:  "op-1",
+		Kind:         "BACKUP_CREATE",
+		PID:          os.Getpid(),
+		StartedAt:    time.Now(),
+		SaveDisabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = h.Release() }()
+
+	console := &fakeConsole{}
+	// 不合格 → 合格。負荷でヘルスチェックが一度落ちて戻った状況。
+	status := &fakeStatus{sequence: []bool{false, true, true, true}}
+	r := newReconciler(t, console, status, lockPath)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	r.Loop(ctx)
+
+	if got := console.count(); got != 0 {
+		t.Errorf("バックアップ中に save-on を %d 回送った", got)
+	}
+}
+
+// 保存を止めていない操作（切替や復元の待ち時間）なら送ってよい。
+// 送らないと、中断された save-off が回復されないまま残る。
+func TestLoopResendsWhenLockDoesNotDisableSaving(t *testing.T) {
+	t.Parallel()
+
+	lockPath := filepath.Join(t.TempDir(), ".lock")
+	h, err := lockfile.Acquire(lockPath, lockfile.Meta{
+		OperationID: "op-1",
+		Kind:        "WORLD_SWITCH",
+		PID:         os.Getpid(),
+		StartedAt:   time.Now(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = h.Release() }()
+
+	console := &fakeConsole{}
+	status := &fakeStatus{sequence: []bool{false, true, true, true}}
+	r := newReconciler(t, console, status, lockPath)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	r.Loop(ctx)
+
+	if console.count() == 0 {
+		t.Error("保存を止めていない操作の最中にも送られなかった")
+	}
+}
