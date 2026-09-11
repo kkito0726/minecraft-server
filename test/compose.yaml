@@ -1,0 +1,67 @@
+# 結合テスト用の管理コンソール一式（mcadmind + フロントエンドの開発サーバー）。
+#
+#   起動: make test-env-up
+#   停止: make test-env-down
+#
+# **Minecraft はここに入れていない**（test/server/compose.yaml にある）。
+# 同じプロジェクトに入れると、mcadmind が復元や COLD 取得で実行する
+# `docker compose down` が**自分自身を巻き込んで落とす**。down はサービス単位
+# ではなくプロジェクト単位で効くため。操作の途中でプロセスが消えるので、
+# ロックが残り、ワールドは退避されたまま戻らない。
+#
+# 本番でも mcadmind は管理対象のプロジェクトの外（systemd 配下）にいる。同じ形。
+
+name: mcadmin-console-test
+
+services:
+  mcadmind:
+    build:
+      # frontend と backend の両方が要るので、文脈はリポジトリのルート。
+      context: ..
+      dockerfile: test/Dockerfile
+    image: mcadmind-test:local
+    container_name: mcadmind-test
+    restart: "no"
+    # -project-dir はホストと**同じ絶対パス**でなければならない。
+    # compose の bind mount はホストの docker デーモンが解決するので、
+    # コンテナ側だけ違うパスにすると data/ の位置がずれる。
+    command: ["-project-dir", "${TEST_SERVER_DIR:?env.sh から渡される}", "-log-level", "debug"]
+    volumes:
+      # mcadmind は docker compose を子プロセスとして起動する。
+      # **本番ではこれをやらない。** 実質 root 権限を渡すのと変わらない。
+      # 使い捨てのテスト環境だから許容している。
+      - /var/run/docker.sock:/var/run/docker.sock
+      # ホストと同じ絶対パスで見せる。上の command と揃っている必要がある。
+      - ${TEST_SERVER_DIR:?}:${TEST_SERVER_DIR:?}
+    ports:
+      # 本番の 8787 とぶつけない。コンテナの中は 0.0.0.0:8787 で待つ。
+      - "${ADMIN_PORT:-8788}:8787"
+    # Minecraft は mcadmind が起こす。ここでは依存させない
+    # （別プロジェクトなので compose からは見えない）。
+
+  frontend:
+    # 画面を触りながら試すための Vite。**本番にこのコンテナは無い。**
+    # 本番のフロントエンドは Go のバイナリに埋め込まれていて、
+    # mcadmind 自身が配信する（上の 8788 がそれ）。
+    image: node:22-alpine
+    container_name: mcadmind-test-frontend
+    restart: "no"
+    working_dir: /src/frontend
+    # node_modules はホストと共有しない。プラットフォームが違うと壊れる。
+    volumes:
+      - ../frontend:/src/frontend
+      - frontend_modules:/src/frontend/node_modules
+      - ../proto:/src/proto
+    # --host が無いとコンテナの外から届かない。
+    # /rpc の中継先は vite.config.ts の DEV_BACKEND ではなく、
+    # コンテナ間の名前で上書きする。
+    environment:
+      VITE_RPC_TARGET: "http://mcadmind:8787"
+    command: sh -c "npm ci && npx vite --host 0.0.0.0 --port 5173"
+    ports:
+      - "${FRONTEND_PORT:-5174}:5173"
+    depends_on:
+      - mcadmind
+
+volumes:
+  frontend_modules:

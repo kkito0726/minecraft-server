@@ -7,7 +7,10 @@ const GO_EMBED_DIR = '../backend/internal/presentation/webui/dist'
 
 // 開発時は Vite の dev サーバーが /rpc を mcadmind へ中継する。
 // 本番では mcadmind 自身が静的ファイルと /rpc の両方を提供するので中継は不要。
-const DEV_BACKEND = 'http://127.0.0.1:8787'
+//
+// コンテナの中から使うときは 127.0.0.1 が自分自身を指してしまうため、
+// 中継先を環境変数で差し替えられるようにしてある（test/compose.yaml）。
+const DEV_BACKEND = process.env.VITE_RPC_TARGET ?? 'http://127.0.0.1:8787'
 
 export default defineConfig({
   plugins: [react()],

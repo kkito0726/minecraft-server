@@ -39,17 +39,17 @@ const (
 	keyAdminAddr      = "ADMIN_ADDR"
 	keyAdminDockerBin = "ADMIN_DOCKER_BIN"
 	keyAdminBackupDir = "ADMIN_BACKUP_DIR"
+	keyAdminProject   = "ADMIN_COMPOSE_PROJECT"
 )
 
 // 既定値。
 const (
-	defaultAddr        = "0.0.0.0:8787"
-	defaultDockerBin   = "docker"
-	defaultBackupDir   = "backups"
-	composeProjectName = "minecraft-server"
-	composeService     = "mc"
-	dataDirName        = "data"
-	lockFileName       = ".admin-console.lock"
+	defaultAddr      = "0.0.0.0:8787"
+	defaultDockerBin = "docker"
+	defaultBackupDir = "backups"
+	composeService   = "mc"
+	dataDirName      = "data"
+	lockFileName     = ".admin-console.lock"
 )
 
 // publicConfigKeys は API から返してよい .env のキー。
@@ -133,7 +133,7 @@ func buildInfra(opts options, s settings) (infra, error) {
 	runtime := compose.NewRunner(compose.Config{
 		DockerBin:   s.dockerBin,
 		ProjectDir:  opts.projectDir,
-		ProjectName: composeProjectName,
+		ProjectName: s.composeProject,
 		Service:     composeService,
 	})
 	levels := leveldat.NewAdapter(dataDir)
@@ -242,6 +242,11 @@ type settings struct {
 	dockerBin string
 	// backupDir はアーカイブの保管先。相対パスはプロジェクトディレクトリ基準。
 	backupDir string
+	// composeProject は操作する compose のプロジェクト名。
+	//
+	// **プロジェクトディレクトリごとに変わる。** 固定にすると、別の
+	// ディレクトリへ向けたつもりの mcadmind が同じコンテナを操作する。
+	composeProject string
 }
 
 func loadSettings(ctx context.Context, projectDir string, config *dotenv.Adapter) (settings, error) {
@@ -272,9 +277,12 @@ func loadSettings(ctx context.Context, projectDir string, config *dotenv.Adapter
 		return settings{}, fmt.Errorf("docker が見つかりません (%s): %w", dockerBin, err)
 	}
 
+	project, _ := snapshot.Get(keyAdminProject)
+
 	return settings{
 		token: token, addr: addr, dockerBin: resolved,
-		backupDir: backupDirFrom(snapshot, projectDir),
+		backupDir:      backupDirFrom(snapshot, projectDir),
+		composeProject: composeProjectFrom(projectDir, project),
 	}, nil
 }
 

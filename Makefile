@@ -112,6 +112,34 @@ cover-front: ## フロントエンドのカバレッジを測る
 e2e: build ## E2E テストを実行する
 	cd $(FRONT_DIR) && npx playwright test
 
+# --- 結合テスト環境（test/） ---
+#
+# 本番とは別プロジェクト・別ポート・別データで動く。data/world には触らない。
+
+.PHONY: test-env-up
+test-env-up: ## 結合テスト用のコンテナを全部立ち上げる（MC / mcadmind / 画面）
+	./test/env.sh up
+
+.PHONY: test-env-down
+test-env-down: ## 結合テスト環境を止める（ワールドは残る）
+	./test/env.sh down
+
+.PHONY: test-env-clean
+test-env-clean: ## 結合テスト環境をワールドごと消す
+	./test/env.sh clean
+
+.PHONY: test-env-status
+test-env-status: ## 結合テスト環境の状態を見る
+	./test/env.sh status
+
+.PHONY: test-env-logs
+test-env-logs: ## 結合テスト環境の Minecraft のログを追う
+	./test/env.sh logs
+
+.PHONY: test-env-console-logs
+test-env-console-logs: ## 結合テスト環境の mcadmind のログを追う
+	./test/env.sh console-logs
+
 # --- 静的検査 ---
 
 .PHONY: lint
@@ -127,12 +155,12 @@ lint: ensure-embed ## Go とフロントエンドの静的検査
 	fi
 	cd $(FRONT_DIR) && npm run lint
 	@# 配置用のシェルは実機でしか動かせないので、せめて構文だけは毎回見る
-	@for f in deploy/*.sh $(FRONT_DIR)/e2e/fixtures/*.sh; do \
+	@for f in deploy/*.sh test/*.sh $(FRONT_DIR)/e2e/fixtures/*.sh; do \
 		[ -e "$$f" ] || continue; \
 		bash -n "$$f" || exit 1; \
 	done
 	@if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck deploy/*.sh 2>/dev/null || exit 1; \
+		shellcheck deploy/*.sh test/*.sh 2>/dev/null || exit 1; \
 	fi
 
 .PHONY: typecheck
