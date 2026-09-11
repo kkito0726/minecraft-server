@@ -223,29 +223,64 @@ scp backups/backup-26.2-world-*.zip user@<別のホスト>:~/minecraft-backups/
 ## 7. 結合テスト環境（`test/`）
 
 **本番の `data/` に触らずに**、取得 → 復元 → 切替の一往復を通すための環境。
-別プロジェクト・別ポート・別データで動く。
+Minecraft・`mcadmind`・画面の**3 つともコンテナ**で立つ。
 
 ```bash
-make test-env-up       # コンテナと mcadmind を立ち上げる
-make test-env-status   # 何が動いているか
-make test-env-logs     # Minecraft のログ
-make test-env-down     # 止める（ワールドは残る）
-make test-env-clean    # ワールドとバックアップごと消す
+make test-env-up            # 全部立ち上げる（初回はビルドで数分）
+make test-env-status
+make test-env-logs          # Minecraft のログ
+make test-env-console-logs  # mcadmind のログ
+make test-env-down          # 止める（ワールドは残る）
+make test-env-clean         # ワールドとバックアップごと消す
 ```
 
-初回は `test/.env` を雛形から作り、`RCON_PASSWORD` と `ADMIN_TOKEN` を
-その場で生成する。立ち上がると画面の URL とトークンが表示される。
+初回は `test/server/.env` を雛形から作り、`RCON_PASSWORD` と `ADMIN_TOKEN` を
+その場で生成する。立ち上がると URL とトークンが表示される。
 
 | | 本番 | テスト |
 |---|---|---|
-| compose のプロジェクト名 | `minecraft-server` | `minecraft-server-test` |
 | Minecraft | `localhost:25565` | `localhost:25566` |
-| 管理コンソール | `:8787` | `127.0.0.1:8788` |
-| データ | `data/` `backups/` | `test/data/` `test/backups/` |
-| 設定 | `.env` | `test/.env` |
+| 管理コンソール | `:8787`（systemd のホストプロセス） | `:8788`（コンテナ） |
+| 画面の開発用（Vite） | — | `:5174`（コンテナ） |
+| データ | `data/` `backups/` | `test/server/data/` `test/server/backups/` |
+| 設定 | `.env` | `test/server/.env` |
 | ワールド生成 | 既定 | `flat`（起動が速い） |
 
-両方を同時に立てられる。ポートもプロジェクト名もぶつからない。
+本番と同時に立てられる。ポートもプロジェクト名もぶつからない。
+
+### compose のプロジェクトが 2 つに分かれている理由
+
+```
+minecraft-server-test   Minecraft 本体      test/server/compose.yaml
+mcadmin-console-test    mcadmind と画面     test/compose.yaml
+```
+
+**`mcadmind` を管理対象と同じプロジェクトに入れると、自分自身を落とす。**
+復元と COLD 取得は `docker compose down` を実行するが、`down` はサービス単位
+ではなく**プロジェクト単位**で効くため、同居していると `mcadmind` のコンテナも
+一緒に消える。操作は途中で終わり、ロックが残り、ワールドは退避されたまま戻らない。
+
+本番でも `mcadmind` は管理対象のプロジェクトの外（systemd 配下）にいる。同じ形。
+
+### 画面が 2 つある
+
+| URL | 中身 |
+|---|---|
+| `:8788` | `mcadmind` が配信する**埋め込みの画面**。本番と同じもの |
+| `:5174` | Vite の開発サーバー。**本番にこのコンテナは無い** |
+
+動作を確かめるなら `:8788` を見る。画面を触りながら直すなら `:5174`。
+
+### テスト環境だけの割り切り
+
+`mcadmind` のコンテナには `/var/run/docker.sock` を渡している。**本番では
+やらない。** 実質 root 権限を渡すのと変わらないためで、だから本番はホストの
+プロセスにしてある（[architecture.md](spec/admin-console/architecture.md)）。
+使い捨ての環境だから許容している。
+
+`test/server` はコンテナの中にも**同じ絶対パス**で見せている。compose の
+bind mount を解決するのはホストの docker デーモンなので、コンテナ側だけ
+違うパスにすると `data/` の位置がずれる。
 
 > **プロジェクト名を固定してはいけない。** `mcadmind` は
 > `ADMIN_COMPOSE_PROJECT`、無ければ `compose.yaml` の `name:` から
@@ -263,8 +298,6 @@ docker compose ps            # リポジトリ直下 = 本番
 
 `test-env-clean` は消す前に対象のパスを表示する。
 **`data/` から始まっていたら本番なので実行しない。**
-
----
 
 ## 8. やってはいけないこと
 

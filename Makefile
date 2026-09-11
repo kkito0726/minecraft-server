@@ -117,7 +117,7 @@ e2e: build ## E2E テストを実行する
 # 本番とは別プロジェクト・別ポート・別データで動く。data/world には触らない。
 
 .PHONY: test-env-up
-test-env-up: ## 結合テスト用のコンテナと mcadmind を立ち上げる
+test-env-up: ## 結合テスト用のコンテナを全部立ち上げる（MC / mcadmind / 画面）
 	./test/env.sh up
 
 .PHONY: test-env-down
@@ -135,6 +135,10 @@ test-env-status: ## 結合テスト環境の状態を見る
 .PHONY: test-env-logs
 test-env-logs: ## 結合テスト環境の Minecraft のログを追う
 	./test/env.sh logs
+
+.PHONY: test-env-console-logs
+test-env-console-logs: ## 結合テスト環境の mcadmind のログを追う
+	./test/env.sh console-logs
 
 # --- 静的検査 ---
 

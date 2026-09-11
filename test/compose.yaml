@@ -1,68 +1,67 @@
-# 結合テスト用の Minecraft サーバー。
+# 結合テスト用の管理コンソール一式（mcadmind + フロントエンドの開発サーバー）。
 #
-# 本番（リポジトリ直下の compose.yaml）とは別プロジェクト・別ポート・別データで
-# 動く。data/world を一度も触らずに、取得 → 復元 → 切替の一往復を通すための環境。
+#   起動: make test-env-up
+#   停止: make test-env-down
 #
-#   起動  : make test-env-up      （mcadmind も一緒に立ち上がる）
-#   停止  : make test-env-down
-#   破棄  : make test-env-clean    （ワールドとバックアップごと消す）
+# **Minecraft はここに入れていない**（test/server/compose.yaml にある）。
+# 同じプロジェクトに入れると、mcadmind が復元や COLD 取得で実行する
+# `docker compose down` が**自分自身を巻き込んで落とす**。down はサービス単位
+# ではなくプロジェクト単位で効くため。操作の途中でプロセスが消えるので、
+# ロックが残り、ワールドは退避されたまま戻らない。
 #
-# 管理コンソール（mcadmind）はここに入れていない。ホストのプロセスとして動かす。
-# コンテナに入れると docker.sock のマウントが要り、それは実質 root 権限を渡すのと
-# 変わらない。加えてホストとコンテナでパスが食い違い、data/ の位置がずれる。
-# 本番も systemd 配下のホストプロセスなので、テスト環境も同じ形に揃えてある。
-# 詳細は docs/spec/admin-console/architecture.md を参照。
+# 本番でも mcadmind は管理対象のプロジェクトの外（systemd 配下）にいる。同じ形。
 
-# 本番と同じ名前にすると、テストの down が本番のコンテナを巻き込む。必ず分ける。
-name: minecraft-server-test
+name: mcadmin-console-test
 
 services:
-  mc:
-    image: itzg/minecraft-server:latest
-    container_name: minecraft-server-test
-    # テスト環境は落ちたままにする。勝手に上がると失敗の原因が隠れる。
+  mcadmind:
+    build:
+      # frontend と backend の両方が要るので、文脈はリポジトリのルート。
+      context: ..
+      dockerfile: test/Dockerfile
+    image: mcadmind-test:local
+    container_name: mcadmind-test
     restart: "no"
-    stdin_open: true
-    tty: true
-    # 本番は 60 秒。テストでは待ち時間を削る（壊れて困るワールドが無い）。
-    stop_grace_period: 20s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "2"
-    mem_limit: "${MC_MEM_LIMIT:-2g}"
-    ports:
-      # 本番の 25565 とぶつけない。両方を同時に立てられるようにしておく。
-      - "${MC_PORT:-25566}:25565"
-    environment:
-      EULA: "TRUE"
-      TYPE: "${MC_TYPE:-PAPER}"
-      VERSION: "${MC_VERSION:?MC_VERSION is not set. see test/.env}"
-      LEVEL: "${MC_LEVEL:-world}"
-      SEED: "${MC_SEED:-}"
-      # 生成を速くする。結合テストが見たいのは地形ではなく、
-      # 保存 → 固める → 展開 → 起動の一往復なので、平坦で十分。
-      LEVEL_TYPE: "${MC_LEVEL_TYPE:-flat}"
-      MEMORY: "${MC_MEMORY:-1G}"
-      USE_AIKAR_FLAGS: "FALSE"
-      TZ: "${TZ:-Asia/Tokyo}"
-      MOTD: "${MC_MOTD:-integration test}"
-      DIFFICULTY: "${MC_DIFFICULTY:-normal}"
-      MAX_PLAYERS: "${MC_MAX_PLAYERS:-5}"
-      # 起動を速くするため本番より小さくする。
-      VIEW_DISTANCE: "${MC_VIEW_DISTANCE:-4}"
-      SIMULATION_DISTANCE: "${MC_SIMULATION_DISTANCE:-4}"
-      # 誰も繋がないので認証を切る。オフラインでも起動できるようにするため。
-      ONLINE_MODE: "${MC_ONLINE_MODE:-FALSE}"
-      OPS: "${MC_OPS:-}"
-      WHITELIST: ""
-      ENABLE_WHITELIST: "FALSE"
-      ENFORCE_WHITELIST: "FALSE"
-      # RCON は本番と同じく公開しない。save-off / save-all / save-on に要る。
-      ENABLE_RCON: "TRUE"
-      RCON_PASSWORD: "${RCON_PASSWORD:?RCON_PASSWORD is not set. see test/.env}"
-      OVERRIDE_SERVER_PROPERTIES: "TRUE"
+    # -project-dir はホストと**同じ絶対パス**でなければならない。
+    # compose の bind mount はホストの docker デーモンが解決するので、
+    # コンテナ側だけ違うパスにすると data/ の位置がずれる。
+    command: ["-project-dir", "${TEST_SERVER_DIR:?env.sh から渡される}", "-log-level", "debug"]
     volumes:
-      # test/data/ に閉じる。本番の data/ には一切触らない。
-      - ./data:/data
+      # mcadmind は docker compose を子プロセスとして起動する。
+      # **本番ではこれをやらない。** 実質 root 権限を渡すのと変わらない。
+      # 使い捨てのテスト環境だから許容している。
+      - /var/run/docker.sock:/var/run/docker.sock
+      # ホストと同じ絶対パスで見せる。上の command と揃っている必要がある。
+      - ${TEST_SERVER_DIR:?}:${TEST_SERVER_DIR:?}
+    ports:
+      # 本番の 8787 とぶつけない。コンテナの中は 0.0.0.0:8787 で待つ。
+      - "${ADMIN_PORT:-8788}:8787"
+    # Minecraft は mcadmind が起こす。ここでは依存させない
+    # （別プロジェクトなので compose からは見えない）。
+
+  frontend:
+    # 画面を触りながら試すための Vite。**本番にこのコンテナは無い。**
+    # 本番のフロントエンドは Go のバイナリに埋め込まれていて、
+    # mcadmind 自身が配信する（上の 8788 がそれ）。
+    image: node:22-alpine
+    container_name: mcadmind-test-frontend
+    restart: "no"
+    working_dir: /src/frontend
+    # node_modules はホストと共有しない。プラットフォームが違うと壊れる。
+    volumes:
+      - ../frontend:/src/frontend
+      - frontend_modules:/src/frontend/node_modules
+      - ../proto:/src/proto
+    # --host が無いとコンテナの外から届かない。
+    # /rpc の中継先は vite.config.ts の DEV_BACKEND ではなく、
+    # コンテナ間の名前で上書きする。
+    environment:
+      VITE_RPC_TARGET: "http://mcadmind:8787"
+    command: sh -c "npm ci && npx vite --host 0.0.0.0 --port 5173"
+    ports:
+      - "${FRONTEND_PORT:-5174}:5173"
+    depends_on:
+      - mcadmind
+
+volumes:
+  frontend_modules:
