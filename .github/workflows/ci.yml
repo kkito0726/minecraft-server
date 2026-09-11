@@ -159,6 +159,46 @@ jobs:
           name: playwright-report
           path: frontend/playwright-report
           retention-days: 7
+  deploy:
+    name: 配置（systemd ユニットの検証）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # install.sh は .env の存在と ADMIN_TOKEN を見る。.env は追跡して
+      # いないので雛形から作る。**追記ではなく置換**にするのは、
+      # mcadmind の dotenv が同じキーの最初の行を採るため
+      # （空のまま追記すると、空の方が勝って読まれる）。
+      - name: 雛形から .env を作る
+        run: |
+          mkdir -p /tmp/proj
+          cp compose.yaml /tmp/proj/
+          sed "s|^ADMIN_TOKEN=.*|ADMIN_TOKEN=$(openssl rand -hex 32)|" \
+            .env.example > /tmp/proj/.env
+
+      # ExecStart の指す先と Requires の相手が無いと systemd-analyze が
+      # 落ちる。どちらも中身は問わないので、経路だけ確かめられるよう置く。
+      - name: 参照先のダミーを用意する
+        run: |
+          sudo install -m 0755 /bin/true /usr/local/bin/mcadmind
+          printf '[Unit]\nDescription=stub\n[Service]\nExecStart=/bin/true\n' \
+            | sudo tee /etc/systemd/system/docker.service >/dev/null
+
+      # 綴り間違いと、置き場所を間違えた設定（StartLimit* を [Service] に
+      # 書くなど）はここでしか見つからない。実機で気づくのは遅すぎる。
+      - name: ユニットを組み立てて検証する
+        run: |
+          ./deploy/install.sh --dry-run --project-dir /tmp/proj \
+            --binary /usr/local/bin/mcadmind > /tmp/mcadmind.service
+          cat /tmp/mcadmind.service
+          systemd-analyze verify /tmp/mcadmind.service
+
+      - name: install.sh の構文
+        run: bash -n deploy/install.sh
+
+      - uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: ./deploy
 
   build:
     name: ビルド（Pi 5 向け arm64 を含む）
