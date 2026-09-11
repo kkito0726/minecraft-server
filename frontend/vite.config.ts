@@ -29,6 +29,11 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // 既定の 5 秒は userEvent.type には短い。1 文字ずつ実イベントを
+    // 起こすので、機械が混んでいるとそれだけで超える。落ちた理由が
+    // 「遅かった」なのか「壊れている」なのかを分けられなくなるため、
+    // 余裕を持たせる。本当に固まった試験はこれでも落ちる。
+    testTimeout: 20_000,
     // E2E は Playwright が担当するので Vitest の対象から外す
     exclude: ['node_modules/**', 'e2e/**', 'dist/**'],
     coverage: {
