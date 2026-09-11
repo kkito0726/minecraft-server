@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/lockfile"
 )
@@ -573,4 +574,148 @@ func collect(t *testing.T, m *operations.Manager, id operation.ID, fromSeq int64
 		}
 	}
 	return out
+}
+
+// newManagerWithClock は時計を差し替えた Manager を作る。
+func newManagerWithClock(t *testing.T, clock port.Clock) *operations.Manager {
+	t.Helper()
+
+	m, err := operations.NewManager(operations.Config{
+		Lock:  lockfile.NewLock(filepath.Join(t.TempDir(), ".lock")),
+		Clock: clock,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+// countEvents は記録されたイベントの数を、購読の経路で数える。
+func countEvents(t *testing.T, m *operations.Manager, id operation.ID) int {
+	t.Helper()
+
+	events, unsubscribe, err := m.Subscribe(t.Context(), id, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unsubscribe()
+
+	count := 0
+	for range events {
+		count++
+	}
+	return count
+}
+
+// stepClock は呼ばれるたびに進む時計。進捗の間引きを確かめるのに使う。
+type stepClock struct {
+	mu   sync.Mutex
+	now  time.Time
+	step time.Duration
+}
+
+func (c *stepClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.now = c.now.Add(c.step)
+	return c.now
+}
+
+/*
+進捗の記録は間引く。
+
+展開も作成もファイル 1 つごとに進捗を報告する。ワールドのファイル数が
+そのままイベント数になるため、チャンクの多いワールドでは数千件になる。
+
+イベントは 1 件ずつ完全なスナップショットを持つので、数千件はそのまま
+メモリに残り、再接続のたびに全部を送り直すことになる。さらに購読者の
+バッファ（256 件）を溢れさせ、**最後のイベントが落ちて画面が実行中の
+まま固まる**ところまで繋がる。
+*/
+func TestBytesProgressIsThrottled(t *testing.T) {
+	t.Parallel()
+
+	// 時計を止めておくと、間引きの条件（一定時間ごと）に一度も当たらない。
+	clock := &stepClock{now: time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)}
+	m := newManagerWithClock(t, clock)
+
+	done := make(chan struct{})
+	handle, err := m.Start(t.Context(), operation.KindBackupCreate, []string{"作成"},
+		func(_ context.Context, r operations.Reporter) error {
+			for i := 1; i <= 1000; i++ {
+				r.Bytes(int64(i), 2000)
+			}
+			close(done)
+			return nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-done
+	waitFinished(t, m, handle.ID())
+
+	// 1000 回報告しても、記録は開始・最初の進捗・完了の数件に収まる。
+	if got := countEvents(t, m, handle.ID()); got > 20 {
+		t.Errorf("進捗が間引かれていない: %d 件", got)
+	}
+}
+
+// 間引いても、最後の 1 件は必ず残す。
+// これが落ちると進捗の帯が途中で止まったまま完了することになる。
+func TestFinalBytesProgressIsAlwaysRecorded(t *testing.T) {
+	t.Parallel()
+
+	clock := &stepClock{now: time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)}
+	m := newManagerWithClock(t, clock)
+
+	done := make(chan struct{})
+	handle, err := m.Start(t.Context(), operation.KindBackupCreate, []string{"作成"},
+		func(_ context.Context, r operations.Reporter) error {
+			for i := 1; i <= 100; i++ {
+				r.Bytes(int64(i*10), 1000)
+			}
+			close(done)
+			return nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-done
+	waitFinished(t, m, handle.ID())
+
+	snap, _ := m.Get(handle.ID())
+	if snap.BytesDone != 1000 {
+		t.Errorf("最後の進捗が記録されていない: %d/%d", snap.BytesDone, snap.BytesTotal)
+	}
+}
+
+// 時間が経てば記録する。長い操作で進捗が一切動かなくなっては困る。
+func TestBytesProgressResumesAfterInterval(t *testing.T) {
+	t.Parallel()
+
+	clock := &stepClock{
+		now:  time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC),
+		step: time.Second,
+	}
+	m := newManagerWithClock(t, clock)
+
+	done := make(chan struct{})
+	handle, err := m.Start(t.Context(), operation.KindBackupCreate, []string{"作成"},
+		func(_ context.Context, r operations.Reporter) error {
+			for i := 1; i <= 10; i++ {
+				r.Bytes(int64(i), 1000)
+			}
+			close(done)
+			return nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-done
+	waitFinished(t, m, handle.ID())
+
+	if got := countEvents(t, m, handle.ID()); got < 10 {
+		t.Errorf("時間が経っても間引かれたまま: %d 件", got)
+	}
 }

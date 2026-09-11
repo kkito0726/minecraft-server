@@ -3,6 +3,7 @@ package operations
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
 )
@@ -26,9 +27,26 @@ type Reporter interface {
 	MarkSaveDisabled(disabled bool)
 }
 
+/*
+bytesInterval は進捗を記録する最短の間隔。
+
+展開も作成もファイル 1 つごとに進捗を報告する。ワールドのファイル数が
+そのままイベント数になるため、チャンクの多いワールドでは数千件になる。
+
+イベントは 1 件ずつ完全なスナップショット（手順名の複製と属性の複製を
+含む）を持つので、数千件はそのままメモリに残り、再接続のたびに全部を
+送り直すことになる。さらに購読者のバッファを溢れさせ、最後のイベントが
+落ちて画面が実行中のまま固まるところまで繋がる。
+
+4 回/秒あれば進捗の帯は滑らかに見える。
+*/
+const bytesInterval = 250 * time.Millisecond
+
 type reporter struct {
 	manager *Manager
 	op      *operation.Operation
+	// lastBytesAt は最後に記録した進捗の時刻。manager.mu で守る。
+	lastBytesAt time.Time
 }
 
 func (r *reporter) Step() error {
@@ -60,11 +78,32 @@ func (r *reporter) Logf(level operation.Level, format string, args ...any) {
 
 func (r *reporter) Bytes(done, total int64) {
 	r.manager.mu.Lock()
-	r.op.SetBytes(r.manager.clock.Now(), done, total)
+	now := r.manager.clock.Now()
+	if !r.shouldRecordBytesLocked(now, done, total) {
+		r.manager.mu.Unlock()
+		return
+	}
+	r.lastBytesAt = now
+	r.op.SetBytes(now, done, total)
 	last := lastEvent(r.op)
 	r.manager.mu.Unlock()
 
 	r.manager.publish(r.op.ID(), last)
+}
+
+// shouldRecordBytesLocked は進捗を記録するかを決める。mu を保持して呼ぶ。
+//
+// 最初と最後は必ず記録する。最後を落とすと、進捗の帯が途中で止まった
+// まま操作だけが完了することになる。
+func (r *reporter) shouldRecordBytesLocked(now time.Time, done, total int64) bool {
+	switch {
+	case r.lastBytesAt.IsZero():
+		return true
+	case total > 0 && done >= total:
+		return true
+	default:
+		return now.Sub(r.lastBytesAt) >= bytesInterval
+	}
 }
 
 func (r *reporter) Attr(key, value string) {
