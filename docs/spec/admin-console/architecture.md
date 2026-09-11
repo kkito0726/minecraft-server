@@ -2,7 +2,7 @@
 
 **作成日**: 2026-09-10
 **対象**: 管理コンソール（`mcadmind`）
-**関連**: [requirements.md](requirements.md) / [note.md](note.md)
+**関連**: [requirements.md](requirements.md) / [sequences.md](sequences.md) / [note.md](note.md)
 
 バックエンドは **DDD + クリーンアーキテクチャ**、フロントエンドは **Atomic Design** で構成する。
 
