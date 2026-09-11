@@ -6,6 +6,7 @@ import {
   PrunePanel,
   RestoreDialog,
   RetentionSettings,
+  UploadBackupPanel,
 } from '../components/organisms'
 import type { PruneResult, RestoreRequestInput } from '../components/organisms'
 import { Button } from '../components/atoms'
@@ -18,6 +19,8 @@ import {
   useRestoreBackup,
   useRetentionPolicy,
   useSetRetentionPolicy,
+  uploadNotice,
+  useUploadBackup,
 } from '../features/backups'
 import { useOperation } from '../features/operations'
 import type { ListBackupsResponse, RetentionPolicy } from '../gen/mcadmin/v1/backup_pb'
@@ -52,7 +55,9 @@ export function BackupsPage() {
 function BackupSection({ data, disabled }: { data: ListBackupsResponse; disabled: boolean }) {
   const [restoring, setRestoring] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)
   const { create, remove, restore, preflight, failure } = useBackupActions(restoring)
+  const upload = useUploadBackup()
 
   const send = (input: RestoreRequestInput) => {
     if (restoring !== null) {
@@ -63,7 +68,11 @@ function BackupSection({ data, disabled }: { data: ListBackupsResponse; disabled
 
   return (
     <section className="flex flex-col gap-3 rounded border border-gray-200 bg-white p-4">
-      <Header disabled={disabled} onCreate={() => setCreating(true)} />
+      <Header
+        disabled={disabled}
+        onCreate={() => setCreating(true)}
+        onImport={() => setImporting((v) => !v)}
+      />
 
       {failure && <p className="text-sm text-danger-700">{describeError(failure)}</p>}
 
@@ -77,6 +86,8 @@ function BackupSection({ data, disabled }: { data: ListBackupsResponse; disabled
           }}
         />
       )}
+
+      {importing && <ImportSection disabled={disabled} upload={upload} />}
 
       {restoring !== null && (
         <RestoreSection
@@ -95,6 +106,25 @@ function BackupSection({ data, disabled }: { data: ListBackupsResponse; disabled
         onDelete={(id) => remove.mutate(id)}
       />
     </section>
+  )
+}
+
+/** 取り込みの状態をそのまま画面へ渡すだけの継ぎ手。 */
+function ImportSection({
+  disabled,
+  upload,
+}: {
+  disabled: boolean
+  upload: ReturnType<typeof useUploadBackup>
+}) {
+  return (
+    <UploadBackupPanel
+      disabled={disabled}
+      progress={upload.progress}
+      error={upload.error?.message}
+      notice={uploadNotice(upload.data)}
+      onUpload={(file) => upload.mutate(file)}
+    />
   )
 }
 
@@ -119,11 +149,20 @@ function useBackupActions(restoring: string | null) {
   }
 }
 
-function Header({ disabled, onCreate }: { disabled: boolean; onCreate: () => void }) {
+type HeaderProps = {
+  disabled: boolean
+  onCreate: () => void
+  onImport: () => void
+}
+
+function Header({ disabled, onCreate, onImport }: HeaderProps) {
   return (
     <div className="flex items-center gap-2">
       <h2 className="text-sm font-semibold text-gray-900">バックアップ</h2>
-      <div className="ml-auto">
+      <div className="ml-auto flex gap-2">
+        <Button disabled={disabled} onClick={onImport}>
+          zip を取り込む
+        </Button>
         <Button tone="primary" disabled={disabled} onClick={onCreate}>
           バックアップを取得
         </Button>

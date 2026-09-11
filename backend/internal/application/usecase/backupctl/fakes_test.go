@@ -142,8 +142,12 @@ type fakeStore struct {
 	// entries は保管中のアーカイブ。ID をキーにする。
 	entries map[string]port.StoredBackup
 	// createdLevels は Create に渡されたワールド名を記録する。
-	createdLevels   []string
-	createErr       error
+	createdLevels []string
+	createErr     error
+	// 取り込み
+	staged          *fakeStaged
+	stageErr        error
+	stagedLimit     int64
 	inspectErr      error
 	extractErr      error
 	extractRewrites []string
@@ -488,6 +492,7 @@ type harness struct {
 	lock    *fakeLock
 	runtime *fakeRuntime
 	worlds  *fakeWorlds
+	levels  *fakeLevels
 }
 
 // now は取得日時に使う固定の時刻。
@@ -511,6 +516,7 @@ func newHarness(t *testing.T, running bool, values map[string]string) *harness {
 	worlds := newWorlds(rec)
 	config := newConfig(rec, values)
 	lock := &fakeLock{}
+	levels := &fakeLevels{version: readableVersion(t)}
 
 	mgr, err := operations.NewManager(operations.Config{Lock: lock})
 	if err != nil {
@@ -523,7 +529,7 @@ func newHarness(t *testing.T, running bool, values map[string]string) *harness {
 		Store:      store,
 		Worlds:     worlds,
 		Config:     config,
-		Levels:     &fakeLevels{version: readableVersion(t)},
+		Levels:     levels,
 		Operations: mgr,
 	})
 	if err != nil {
@@ -532,7 +538,7 @@ func newHarness(t *testing.T, running bool, values map[string]string) *harness {
 
 	return &harness{
 		uc: uc, ops: mgr, rec: rec, store: store,
-		config: config, lock: lock, runtime: runtime, worlds: worlds,
+		config: config, lock: lock, runtime: runtime, worlds: worlds, levels: levels,
 	}
 }
 
@@ -551,3 +557,57 @@ func (h *harness) wait(t *testing.T, id operation.ID) operation.Snapshot {
 }
 
 func (h *harness) calls() string { return strings.Join(h.rec.list(), ",") }
+
+// --- 取り込み ---
+
+// fakeStaged は取り込み途中のアーカイブの偽物。
+type fakeStaged struct {
+	entries []string
+	total   int64
+	body    string
+	// adoptedAs と adoptedPrefix は確定のときの引数を記録する。
+	adoptedAs     string
+	adoptedPrefix string
+	adoptErr      error
+	discarded     bool
+}
+
+func (a *fakeStaged) LevelDatEntries() []string { return a.entries }
+func (a *fakeStaged) TotalBytes() int64         { return a.total }
+
+func (a *fakeStaged) OpenEntry(context.Context, string) (io.ReadCloser, error) {
+	return io.NopCloser(strings.NewReader(a.body)), nil
+}
+
+func (a *fakeStaged) Adopt(
+	_ context.Context, id backup.ID, prefix string,
+) (port.StoredBackup, error) {
+	if a.adoptErr != nil {
+		return port.StoredBackup{}, a.adoptErr
+	}
+	a.adoptedAs = id.String()
+	a.adoptedPrefix = prefix
+	return port.StoredBackup{ID: id, SizeBytes: a.total}, nil
+}
+
+func (a *fakeStaged) Discard() { a.discarded = true }
+
+// Stage は受け取ったバイト列を捨て、用意しておいた偽物を返す。
+func (s *fakeStore) Stage(
+	_ context.Context, src io.Reader, maxBytes int64,
+) (port.ArchiveImport, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.stagedLimit = maxBytes
+	if s.stageErr != nil {
+		return nil, s.stageErr
+	}
+	if _, err := io.Copy(io.Discard, src); err != nil {
+		return nil, err
+	}
+	if s.staged == nil {
+		s.staged = &fakeStaged{entries: []string{"data/world/level.dat"}, total: 2048}
+	}
+	return s.staged, nil
+}

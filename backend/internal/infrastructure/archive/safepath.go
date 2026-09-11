@@ -29,26 +29,9 @@ const dataDirName = "data"
 // 展開を始める前にこの検証を通し、1 つでも違反があればアーカイブ全体を
 // 拒否する。途中まで書いてから気づくと中途半端なファイルが残る。
 func safeEntryName(name string) (string, error) {
-	if name == "" {
-		return "", fmt.Errorf("%w: エントリ名が空です", ErrUnsafeEntry)
-	}
-
-	// zip の仕様上の区切りは / だが、Windows で作られたアーカイブは
-	// \ を含むことがある。判定前に統一する。
-	normalized := strings.ReplaceAll(name, `\`, "/")
-
-	// ドライブレターつきの絶対パス（C:\... など）
-	if len(normalized) >= 2 && normalized[1] == ':' {
-		return "", fmt.Errorf("%w: %q は絶対パスです", ErrUnsafeEntry, name)
-	}
-	if strings.HasPrefix(normalized, "/") {
-		return "", fmt.Errorf("%w: %q は絶対パスです", ErrUnsafeEntry, name)
-	}
-
-	// path.Clean が ".." を解決する。解決後にまだ ".." で始まるなら脱出している。
-	cleaned := path.Clean(normalized)
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
-		return "", fmt.Errorf("%w: %q が展開先の外を指しています", ErrUnsafeEntry, name)
+	cleaned, normalized, err := normalizeEntryName(name)
+	if err != nil {
+		return "", err
 	}
 
 	// data/ そのものを指すディレクトリのエントリは通す。
@@ -69,6 +52,41 @@ func safeEntryName(name string) (string, error) {
 		return "", fmt.Errorf("%w: %q は %s 配下ではありません", ErrUnsafeEntry, name, allowedRoot)
 	}
 	return cleaned, nil
+}
+
+/*
+normalizeEntryName は展開先の**外**へ出る経路だけを塞ぐ。
+
+置き場所（data/ 配下であること）は問わない。持ち込まれたアーカイブは
+まだ data/ 配下に無く、中身を見て判断する段階ではここを要求できない
+ため、安全の検証と置き場所の検証を分けてある。
+
+戻り値は正規化した名前と、区切りを / に揃えただけの名前。
+後者はディレクトリのエントリ（末尾が /）の判定に使う。
+*/
+func normalizeEntryName(name string) (cleaned, normalized string, err error) {
+	if name == "" {
+		return "", "", fmt.Errorf("%w: エントリ名が空です", ErrUnsafeEntry)
+	}
+
+	// zip の仕様上の区切りは / だが、Windows で作られたアーカイブは
+	// \ を含むことがある。判定前に統一する。
+	normalized = strings.ReplaceAll(name, `\`, "/")
+
+	// ドライブレターつきの絶対パス（C:\... など）
+	if len(normalized) >= 2 && normalized[1] == ':' {
+		return "", "", fmt.Errorf("%w: %q は絶対パスです", ErrUnsafeEntry, name)
+	}
+	if strings.HasPrefix(normalized, "/") {
+		return "", "", fmt.Errorf("%w: %q は絶対パスです", ErrUnsafeEntry, name)
+	}
+
+	// path.Clean が ".." を解決する。解決後にまだ ".." で始まるなら脱出している。
+	cleaned = path.Clean(normalized)
+	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+		return "", "", fmt.Errorf("%w: %q が展開先の外を指しています", ErrUnsafeEntry, name)
+	}
+	return cleaned, normalized, nil
 }
 
 // checkMode はエントリの種別を検証する。

@@ -69,12 +69,19 @@ func Create(ctx context.Context, dest string, sources []Source, progress Progres
 	return nil
 }
 
-func writeArchive(ctx context.Context, w io.Writer, sources []Source, progress Progress) error {
-	zw := zip.NewWriter(w)
-	// .mca は既に圧縮済み。最大圧縮は Pi の CPU を無駄に使うだけで縮まらない。
+// registerFastCompressor は圧縮を BestSpeed に固定する。
+//
+// .mca は既に zlib で圧縮済み。最大圧縮は Pi の CPU を無駄に使うだけで
+// ほとんど縮まらない。アーカイブを作る経路すべてで同じ設定を使う。
+func registerFastCompressor(zw *zip.Writer) {
 	zw.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
 		return flate.NewWriter(out, flate.BestSpeed)
 	})
+}
+
+func writeArchive(ctx context.Context, w io.Writer, sources []Source, progress Progress) error {
+	zw := zip.NewWriter(w)
+	registerFastCompressor(zw)
 
 	var done int64
 	buf := make([]byte, copyBufferSize)
