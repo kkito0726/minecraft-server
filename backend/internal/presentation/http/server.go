@@ -18,6 +18,13 @@ import (
 // rpcPrefix は Connect のエンドポイントの接頭辞。
 const rpcPrefix = "/rpc/"
 
+// UploadBackupPath は zip のアップロードを受け取る場所。
+//
+// Connect の外側にあるのは、ブラウザが平文の HTTP/2 へ昇格せず
+// client-streaming の RPC を使えないため。フロントエンドと合わせる
+// 必要があるので公開する。
+const UploadBackupPath = "/upload/backup"
+
 // タイムアウト。
 //
 // WriteTimeout を設けないのは、進捗のストリーミングが分単位で続くため。
@@ -40,6 +47,12 @@ type Config struct {
 	Assets fs.FS
 	// RPC は Connect のハンドラ群。パスは rpcPrefix 配下に置かれる。
 	RPC map[string]http.Handler
+	// Routes は Connect を通らない通常の HTTP ハンドラ。
+	//
+	// **認証は呼び出し側で包んでから渡すこと。** ここで自動的には
+	// 付けない。付けたつもりで付いていない状態は静かに起きるので、
+	// 配線の場所を 1 つに寄せてある（cmd/mcadmind/build.go）。
+	Routes map[string]http.Handler
 	// Logger は記録先。
 	Logger *slog.Logger
 }
@@ -65,6 +78,11 @@ func New(cfg Config) (*Server, error) {
 	mux := http.NewServeMux()
 	for path, handler := range cfg.RPC {
 		mux.Handle(rpcPrefix+strings.TrimPrefix(path, "/"), http.StripPrefix("/rpc", handler))
+	}
+	// 静的ファイル以外にも同じ防御ヘッダを付ける。JSON を返すので
+	// とくに nosniff が要る。
+	for path, handler := range cfg.Routes {
+		mux.Handle(path, securityHeaders(handler))
 	}
 	if cfg.Assets != nil {
 		mux.Handle("/", securityHeaders(spaHandler(cfg.Assets)))

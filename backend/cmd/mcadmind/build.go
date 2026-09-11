@@ -29,6 +29,7 @@ import (
 	adminhttp "github.com/kkito0726/minecraft-server/backend/internal/presentation/http"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/http/auth"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/rpc"
+	"github.com/kkito0726/minecraft-server/backend/internal/presentation/upload"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/webui"
 )
 
@@ -324,8 +325,15 @@ func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, er
 		return nil, fmt.Errorf("フロントエンドを読めません: %w", err)
 	}
 
+	// Connect の外側のルートは、ここで明示的に認証で包む。
+	// 包み忘れるとトークン無しで叩ける口になるため、配線を 1 箇所に寄せる。
+	routes := map[string]http.Handler{
+		adminhttp.UploadBackupPath: interceptor.Middleware(
+			upload.NewHandler(d.backups, logger)),
+	}
+
 	return adminhttp.New(adminhttp.Config{
-		Addr: s.addr, Assets: assets, RPC: handlers, Logger: logger,
+		Addr: s.addr, Assets: assets, RPC: handlers, Routes: routes, Logger: logger,
 	})
 }
 

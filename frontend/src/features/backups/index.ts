@@ -1,4 +1,7 @@
 export { backupClient } from './client'
+export { UPLOAD_URL, uploadBackup } from './upload'
+export type { UploadResult } from './upload'
+export { uploadNotice, useUploadBackup } from './useUpload'
 export { modeLabel, targetLabel, verdictLabel, verdictTone } from './labels'
 export { MAX_NOTE_LENGTH, noteSlug } from './note'
 export { parseRetention, retentionError } from './retention'
