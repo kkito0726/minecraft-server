@@ -298,7 +298,9 @@ func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, er
 	if err != nil {
 		return nil, err
 	}
-	withAuth := connect.WithInterceptors(interceptor)
+	// 認証を外側に置く。トークンが通らなかったリクエストの中身まで
+	// 記録に残す必要はないし、残せば攻撃者の入力をログに書くことになる。
+	withAuth := connect.WithInterceptors(interceptor, rpc.NewLoggingInterceptor(logger))
 
 	handlers := map[string]http.Handler{}
 	serverPath, serverHandler := mcadminv1connect.NewServerServiceHandler(

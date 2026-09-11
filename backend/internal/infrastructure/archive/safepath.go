@@ -17,6 +17,10 @@ var ErrUnsafeEntry = errors.New("アーカイブに安全でないエントリ�
 // 意図しないもの（あるいは攻撃）として扱う。
 const allowedRoot = "data/"
 
+// dataDirName は allowedRoot から末尾の / を除いたもの。
+// ディレクトリのエントリの判定に使う。
+const dataDirName = "data"
+
 // safeEntryName はエントリ名を検証し、正規化した名前を返す。
 //
 // zip のエントリ名は攻撃者が自由に決められる。素直に filepath.Join すると
@@ -45,6 +49,20 @@ func safeEntryName(name string) (string, error) {
 	cleaned := path.Clean(normalized)
 	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
 		return "", fmt.Errorf("%w: %q が展開先の外を指しています", ErrUnsafeEntry, name)
+	}
+
+	// data/ そのものを指すディレクトリのエントリは通す。
+	//
+	// zip -r out.zip data のように data ごと固めると、アーカイブに
+	// "data/" というエントリが入る。path.Clean が末尾の / を落とすため
+	// "data" になり、そのままでは「data/ 配下ではない」と判定される。
+	// 1 つでも違反があればアーカイブ全体を拒否する作りなので、
+	// これを弾くと手で作った zip が丸ごと復元できなくなる。
+	//
+	// 末尾が / であることを条件にするのは、ディレクトリとして
+	// 書かれていない "data" は data/ の外にある別のファイルだから。
+	if cleaned == dataDirName && strings.HasSuffix(normalized, "/") {
+		return cleaned, nil
 	}
 
 	if !strings.HasPrefix(cleaned, allowedRoot) {

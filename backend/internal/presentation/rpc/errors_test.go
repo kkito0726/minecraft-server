@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/archive"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
 )
 
@@ -104,5 +106,27 @@ func TestToConnectErrorHidesInternals(t *testing.T) {
 	}
 	if strings.Contains(got.Error(), "permission denied") {
 		t.Errorf("内部の詳細が漏れている: %v", got)
+	}
+}
+
+/*
+安全でないアーカイブは、利用者が自分で対処できる。
+
+「data/ 配下でないエントリを含む」と伝えれば包み直せる。internal に
+丸めて「ログを確認してください」と言うと、画面だけを見ている人は
+何が悪いのか永久に分からない。エントリ名は利用者自身の zip から
+来たものなので、伝えても内部の情報は漏れない。
+*/
+func TestUnsafeArchiveIsActionable(t *testing.T) {
+	t.Parallel()
+
+	err := toConnectError(fmt.Errorf("%w: %q は data/ 配下ではありません",
+		archive.ErrUnsafeEntry, "MyWorld/"))
+
+	if got := connect.CodeOf(err); got != connect.CodeInvalidArgument {
+		t.Errorf("コードが %v（期待 invalid_argument）", got)
+	}
+	if !strings.Contains(err.Error(), "MyWorld/") {
+		t.Errorf("どのエントリが原因か伝わらない: %s", err.Error())
 	}
 }
