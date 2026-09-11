@@ -8,6 +8,7 @@
 画面の操作が何を呼んで `data/` と `.env` に届くかは
 [spec/admin-console/sequences.md](spec/admin-console/sequences.md) に図で書いた。
 ここは**動かす側の手順**だけを扱う。
+日々の起動・停止と障害対応は [runbook.md](runbook.md) にまとめてある。
 
 ---
 

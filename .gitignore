@@ -16,6 +16,11 @@ backend/internal/presentation/webui/dist/*
 coverage.out
 coverage.html
 
+# 結合テスト環境（test/）。ワールドとバックアップと秘密は追跡しない。
+# data/ は先頭に / が無いので test/data/ も含まれる。
+/test/.env
+/test/backups/
+
 # 管理コンソール — フロントエンド
 frontend/node_modules/
 frontend/dist/

@@ -198,3 +198,60 @@ func TestLoadSettingsResolvesBackupDir(t *testing.T) {
 		t.Errorf("絶対パスが %q。そのまま使うはず", got.backupDir)
 	}
 }
+
+/*
+プロジェクト名はプロジェクトディレクトリの compose.yaml から決まる。
+
+ここが固定だと、test/ に向けた mcadmind が本番のコンテナを down させる。
+実際にそれで本番が止まった。settings まで通した経路で固定しておく。
+*/
+func TestLoadSettingsTakesProjectNameFromComposeFile(t *testing.T) {
+	t.Parallel()
+
+	dir, config := writeEnv(t, "ADMIN_TOKEN="+strings.Repeat("a", 64)+"\n")
+	if err := os.WriteFile(filepath.Join(dir, "compose.yaml"),
+		[]byte("name: minecraft-server-test\nservices: {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := loadSettings(context.Background(), dir, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.composeProject != "minecraft-server-test" {
+		t.Errorf("プロジェクト名が %q。本番のコンテナを操作してしまう", got.composeProject)
+	}
+}
+
+// 明示された値が最優先。compose.yaml を触れない場合の逃げ道。
+func TestLoadSettingsPrefersExplicitProjectName(t *testing.T) {
+	t.Parallel()
+
+	dir, config := writeEnv(t,
+		"ADMIN_TOKEN="+strings.Repeat("a", 64)+"\nADMIN_COMPOSE_PROJECT=explicit\n")
+	if err := os.WriteFile(filepath.Join(dir, "compose.yaml"),
+		[]byte("name: from-file\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := loadSettings(context.Background(), dir, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.composeProject != "explicit" {
+		t.Errorf("プロジェクト名が %q（期待 explicit）", got.composeProject)
+	}
+}
+
+// compose.yaml に name: が無ければ、これまでと同じ既定に倒れる。
+func TestLoadSettingsFallsBackToDefaultProjectName(t *testing.T) {
+	t.Parallel()
+
+	got, _, err := loadFrom(t, "ADMIN_TOKEN="+strings.Repeat("a", 64)+"\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.composeProject != defaultComposeProject {
+		t.Errorf("既定に倒れていない: %q", got.composeProject)
+	}
+}
