@@ -22,22 +22,22 @@ export function BackupTable({ data, disabled, onRestore, onDelete }: BackupTable
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {data.backups.length === 0 ? (
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-dim">
           まだバックアップがありません。「バックアップを取得」から作れます。
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="hud-table">
             <thead>
-              <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
-                <th className="py-2 pr-2 font-medium">ファイル</th>
-                <th className="py-2 pr-2 font-medium">バージョン</th>
-                <th className="py-2 pr-2 font-medium">ワールド</th>
-                <th className="py-2 pr-2 font-medium">大きさ</th>
-                <th className="py-2 pr-2 font-medium">取得日時</th>
-                <th className="py-2 font-medium">操作</th>
+              <tr>
+                <th>ファイル</th>
+                <th>バージョン</th>
+                <th>ワールド</th>
+                <th>大きさ</th>
+                <th>取得日時</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -80,17 +80,15 @@ function BackupRow({
   onAskDelete,
 }: BackupRowProps) {
   return (
-    <tr className="border-b border-gray-100">
-      <td className="py-2 pr-2">
-        <code className="text-gray-900">{backup.id}</code>
+    <tr>
+      <td>
+        <code className="code-chip">{backup.id}</code>
       </td>
-      <td className="py-2 pr-2 text-gray-700">{formatWorldVersion(backup.version)}</td>
-      <td className="py-2 pr-2 text-gray-700">{backup.archiveLevel || '不明'}</td>
-      <td className="py-2 pr-2 text-gray-700">{formatBytes(backup.sizeBytes)}</td>
-      <td className="py-2 pr-2 text-gray-700">
-        {formatDateTime(backup.createdAt?.seconds) || '—'}
-      </td>
-      <td className="py-2">
+      <td>{formatWorldVersion(backup.version)}</td>
+      <td className="text-fg">{backup.archiveLevel || '不明'}</td>
+      <td className="whitespace-nowrap">{formatBytes(backup.sizeBytes)}</td>
+      <td className="whitespace-nowrap">{formatDateTime(backup.createdAt?.seconds) || '—'}</td>
+      <td>
         <RowActions
           backup={backup}
           disabled={disabled}
@@ -113,8 +111,8 @@ function RowActions({
   onAskDelete,
 }: BackupRowProps) {
   return (
-    <div className="flex gap-1">
-      <Button disabled={disabled} onClick={() => onRestore(backup.id)}>
+    <div className="flex gap-1.5">
+      <Button size="sm" disabled={disabled} onClick={() => onRestore(backup.id)}>
         復元
       </Button>
       {/* 削除は取り消せない。一度で消えないよう二度押しさせる。 */}
@@ -122,6 +120,7 @@ function RowActions({
         <>
           <Button
             tone="danger"
+            size="sm"
             disabled={disabled}
             onClick={() => {
               onAskDelete(null)
@@ -130,12 +129,17 @@ function RowActions({
           >
             本当に削除
           </Button>
-          <Button disabled={disabled} onClick={() => onAskDelete(null)}>
+          <Button size="sm" disabled={disabled} onClick={() => onAskDelete(null)}>
             やめる
           </Button>
         </>
       ) : (
-        <Button tone="danger" disabled={disabled} onClick={() => onAskDelete(backup.id)}>
+        <Button
+          tone="danger"
+          size="sm"
+          disabled={disabled}
+          onClick={() => onAskDelete(backup.id)}
+        >
           削除
         </Button>
       )}
@@ -149,8 +153,8 @@ function RowActions({
  */
 function StorageNotice({ data }: { data: ListBackupsResponse }) {
   return (
-    <p className="text-xs text-gray-500">
-      保管先 <code className="rounded bg-gray-100 px-1">{data.directory}</code>（合計{' '}
+    <p className="text-xs leading-relaxed text-faint">
+      保管先 <code className="code-chip">{data.directory}</code>（合計{' '}
       {formatBytes(data.totalSizeBytes)}）。
       バックアップはこのディスク上にしかありません。ディスクが壊れると一緒に失われます。
       大事な世代は別の場所へも控えてください。

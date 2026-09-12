@@ -5,32 +5,39 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
  *
  * atoms は見た目だけを持ち、業務知識を持たない。
  * 「復元ボタン」ではなく「危険な操作の見た目のボタン」として振る舞う。
+ * 見た目の実体は styles/index.css の .btn にある。面取りと押し込みの
+ * 影を状態ごとに持つため、クラスを並べるより CSS にまとめたほうが読める。
  */
 export type ButtonTone = 'neutral' | 'primary' | 'danger'
 
+/** 表の行の中では小さく、画面の主操作では大きく。 */
+export type ButtonSize = 'sm' | 'md' | 'lg'
+
 const toneClasses: Record<ButtonTone, string> = {
-  neutral: 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50',
-  primary: 'bg-gray-900 text-white border-gray-900 hover:bg-gray-700',
-  danger: 'bg-danger-500 text-white border-danger-500 hover:bg-danger-700',
+  neutral: 'btn-neutral',
+  primary: 'btn-primary',
+  danger: 'btn-danger',
+}
+
+const sizeClasses: Record<ButtonSize, string> = {
+  sm: 'btn-sm',
+  md: '',
+  lg: 'btn-lg',
 }
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: ButtonTone
+  size?: ButtonSize
   children: ReactNode
 }
 
-export function Button({ tone = 'neutral', className = '', ...props }: ButtonProps) {
+export function Button({ tone = 'neutral', size = 'md', className = '', ...props }: ButtonProps) {
   return (
     <button
       type="button"
-      className={[
-        'inline-flex items-center justify-center rounded border px-3 py-1.5',
-        'text-sm font-medium transition-colors',
-        'disabled:cursor-not-allowed disabled:opacity-50',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
-        toneClasses[tone],
-        className,
-      ].join(' ')}
+      className={['btn', toneClasses[tone], sizeClasses[size], className]
+        .filter(Boolean)
+        .join(' ')}
       {...props}
     />
   )

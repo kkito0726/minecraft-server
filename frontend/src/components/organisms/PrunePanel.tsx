@@ -22,8 +22,8 @@ export type PrunePanelProps = {
 
 export function PrunePanel({ result, disabled, onPreview, onApply }: PrunePanelProps) {
   return (
-    <div className="flex flex-col gap-2 border-t border-gray-100 pt-3">
-      <p className="text-xs text-gray-500">
+    <div className="flex flex-col gap-3 border-t border-line pt-4">
+      <p className="text-xs text-faint">
         保持ポリシーは取得のたびに自動で適用されます。今すぐ適用したいときだけ使ってください。
       </p>
 
@@ -51,23 +51,23 @@ export function PrunePanel({ result, disabled, onPreview, onApply }: PrunePanelP
 function PruneResultView({ result }: { result: PruneResult }) {
   if (result.ids.length === 0) {
     return (
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-dim">
         {result.kind === 'preview' ? '削除するものはありません。' : '削除したものはありません。'}
       </p>
     )
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <p className="text-sm text-gray-700">
+    <div className="flex flex-col gap-2">
+      <p className="text-sm text-dim">
         {result.kind === 'preview'
           ? `次の ${result.ids.length} 件が削除の対象です。`
           : `次の ${result.ids.length} 件を削除しました。`}
       </p>
-      <ul className="flex flex-col gap-1 text-sm text-gray-700">
+      <ul className="flex flex-col gap-1.5 text-sm">
         {result.ids.map((id) => (
           <li key={id}>
-            <code>{id}</code>
+            <code className="code-chip">{id}</code>
           </li>
         ))}
       </ul>

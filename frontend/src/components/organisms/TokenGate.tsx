@@ -3,7 +3,7 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react'
 
 import { clearToken, readToken, tokenSchema, writeToken } from '../../features/auth/token'
 import { describeError } from '../../lib/errors'
-import { Button, Spinner } from '../atoms'
+import { Button, PixelIcon, Spinner } from '../atoms'
 import { FormField } from '../molecules'
 
 /**
@@ -128,22 +128,33 @@ type TokenFormProps = {
   onSubmit: () => Promise<void>
 }
 
+/** 入口の端末。光るブロックを掲げ、ここから先が管理画面だと分かるようにする。 */
 function TokenForm({ value, onChange, error, busy, onSubmit }: TokenFormProps) {
   return (
-    <div className="flex min-h-full items-center justify-center bg-gray-50 p-4">
+    <div className="flex min-h-full items-center justify-center p-4">
       <form
-        className="flex w-full max-w-sm flex-col gap-4 rounded border border-gray-200 bg-white p-6"
+        className="hud-panel flex w-full max-w-md flex-col gap-6 p-7"
         onSubmit={(e) => {
           e.preventDefault()
           void onSubmit()
         }}
       >
-        <div>
-          <h1 className="text-base font-semibold text-gray-900">
-            Minecraft サーバー管理コンソール
-          </h1>
-          <p className="mt-1 text-xs text-gray-500">.env の ADMIN_TOKEN を入力してください。</p>
+        <div className="flex items-center gap-4">
+          <PixelIcon
+            name="block"
+            className="size-14 shrink-0 text-emerald drop-shadow-[0_0_16px_var(--color-emerald)]"
+          />
+          <div className="flex flex-col gap-2">
+            <p aria-hidden="true" className="hud-tag">
+              ACCESS TERMINAL
+            </p>
+            <h1 className="font-pixel text-xl leading-snug break-keep text-fg">
+              Minecraft サーバー管理コンソール
+            </h1>
+          </div>
         </div>
+
+        <p className="text-xs text-faint">.env の ADMIN_TOKEN を入力してください。</p>
 
         <FormField
           id="admin-token"
@@ -156,9 +167,14 @@ function TokenForm({ value, onChange, error, busy, onSubmit }: TokenFormProps) {
           autoFocus
         />
 
-        <Button type="submit" tone="primary" disabled={busy}>
+        <Button type="submit" tone="primary" size="lg" disabled={busy}>
           {busy ? '確認しています…' : '入る'}
         </Button>
+
+        <div aria-hidden="true" className="hud-tag flex justify-between border-t border-line pt-4">
+          <span>AUTH // SHARED TOKEN</span>
+          <span>TAILNET</span>
+        </div>
       </form>
     </div>
   )
@@ -166,7 +182,7 @@ function TokenForm({ value, onChange, error, busy, onSubmit }: TokenFormProps) {
 
 function CenteredNotice({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-full items-center justify-center gap-2 bg-gray-50 p-4 text-sm text-gray-600">
+    <div className="flex min-h-full items-center justify-center gap-3 p-4 text-sm text-dim">
       <Spinner />
       <span>{children}</span>
     </div>

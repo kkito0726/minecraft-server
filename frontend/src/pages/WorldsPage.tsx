@@ -7,6 +7,7 @@ import {
   WorldTable,
 } from '../components/organisms'
 import { Button } from '../components/atoms'
+import { PanelHeader } from '../components/molecules'
 import { useOperation } from '../features/operations'
 import { usePurgeQuarantine, useWorldCommand, useWorlds } from '../features/worlds'
 import { describeError } from '../lib/errors'
@@ -42,19 +43,19 @@ export function WorldsPage() {
   }
 
   if (isPending) {
-    return <p className="text-sm text-gray-600">ワールドを読み込んでいます…</p>
+    return <p className="text-sm text-dim">ワールドを読み込んでいます…</p>
   }
   if (error) {
-    return <p className="text-sm text-danger-700">{describeError(error)}</p>
+    return <p className="text-sm text-danger-ink">{describeError(error)}</p>
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="flex flex-col gap-3 rounded border border-gray-200 bg-white p-4">
+    <div className="flex flex-col gap-5">
+      <section className="hud-panel flex flex-col gap-4">
         <Header disabled={isBusy} onCreate={() => setDialog({ kind: 'create' })} />
 
         {(command.error || purge.error) && (
-          <p className="text-sm text-danger-700">
+          <p className="text-sm text-danger-ink">
             {describeError(command.error ?? purge.error)}
           </p>
         )}
@@ -86,14 +87,11 @@ export function WorldsPage() {
 
 function Header({ disabled, onCreate }: { disabled: boolean; onCreate: () => void }) {
   return (
-    <div className="flex items-center gap-2">
-      <h2 className="text-sm font-semibold text-gray-900">ワールド</h2>
-      <div className="ml-auto">
-        <Button tone="primary" disabled={disabled} onClick={onCreate}>
-          新規作成
-        </Button>
-      </div>
-    </div>
+    <PanelHeader title="ワールド" tag="WORLDS // SAVES">
+      <Button tone="primary" disabled={disabled} onClick={onCreate}>
+        新規作成
+      </Button>
+    </PanelHeader>
   )
 }
 

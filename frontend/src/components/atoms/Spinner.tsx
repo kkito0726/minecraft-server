@@ -16,11 +16,8 @@ export type SpinnerProps = {
 }
 
 export function Spinner({ label = '処理中', decorative = false }: SpinnerProps) {
-  const className =
-    'inline-block size-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700'
-
   if (decorative) {
-    return <span aria-hidden="true" className={className} />
+    return <span aria-hidden="true" className="block-spinner" />
   }
-  return <span role="status" aria-label={label} className={className} />
+  return <span role="status" aria-label={label} className="block-spinner" />
 }

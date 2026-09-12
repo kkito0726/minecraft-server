@@ -1,23 +1,801 @@
 @import "tailwindcss";
 
-/* デザイントークン。危険・警告・成功の色はここに集約し、
-   コンポーネント側に 16 進数を直書きしない。 */
-@theme {
-  --color-danger-50: oklch(0.97 0.02 25);
-  --color-danger-500: oklch(0.63 0.21 25);
-  --color-danger-700: oklch(0.48 0.19 25);
-
-  --color-warn-50: oklch(0.97 0.03 85);
-  --color-warn-500: oklch(0.72 0.16 85);
-  --color-warn-700: oklch(0.55 0.13 85);
-
-  --color-ok-50: oklch(0.96 0.03 155);
-  --color-ok-500: oklch(0.65 0.15 155);
-  --color-ok-700: oklch(0.48 0.12 155);
+/*
+  書体は同梱する。Go 側の CSP が default-src 'self' なので、外部の
+  フォント配信は読み込めない。woff の予備は積まない。対象のブラウザは
+  すべて woff2 を読めるので、Pi のバイナリに使われない重さを載せない。
+*/
+@font-face {
+  font-family: 'DotGothic16';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/dotgothic16/files/dotgothic16-japanese-400-normal.woff2') format('woff2');
 }
 
-html,
-body,
-#root {
-  height: 100%;
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/chakra-petch/files/chakra-petch-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('@fontsource/chakra-petch/files/chakra-petch-latin-500-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('@fontsource/chakra-petch/files/chakra-petch-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('@fontsource/chakra-petch/files/chakra-petch-latin-700-normal.woff2') format('woff2');
+}
+
+/*
+  デザイントークン。色はここに集約し、コンポーネント側に色の値を直書きしない。
+
+  黒曜石の地に、エメラルド（主操作・正常）、レッドストーン（危険）、
+  金（警告）、ダイヤ（情報・フォーカス）を差す。状態の色は 3 段で持つ。
+    <色>      線や塗りに使う本体
+    <色>-soft 暗い地に敷く薄い背景
+    <色>-ink  その背景の上に載せる文字
+*/
+@theme {
+  --font-sans: 'Chakra Petch', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP',
+    'Yu Gothic UI', 'Meiryo', sans-serif;
+  --font-pixel: 'DotGothic16', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', monospace;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Menlo', monospace;
+
+  --color-void: oklch(0.135 0.014 290);
+  --color-panel: oklch(0.175 0.017 290);
+  --color-raised: oklch(0.225 0.02 290);
+  --color-line: oklch(0.31 0.022 290);
+  --color-line-strong: oklch(0.42 0.024 290);
+
+  --color-fg: oklch(0.95 0.008 110);
+  --color-dim: oklch(0.78 0.012 290);
+  --color-faint: oklch(0.64 0.016 290);
+
+  --color-emerald: oklch(0.82 0.19 150);
+  --color-emerald-deep: oklch(0.58 0.15 150);
+  --color-emerald-soft: oklch(0.25 0.05 150);
+  --color-diamond: oklch(0.86 0.11 195);
+
+  --color-ok: oklch(0.82 0.19 150);
+  --color-ok-soft: oklch(0.24 0.05 150);
+  --color-ok-ink: oklch(0.87 0.15 150);
+
+  --color-warn: oklch(0.83 0.16 85);
+  --color-warn-soft: oklch(0.25 0.045 85);
+  --color-warn-ink: oklch(0.89 0.13 88);
+
+  --color-danger: oklch(0.62 0.22 27);
+  --color-danger-soft: oklch(0.23 0.06 25);
+  --color-danger-ink: oklch(0.8 0.13 25);
+}
+
+@layer base {
+  :root {
+    /* ネイティブのチェックボックス・ラジオ・ファイル選択を暗い地に合わせる */
+    color-scheme: dark;
+    accent-color: var(--color-emerald);
+    scrollbar-color: var(--color-line-strong) var(--color-void);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  /*
+    地の模様は html に敷く。body に敷くと、画面より長い内容のときに
+    body の外側だけ模様が途切れる。
+  */
+  html {
+    background-color: var(--color-void);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.07'/%3E%3C/svg%3E"),
+      radial-gradient(60rem 40rem at 0% -10%, oklch(0.82 0.19 150 / 0.1), transparent 60%),
+      radial-gradient(50rem 40rem at 100% 110%, oklch(0.55 0.2 300 / 0.14), transparent 60%),
+      linear-gradient(oklch(1 0 0 / 0.028) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.028) 1px, transparent 1px);
+    background-size: 160px 160px, auto, auto, 24px 24px, 24px 24px;
+    background-attachment: fixed;
+  }
+
+  body {
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--color-emerald);
+    color: var(--color-void);
+  }
+
+  /* 既定の輪郭線の色は暗い地でほとんど見えない。取り消せない操作が並ぶ画面で見失わせない */
+  :focus-visible {
+    outline-color: var(--color-diamond);
+  }
+}
+
+@layer components {
+  /* ---------- 面 ---------- */
+
+  /* 画面の区画。左上と右下の角だけ光らせて、計器の枠に見せる。 */
+  .hud-panel {
+    position: relative;
+    padding: 1.25rem;
+    background:
+      linear-gradient(180deg, oklch(1 0 0 / 0.035), transparent 7rem),
+      color-mix(in oklch, var(--color-panel) 92%, transparent);
+    border: 1px solid var(--color-line);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.05),
+      0 24px 48px -28px oklch(0 0 0 / 0.8);
+    animation: panel-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .hud-panel:nth-child(2) {
+    animation-delay: 70ms;
+  }
+  .hud-panel:nth-child(3) {
+    animation-delay: 140ms;
+  }
+  .hud-panel:nth-child(n + 4) {
+    animation-delay: 210ms;
+  }
+
+  .hud-panel::before,
+  .hud-panel::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+  }
+  .hud-panel::before {
+    top: -1px;
+    left: -1px;
+    border-top: 2px solid var(--color-emerald);
+    border-left: 2px solid var(--color-emerald);
+  }
+  .hud-panel::after {
+    right: -1px;
+    bottom: -1px;
+    border-right: 2px solid var(--color-emerald-deep);
+    border-bottom: 2px solid var(--color-emerald-deep);
+  }
+
+  /* 区画の中で開く入力欄。操作の種類ごとに左の帯の色を変える。 */
+  .hud-inset {
+    position: relative;
+    padding: 1rem;
+    background: color-mix(in oklch, var(--color-void) 70%, transparent);
+    border: 1px solid var(--color-line);
+    border-left: 3px solid var(--color-emerald-deep);
+  }
+
+  /* 取り消せない操作。上端に危険の縞を引く。 */
+  .hud-inset-danger {
+    padding-top: 1.4rem;
+    background: color-mix(in oklch, var(--color-danger-soft) 75%, transparent);
+    border-color: color-mix(in oklch, var(--color-danger) 45%, transparent);
+    border-left-color: var(--color-danger);
+  }
+  .hud-inset-danger::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 5px;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--color-danger) 0 7px,
+      transparent 7px 14px
+    );
+    opacity: 0.85;
+  }
+
+  /* ---------- 見出し ---------- */
+
+  .hud-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-pixel);
+    font-size: 1.0625rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: var(--color-fg);
+  }
+  .hud-title::before {
+    content: '';
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--color-emerald);
+    box-shadow: 0 0 10px var(--color-emerald);
+  }
+
+  /* 飾りの英字ラベル。読み上げからは外して使う。 */
+  .hud-tag {
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  /* ---------- ボタン ---------- */
+
+  /* ブロックの面取り。上に光、下に影を入れて、押すと沈む。 */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.9rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    border: 1px solid;
+    cursor: pointer;
+    box-shadow:
+      inset 0 2px 0 oklch(1 0 0 / 0.14),
+      inset 0 -3px 0 oklch(0 0 0 / 0.35);
+    transition:
+      background-color 150ms,
+      border-color 150ms,
+      box-shadow 150ms,
+      color 150ms,
+      filter 150ms,
+      transform 80ms;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--color-diamond);
+    outline-offset: 2px;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow:
+      inset 0 3px 0 oklch(0 0 0 / 0.35),
+      inset 0 -1px 0 oklch(1 0 0 / 0.08);
+  }
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.38;
+    filter: saturate(0.3);
+  }
+
+  .btn-sm {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+  }
+  .btn-lg {
+    min-width: 8.5rem;
+    padding: 0.75rem 1.4rem;
+    font-size: 0.9375rem;
+  }
+
+  .btn-neutral {
+    color: var(--color-fg);
+    background: linear-gradient(
+      var(--color-raised),
+      color-mix(in oklch, var(--color-raised) 65%, var(--color-void))
+    );
+    border-color: var(--color-line-strong);
+  }
+  .btn-neutral:hover:not(:disabled) {
+    border-color: var(--color-emerald);
+    box-shadow:
+      inset 0 2px 0 oklch(1 0 0 / 0.14),
+      inset 0 -3px 0 oklch(0 0 0 / 0.35),
+      0 0 18px -6px var(--color-emerald);
+  }
+
+  .btn-primary {
+    color: oklch(0.2 0.05 150);
+    text-shadow: 0 1px 0 oklch(1 0 0 / 0.25);
+    background: linear-gradient(oklch(0.85 0.19 148), oklch(0.7 0.18 150));
+    border-color: oklch(0.45 0.12 150);
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow:
+      inset 0 2px 0 oklch(1 0 0 / 0.3),
+      inset 0 -3px 0 oklch(0 0 0 / 0.3),
+      0 0 24px -4px var(--color-emerald);
+  }
+
+  .btn-danger {
+    color: oklch(0.99 0 0);
+    text-shadow: 0 1px 0 oklch(0 0 0 / 0.35);
+    background: linear-gradient(oklch(0.6 0.22 27), oklch(0.48 0.2 27));
+    border-color: oklch(0.36 0.14 27);
+  }
+  .btn-danger:hover:not(:disabled) {
+    filter: brightness(1.1);
+    box-shadow:
+      inset 0 2px 0 oklch(1 0 0 / 0.2),
+      inset 0 -3px 0 oklch(0 0 0 / 0.35),
+      0 0 24px -4px var(--color-danger);
+  }
+
+  /* ---------- 小さな部品 ---------- */
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.15rem 0.5rem;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    border: 1px solid;
+  }
+  /* 状態を示す点。中身の文字には含めない。 */
+  .badge::before {
+    content: '';
+    flex: none;
+    width: 6px;
+    height: 6px;
+    background: currentColor;
+  }
+  .badge-neutral {
+    color: var(--color-dim);
+    background: var(--color-raised);
+    border-color: var(--color-line);
+  }
+  .badge-ok {
+    color: var(--color-ok-ink);
+    background: var(--color-ok-soft);
+    border-color: color-mix(in oklch, var(--color-ok) 45%, transparent);
+  }
+  .badge-ok::before {
+    box-shadow: 0 0 8px currentColor;
+    animation: led-pulse 2.4s ease-in-out infinite;
+  }
+  .badge-warn {
+    color: var(--color-warn-ink);
+    background: var(--color-warn-soft);
+    border-color: color-mix(in oklch, var(--color-warn) 45%, transparent);
+  }
+  .badge-danger {
+    color: var(--color-danger-ink);
+    background: var(--color-danger-soft);
+    border-color: color-mix(in oklch, var(--color-danger) 50%, transparent);
+  }
+
+  /* 角ばった回転。ブロックを掘るときのように 8 段で刻む。 */
+  .block-spinner {
+    display: inline-block;
+    flex: none;
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 2px solid var(--color-line-strong);
+    border-top-color: var(--color-emerald);
+    border-right-color: var(--color-emerald);
+    animation: block-spin 0.9s steps(8) infinite;
+  }
+
+  .led {
+    display: inline-block;
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: currentColor;
+    box-shadow:
+      0 0 0 2px color-mix(in oklch, currentColor 22%, transparent),
+      0 0 10px currentColor;
+  }
+  .led-ok {
+    color: var(--color-ok);
+    animation: led-pulse 2.4s ease-in-out infinite;
+  }
+  .led-warn {
+    color: var(--color-warn);
+    animation: led-pulse 1s steps(2, jump-none) infinite;
+  }
+  .led-danger {
+    color: var(--color-danger);
+  }
+  .led-off {
+    color: var(--color-faint);
+    box-shadow: none;
+  }
+
+  /* パスや ID。本文の中で「そのまま打つもの」だと分かるようにする。 */
+  .code-chip {
+    padding: 0.1em 0.4em;
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    color: var(--color-diamond);
+    word-break: break-all;
+    background: color-mix(in oklch, var(--color-void) 85%, transparent);
+    border: 1px solid color-mix(in oklch, var(--color-diamond) 22%, transparent);
+  }
+
+  .notice {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.875rem;
+    border: 1px solid;
+    border-left-width: 3px;
+  }
+  .notice-warn {
+    color: var(--color-warn-ink);
+    background: var(--color-warn-soft);
+    border-color: color-mix(in oklch, var(--color-warn) 40%, transparent);
+    border-left-color: var(--color-warn);
+  }
+  .notice-danger {
+    color: var(--color-danger-ink);
+    background: var(--color-danger-soft);
+    border-color: color-mix(in oklch, var(--color-danger) 45%, transparent);
+    border-left-color: var(--color-danger);
+  }
+
+  /* 経験値バーの刻み。塗りの上に 10 等分の区切りを重ねる。 */
+  .xp-bar {
+    position: relative;
+    height: 10px;
+    overflow: hidden;
+    background: var(--color-void);
+    border: 1px solid var(--color-line-strong);
+    box-shadow: inset 0 2px 0 oklch(0 0 0 / 0.5);
+  }
+  .xp-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(10% - 2px),
+      var(--color-void) calc(10% - 2px) 10%
+    );
+  }
+  .xp-fill {
+    height: 100%;
+    background: linear-gradient(
+      180deg,
+      oklch(0.92 0.2 138),
+      oklch(0.76 0.21 142) 55%,
+      oklch(0.6 0.17 148)
+    );
+    box-shadow: 0 0 12px var(--color-emerald);
+    transition: width 300ms ease-out;
+  }
+  .xp-fill-indeterminate {
+    width: 35%;
+    animation: xp-sweep 1.4s steps(14) infinite;
+  }
+
+  /* ---------- 表 ---------- */
+
+  .hud-table {
+    width: 100%;
+    font-size: 0.875rem;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .hud-table thead th {
+    padding: 0.55rem 0.75rem;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.14em;
+    text-align: left;
+    white-space: nowrap;
+    color: var(--color-faint);
+    background: color-mix(in oklch, var(--color-void) 70%, transparent);
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+  }
+  .hud-table tbody td {
+    padding: 0.65rem 0.75rem;
+    color: var(--color-dim);
+    font-variant-numeric: tabular-nums;
+    vertical-align: middle;
+    border-bottom: 1px solid color-mix(in oklch, var(--color-line) 55%, transparent);
+  }
+  .hud-table tbody tr {
+    transition: background-color 150ms;
+  }
+  .hud-table tbody tr:hover {
+    background: color-mix(in oklch, var(--color-raised) 55%, transparent);
+  }
+  .hud-table tbody tr[data-active] {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--color-emerald) 10%, transparent),
+      transparent 60%
+    );
+  }
+  .hud-table tbody tr[data-active] td:first-child {
+    box-shadow: inset 3px 0 0 var(--color-emerald);
+  }
+
+  /* ---------- 状態の表示 ---------- */
+
+  .stat-grid {
+    counter-reset: stat;
+  }
+  .stat-tile {
+    position: relative;
+    padding: 0.75rem 0.9rem;
+    background: color-mix(in oklch, var(--color-void) 55%, transparent);
+    border: 1px solid var(--color-line);
+    border-left: 2px solid var(--color-emerald-deep);
+    transition: border-color 150ms;
+  }
+  .stat-tile:hover {
+    border-color: var(--color-line-strong);
+    border-left-color: var(--color-emerald);
+  }
+  /* 計器の番号。読み上げの対象にならない疑似要素で振る。 */
+  .stat-tile::after {
+    counter-increment: stat;
+    content: counter(stat, decimal-leading-zero);
+    position: absolute;
+    top: 0.55rem;
+    right: 0.65rem;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--color-line-strong);
+  }
+  /* 狭い画面では番号より項目名の幅を優先する。 */
+  @media (width < 40rem) {
+    .stat-tile::after {
+      display: none;
+    }
+  }
+
+  /* サーバーの心臓部。状態の色で光る 1 個のブロック。 */
+  .core {
+    position: relative;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 0.75rem;
+    min-width: 10rem;
+    padding: 1.25rem 1rem 1rem;
+    color: var(--color-faint);
+    background:
+      radial-gradient(circle at 50% 42%, color-mix(in oklch, currentColor 20%, transparent), transparent 62%),
+      color-mix(in oklch, var(--color-void) 60%, transparent);
+    border: 1px solid var(--color-line);
+  }
+  .core svg {
+    filter: drop-shadow(0 0 14px color-mix(in oklch, currentColor 55%, transparent));
+    animation: core-float 4s ease-in-out infinite;
+  }
+  .core-label {
+    font-family: var(--font-pixel);
+    font-size: 0.8125rem;
+    letter-spacing: 0.24em;
+  }
+  .core-ok {
+    color: var(--color-ok);
+  }
+  .core-warn {
+    color: var(--color-warn);
+  }
+  .core-danger {
+    color: var(--color-danger);
+  }
+  .core-off {
+    color: var(--color-faint);
+  }
+  .core-off svg {
+    filter: none;
+    opacity: 0.55;
+    animation: none;
+  }
+
+  /* ---------- 骨組み ---------- */
+
+  .nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--color-dim);
+    border: 1px solid transparent;
+    transition:
+      background-color 150ms,
+      border-color 150ms,
+      color 150ms;
+  }
+  .nav-item:hover {
+    color: var(--color-fg);
+    background: color-mix(in oklch, var(--color-raised) 60%, transparent);
+    border-color: var(--color-line);
+  }
+  .nav-item:focus-visible {
+    outline: 2px solid var(--color-diamond);
+    outline-offset: 2px;
+  }
+  .nav-item[aria-current='page'] {
+    color: var(--color-fg);
+    background: linear-gradient(90deg, var(--color-emerald-soft), transparent);
+    border-color: color-mix(in oklch, var(--color-emerald) 35%, transparent);
+  }
+  .nav-item[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    left: -1px;
+    width: 3px;
+    background: var(--color-emerald);
+    box-shadow: 0 0 12px var(--color-emerald);
+  }
+  .nav-item[aria-current='page'] svg {
+    color: var(--color-emerald);
+    filter: drop-shadow(0 0 6px var(--color-emerald));
+  }
+  .nav-code {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    color: var(--color-faint);
+  }
+
+  /* 画面が狭いときは横に並べる。左の帯は下の帯に置き換える。 */
+  @media (width < 64rem) {
+    .nav-item[aria-current='page']::before {
+      top: auto;
+      right: -1px;
+      bottom: -1px;
+      width: auto;
+      height: 3px;
+    }
+    .nav-code {
+      display: none;
+    }
+  }
+
+  .status-strip {
+    background: color-mix(in oklch, var(--color-panel) 88%, transparent);
+    border-bottom: 1px solid var(--color-line);
+    backdrop-filter: blur(10px);
+  }
+
+  .op-banner {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in oklch, var(--color-panel) 95%, transparent);
+    border-bottom: 1px solid var(--color-line);
+    backdrop-filter: blur(10px);
+  }
+  /* 進行中は上端を光が走る。止まって見えないようにする。 */
+  .op-banner-running::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 30%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--color-emerald), transparent);
+    animation: scan 2.2s linear infinite;
+  }
+  .op-banner-done {
+    border-bottom-color: color-mix(in oklch, var(--color-ok) 45%, transparent);
+  }
+  .op-banner-failed {
+    background: color-mix(in oklch, var(--color-danger-soft) 95%, transparent);
+    border-bottom-color: var(--color-danger);
+  }
+
+  .log-panel li::before {
+    content: '›';
+    color: var(--color-emerald-deep);
+  }
+
+  .hazard-edge {
+    position: relative;
+  }
+  .hazard-edge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 6px;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--color-warn) 0 5px,
+      oklch(0.2 0.03 85) 5px 10px
+    );
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes block-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes led-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes core-float {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes scan {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+@keyframes xp-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(290%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

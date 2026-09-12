@@ -54,7 +54,7 @@ export function RestoreDialog({ preflight, disabled, onCancel, onConfirm }: Rest
 
   return (
     <form
-      className="flex flex-col gap-3 rounded border border-danger-500 bg-danger-50 p-3"
+      className="hud-inset hud-inset-danger flex flex-col gap-4"
       aria-label="バックアップからの復元"
       onSubmit={(e) => {
         e.preventDefault()
@@ -239,16 +239,19 @@ function useRestoreConfirmation(preflight: PreflightRestoreResponse, archiveLeve
 /** 何が起きるかと、バージョンの判定。承諾を求める根拠になる部分。 */
 function RestoreSummary({ preflight }: { preflight: PreflightRestoreResponse }) {
   return (
-    <div className="flex flex-col gap-2 text-sm text-danger-700">
-      <p>
-        <code className="rounded bg-white px-1">{preflight.backup?.id}</code> から復元します。
-        現在のワールドは削除せず <code className="rounded bg-white px-1">.broken-日時</code>{' '}
+    <div className="flex flex-col gap-2.5 text-sm text-danger-ink">
+      <p aria-hidden="true" className="hud-tag text-danger">
+        RESTORE // IRREVERSIBLE
+      </p>
+      <p className="leading-relaxed">
+        <code className="code-chip">{preflight.backup?.id}</code> から復元します。
+        現在のワールドは削除せず <code className="code-chip">.broken-日時</code>{' '}
         へ退避してから展開します。うまくいかなければ退避から戻せます。
       </p>
 
       <p className="flex flex-wrap items-center gap-2">
         <Badge tone={verdictTone(preflight.verdict)}>{verdictLabel(preflight.verdict)}</Badge>
-        <span className="text-gray-700">
+        <span className="text-dim">
           アーカイブ {formatWorldVersion(preflight.backup?.version)} / 現在{' '}
           {formatWorldVersion(preflight.currentWorldVersion)}
         </span>
@@ -280,7 +283,7 @@ function SpaceNotice({ required, available }: { required: bigint; available: big
   }
 
   return (
-    <p role="alert" className="rounded border border-danger-500 bg-white p-2 text-sm text-danger-700">
+    <p role="alert" className="notice notice-danger">
       空き容量が足りません。展開には {formatBytes(required)} 必要ですが、空きは{' '}
       {formatBytes(available)} です。
     </p>

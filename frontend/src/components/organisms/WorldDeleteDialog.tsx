@@ -32,7 +32,7 @@ export function WorldDeleteDialog({
 
   return (
     <form
-      className="flex flex-col gap-3 rounded border border-danger-500 bg-danger-50 p-3"
+      className="hud-inset hud-inset-danger flex flex-col gap-4"
       aria-label={`${name} の削除`}
       onSubmit={(e) => {
         e.preventDefault()
@@ -41,9 +41,9 @@ export function WorldDeleteDialog({
         }
       }}
     >
-      <p className="text-sm text-danger-700">
-        <strong className="font-semibold">{name}</strong> を削除します。
-        すぐには消さず <code className="rounded bg-white px-1">{name}.deleted-日時</code>{' '}
+      <p className="text-sm leading-relaxed text-danger-ink">
+        <strong className="font-semibold text-fg">{name}</strong> を削除します。
+        すぐには消さず <code className="code-chip">{name}.deleted-日時</code>{' '}
         へ退避します。完全に消すには、退避の一覧から改めて削除してください。
       </p>
 

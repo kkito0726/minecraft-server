@@ -12,8 +12,8 @@ export function Radio({ className = '', ...props }: RadioProps) {
     <input
       type="radio"
       className={[
-        'h-4 w-4 shrink-0 border-gray-300',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1',
+        'size-4 shrink-0 cursor-pointer accent-emerald',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-diamond',
         'disabled:cursor-not-allowed disabled:opacity-50',
         className,
       ].join(' ')}

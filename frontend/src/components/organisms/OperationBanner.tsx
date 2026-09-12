@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { OperationState } from '../../gen/mcadmin/v1/common_pb'
+import type { Operation } from '../../gen/mcadmin/v1/operation_pb'
 import { isTerminal, kindLabel, levelTone, stateLabel, useOperation } from '../../features/operations'
 import type { LogLine } from '../../features/operations'
 import { Badge, Button, ProgressBar, Spinner } from '../atoms'
@@ -26,30 +27,23 @@ export function OperationBanner() {
   return (
     <div
       className={[
-        'border-b px-4 py-2',
-        failed ? 'border-danger-500 bg-danger-50' : 'border-gray-200 bg-white',
+        'op-banner px-4 py-3 lg:px-8',
+        failed ? 'op-banner-failed' : done ? 'op-banner-done' : 'op-banner-running',
       ].join(' ')}
       role="status"
       aria-live="polite"
       aria-label="操作の進捗"
     >
-      <div className="mx-auto flex max-w-5xl flex-col gap-2">
-        <div className="flex items-center gap-3">
-          {!done && <Spinner decorative />}
-          <span className="text-sm font-medium text-gray-900">{kindLabel(operation.kind)}</span>
-          <Badge tone={failed ? 'danger' : done ? 'ok' : 'neutral'}>
-            {stateLabel(operation.state)}
-          </Badge>
-          <span className="text-xs text-gray-600">
-            {operation.stepIndex}/{operation.stepTotal} {operation.currentStep}
-          </span>
-          <div className="ml-auto flex gap-1">
-            <Button onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
-              {expanded ? 'ログを隠す' : `ログ (${log.length})`}
-            </Button>
-            {done && <Button onClick={dismiss}>閉じる</Button>}
-          </div>
-        </div>
+      <div className="mx-auto flex max-w-6xl flex-col gap-2.5">
+        <BannerHeader
+          operation={operation}
+          done={done}
+          failed={failed}
+          logCount={log.length}
+          expanded={expanded}
+          onToggleLog={() => setExpanded((v) => !v)}
+          onDismiss={dismiss}
+        />
 
         <StepProgress
           index={operation.stepIndex}
@@ -59,10 +53,54 @@ export function OperationBanner() {
         />
 
         {failed && operation.errorMessage && (
-          <p className="text-sm text-danger-700">{operation.errorMessage}</p>
+          <p className="text-sm text-danger-ink">{operation.errorMessage}</p>
         )}
 
         {expanded && <LogPanel lines={log} />}
+      </div>
+    </div>
+  )
+}
+
+type BannerHeaderProps = {
+  operation: Operation
+  done: boolean
+  failed: boolean
+  logCount: number
+  expanded: boolean
+  onToggleLog: () => void
+  onDismiss: () => void
+}
+
+/** 何の操作が、いまどの手順にいるか。ログの開閉と、終わった帯を閉じる操作。 */
+function BannerHeader({
+  operation,
+  done,
+  failed,
+  logCount,
+  expanded,
+  onToggleLog,
+  onDismiss,
+}: BannerHeaderProps) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      {!done && <Spinner decorative />}
+      <span className="font-pixel text-sm text-fg">{kindLabel(operation.kind)}</span>
+      <Badge tone={failed ? 'danger' : done ? 'ok' : 'neutral'}>
+        {stateLabel(operation.state)}
+      </Badge>
+      <span className="text-xs text-dim tabular-nums">
+        {operation.stepIndex}/{operation.stepTotal} {operation.currentStep}
+      </span>
+      <div className="ml-auto flex gap-1.5">
+        <Button size="sm" onClick={onToggleLog} aria-expanded={expanded}>
+          {expanded ? 'ログを隠す' : `ログ (${logCount})`}
+        </Button>
+        {done && (
+          <Button size="sm" onClick={onDismiss}>
+            閉じる
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -89,12 +127,13 @@ function StepProgress({ index, total, bytesDone, bytesTotal }: StepProgressProps
   return <ProgressBar done={index} total={total} label="手順の進み具合" />
 }
 
+/** 端末の出力のように見せる。行頭の記号は CSS が描き、文字には含めない。 */
 function LogPanel({ lines }: { lines: LogLine[] }) {
   return (
-    <ol className="max-h-48 overflow-y-auto rounded bg-gray-50 p-2 text-xs">
+    <ol className="log-panel max-h-56 overflow-y-auto border border-line bg-void/90 p-3 font-mono text-xs leading-relaxed">
       {lines.map((line) => (
         <li key={String(line.seq)} className="flex gap-2 py-0.5">
-          <span className="shrink-0 text-gray-400">{String(line.seq)}</span>
+          <span className="w-8 shrink-0 text-right text-faint tabular-nums">{String(line.seq)}</span>
           <span className={toneClass(levelTone(line.level))}>{line.message}</span>
         </li>
       ))}
@@ -105,10 +144,10 @@ function LogPanel({ lines }: { lines: LogLine[] }) {
 function toneClass(tone: 'neutral' | 'warn' | 'danger'): string {
   switch (tone) {
     case 'danger':
-      return 'text-danger-700'
+      return 'text-danger-ink'
     case 'warn':
-      return 'text-warn-700'
+      return 'text-warn-ink'
     default:
-      return 'text-gray-700'
+      return 'text-dim'
   }
 }

@@ -20,12 +20,12 @@ export function InterruptedBanner() {
   return (
     <div
       role="alert"
-      className="border-b border-warn-500 bg-warn-50 px-4 py-2"
+      className="hazard-edge border-b border-warn/50 bg-warn-soft/95 py-2.5 pr-4 pl-6 backdrop-blur lg:pr-8 lg:pl-10"
       aria-label="中断された操作の警告"
     >
-      <div className="mx-auto max-w-5xl text-sm text-warn-700">
+      <div className="mx-auto max-w-6xl text-sm text-warn-ink">
         前回の実行が操作の途中で終了した形跡があります。ワールドの保存が止まったままの可能性があるため、
-        <strong className="font-semibold">save-on を送信し直しました</strong>
+        <strong className="font-semibold text-warn">save-on を送信し直しました</strong>
         。念のためサーバーを再起動すると確実です。
       </div>
     </div>

@@ -5,7 +5,7 @@ import { ServerControls, ServerStatusCard } from '../components/organisms'
  */
 export function ServerPage() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <ServerStatusCard />
       <ServerControls />
     </div>

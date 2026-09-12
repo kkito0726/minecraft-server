@@ -39,11 +39,14 @@ export function UploadBackupPanel({
 
   return (
     <form
-      className="flex flex-col gap-3 rounded border border-gray-300 bg-gray-50 p-3"
+      className="hud-inset flex flex-col gap-4"
       aria-label="バックアップの取り込み"
       onSubmit={submit}
     >
-      <p className="text-xs text-gray-600">
+      <p aria-hidden="true" className="hud-tag">
+        IMPORT // EXTERNAL ZIP
+      </p>
+      <p className="text-xs text-dim">
         手元の zip を保管先に取り込みます。ワールドはまだ差し替わりません。
         取り込んだあと、一覧から復元してください。
       </p>
@@ -58,11 +61,11 @@ export function UploadBackupPanel({
       {busy && <ProgressBar done={Math.round(progress * 100)} total={100} label="送信の進み具合" />}
 
       {error && (
-        <p role="alert" className="text-sm text-danger-700">
+        <p role="alert" className="text-sm text-danger-ink">
           {error}
         </p>
       )}
-      {notice && !error && <p className="text-sm text-ok-700">{notice}</p>}
+      {notice && !error && <p className="text-sm text-ok-ink">{notice}</p>}
 
       <div>
         <Button type="submit" tone="primary" disabled={disabled || busy || selected === null}>
@@ -82,8 +85,8 @@ type FileFieldProps = {
 
 function FileField({ inputRef, selected, disabled, onSelect }: FileFieldProps) {
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor="import-file" className="text-sm font-medium text-gray-800">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor="import-file" className="text-xs font-semibold tracking-wider text-dim">
         取り込む zip
       </label>
       <input
@@ -92,11 +95,17 @@ function FileField({ inputRef, selected, disabled, onSelect }: FileFieldProps) {
         type="file"
         accept=".zip,application/zip"
         disabled={disabled}
-        className="text-sm file:mr-2 file:rounded file:border file:border-gray-300 file:bg-white file:px-2 file:py-1 file:text-sm"
+        className={[
+          'text-sm text-dim disabled:cursor-not-allowed disabled:opacity-50',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-diamond',
+          'file:mr-3 file:cursor-pointer file:border file:border-line-strong file:bg-raised',
+          'file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-fg',
+          'hover:file:border-emerald',
+        ].join(' ')}
         onChange={(e) => onSelect(e.target.files?.[0] ?? null)}
         aria-describedby="import-file-hint"
       />
-      <p id="import-file-hint" className="text-xs text-gray-500">
+      <p id="import-file-hint" className="text-xs text-faint">
         {selected
           ? `${selected.name}（${Math.max(1, Math.round(selected.size / 1024))} KB）`
           : 'data/<名前>/ か <名前>/ の形で level.dat を含むものを選んでください。'}

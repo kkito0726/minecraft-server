@@ -1,6 +1,7 @@
 import { formatBytes, formatDateTime } from '../../lib/format'
 import type { Quarantine } from '../../gen/mcadmin/v1/world_pb'
 import { Badge, Button } from '../atoms'
+import { PanelHeader } from '../molecules'
 
 /**
  * 退避されたディレクトリの一覧。
@@ -21,27 +22,27 @@ export function QuarantineList({ quarantines, disabled, onPurge }: QuarantineLis
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-gray-200 bg-white p-4">
+    <section className="hud-panel flex flex-col gap-4">
       <div>
-        <h2 className="text-sm font-semibold text-gray-900">退避したワールド</h2>
-        <p className="mt-1 text-xs text-gray-500">
+        <PanelHeader title="退避したワールド" tag="QUARANTINE" />
+        <p className="mt-2 text-xs text-faint">
           復元や削除の前に退避したものです。自動では消しません。
           問題なく動くことを確認してから削除してください。
         </p>
       </div>
 
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col">
         {quarantines.map((q) => (
           <li
             key={q.name}
-            className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-2 text-sm"
+            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line/60 py-2.5 text-sm last:border-b-0"
           >
-            <code className="text-gray-900">{q.name}</code>
+            <code className="code-chip">{q.name}</code>
             <Badge tone="neutral">{q.fromRestore ? '復元による退避' : '削除による退避'}</Badge>
-            <span className="text-gray-600">{formatBytes(q.sizeBytes)}</span>
-            <span className="text-gray-600">{formatDateTime(q.quarantinedAt?.seconds)}</span>
+            <span className="text-dim tabular-nums">{formatBytes(q.sizeBytes)}</span>
+            <span className="text-dim tabular-nums">{formatDateTime(q.quarantinedAt?.seconds)}</span>
             <div className="ml-auto">
-              <Button tone="danger" disabled={disabled} onClick={() => onPurge(q.name)}>
+              <Button tone="danger" size="sm" disabled={disabled} onClick={() => onPurge(q.name)}>
                 完全に削除
               </Button>
             </div>

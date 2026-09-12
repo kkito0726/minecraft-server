@@ -40,6 +40,25 @@ export function containerStateLabel(state: ContainerState, healthy: boolean): st
   return base
 }
 
+/** 状態を色で示すときの段階。 */
+export type ServerTone = 'ok' | 'warn' | 'off'
+
+/**
+ * 状態の色。
+ *
+ * 実行中でもヘルスチェックに通るまではまだ遊べないので、正常とは
+ * 分けて警告の色にする。再起動中も同じく「待てば戻る」状態として扱う。
+ */
+export function serverTone(state: ContainerState, healthy: boolean): ServerTone {
+  if (state === ContainerState.RUNNING) {
+    return healthy ? 'ok' : 'warn'
+  }
+  if (state === ContainerState.RESTARTING) {
+    return 'warn'
+  }
+  return 'off'
+}
+
 const SAVING_LABELS: Record<SavingState, string> = {
   [SavingState.UNSPECIFIED]: '不明',
   [SavingState.ASSUMED_ON]: '有効',

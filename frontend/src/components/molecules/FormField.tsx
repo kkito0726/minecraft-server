@@ -37,8 +37,8 @@ export function FormField({
   const errorId = error ? `${id}-error` : undefined
 
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium text-gray-800">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-xs font-semibold tracking-wider text-dim">
         {label}
       </label>
       <TextInput
@@ -52,12 +52,12 @@ export function FormField({
         aria-describedby={[hintId, errorId].filter(Boolean).join(' ') || undefined}
       />
       {hint && (
-        <p id={hintId} className="text-xs text-gray-500">
+        <p id={hintId} className="text-xs text-faint">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} role="alert" className="text-xs text-danger-700">
+        <p id={errorId} role="alert" className="text-xs font-medium text-danger-ink">
           {error}
         </p>
       )}
