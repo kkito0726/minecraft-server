@@ -1,5 +1,5 @@
 import { createConnectTransport } from '@connectrpc/connect-web'
-import type { Interceptor } from '@connectrpc/connect'
+import type { Interceptor, Transport } from '@connectrpc/connect'
 
 import { readToken } from '../features/auth/token'
 
@@ -34,14 +34,33 @@ export const authInterceptor: Interceptor = (next) => async (req) => {
   return next(req)
 }
 
+/** 実際のサーバーに繋ぐ口。 */
+let active: Transport = createConnectTransport({
+  baseUrl: RPC_BASE_URL,
+  interceptors: [authInterceptor],
+})
+
+/**
+ * 通信の口を差し替える。公開デモがブラウザ内の実装に繋ぎ替えるために使う。
+ *
+ * 差し替えても下の transport の同一性は変わらない。各 client は
+ * 読み込み時に transport を捕まえるので、ここで参照ごと入れ替えると
+ * 読み込みの順序に依存する壊れ方をする。
+ */
+export function setTransport(next: Transport): void {
+  active = next
+}
+
 /**
  * アプリ全体で 1 つだけ持つトランスポート。
  *
  * 1 つに揃えるのは、操作の進捗を購読する server-streaming も
  * 同じ認証 interceptor を通す必要があるため。別に作ると
  * ストリームだけ認証が漏れる。
+ *
+ * 実体を直接見せず、いま有効な口へ渡すだけの薄い包みにしてある。
  */
-export const transport = createConnectTransport({
-  baseUrl: RPC_BASE_URL,
-  interceptors: [authInterceptor],
-})
+export const transport: Transport = {
+  unary: (...args) => active.unary(...args),
+  stream: (...args) => active.stream(...args),
+}

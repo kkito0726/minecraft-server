@@ -24,6 +24,8 @@ coverage.html
 # 管理コンソール — フロントエンド
 frontend/node_modules/
 frontend/dist/
+# 公開デモの成果物。GitHub Actions が毎回ビルドして Pages へ配る。
+frontend/dist-demo/
 frontend/coverage/
 frontend/test-results/
 frontend/playwright-report/
