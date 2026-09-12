@@ -31,13 +31,17 @@ export function CreateBackupDialog({ disabled, onCancel, onSubmit }: CreateBacku
 
   return (
     <form
-      className="flex flex-col gap-3 rounded border border-gray-300 bg-gray-50 p-3"
+      className="hud-inset flex flex-col gap-4"
       aria-label="バックアップの取得"
       onSubmit={(e) => {
         e.preventDefault()
         onSubmit({ mode: MODES[mode], note })
       }}
     >
+      <p aria-hidden="true" className="hud-tag">
+        BACKUP // NEW SNAPSHOT
+      </p>
+
       <ChoiceGroup
         name="backup-mode"
         legend="取得の方式"
@@ -51,7 +55,7 @@ export function CreateBackupDialog({ disabled, onCancel, onSubmit }: CreateBacku
       />
 
       {mode === 'cold' && (
-        <p role="alert" className="rounded border border-warn-500 bg-warn-50 p-2 text-sm text-warn-700">
+        <p role="alert" className="notice notice-warn">
           サーバーを停止してから取得し、終わったら起動し直します。接続中の人は切断されます。
         </p>
       )}
@@ -99,12 +103,12 @@ function NoteField({
       placeholder="before-update"
       hint={
         dropped ? (
-          <span className="text-warn-700">
+          <span className="text-warn-ink">
             このメモはファイル名には残りません。英数字と下線だけが使えます。
           </span>
         ) : slug ? (
           <>
-            ファイル名の末尾に <code className="rounded bg-gray-100 px-1">{slug}</code> が付きます。
+            ファイル名の末尾に <code className="code-chip">{slug}</code> が付きます。
           </>
         ) : (
           `英数字と下線が ${MAX_NOTE_LENGTH} 文字まで使えます。`

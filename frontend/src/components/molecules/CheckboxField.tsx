@@ -18,7 +18,10 @@ export type CheckboxFieldProps = {
 
 export function CheckboxField({ id, label, checked, onChange, disabled }: CheckboxFieldProps) {
   return (
-    <label htmlFor={id} className="flex items-start gap-2 text-sm text-gray-800">
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-start gap-2.5 text-sm text-fg has-disabled:cursor-not-allowed"
+    >
       <Checkbox
         id={id}
         checked={checked}

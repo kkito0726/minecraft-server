@@ -36,8 +36,8 @@ export function RetentionSettings({ policy, disabled, onSave }: RetentionSetting
   }
 
   return (
-    <form className="flex flex-col gap-3" aria-label="保持ポリシー" onSubmit={submit}>
-      <div className="grid gap-3 sm:grid-cols-2">
+    <form className="flex flex-col gap-4" aria-label="保持ポリシー" onSubmit={submit}>
+      <div className="grid gap-4 sm:grid-cols-2">
         <FormField
           id="retention-keep-count"
           label="残す世代数"
@@ -56,13 +56,13 @@ export function RetentionSettings({ policy, disabled, onSave }: RetentionSetting
         />
       </div>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-faint">
         世代数と日数の両方を満たさないものだけを削除します。
         設定がどうであれ、最も新しい 1 世代は必ず残します。
       </p>
 
       {error && (
-        <p role="alert" className="text-sm text-danger-700">
+        <p role="alert" className="text-sm text-danger-ink">
           {error}
         </p>
       )}

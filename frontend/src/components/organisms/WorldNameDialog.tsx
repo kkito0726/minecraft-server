@@ -38,7 +38,7 @@ export function WorldNameDialog({
 
   return (
     <form
-      className="flex flex-col gap-3 rounded border border-gray-300 bg-gray-50 p-3"
+      className="hud-inset flex flex-col gap-4"
       aria-label={title}
       onSubmit={(e) => {
         e.preventDefault()
@@ -47,7 +47,7 @@ export function WorldNameDialog({
         }
       }}
     >
-      <p className="text-sm text-gray-700">{description}</p>
+      <p className="text-sm text-dim">{description}</p>
 
       <NameField value={name} onChange={setName} disabled={disabled} />
 

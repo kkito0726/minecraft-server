@@ -26,7 +26,7 @@ export function ConfirmInput({ id, expected, value, onChange, disabled }: Confir
       label="確認のため、対象の名前を入力してください"
       value={value}
       onChange={onChange}
-      hint={<code className="rounded bg-gray-100 px-1">{expected}</code>}
+      hint={<code className="code-chip">{expected}</code>}
       error={touched && !matches ? '名前が一致していません' : undefined}
       placeholder={expected}
       disabled={disabled}

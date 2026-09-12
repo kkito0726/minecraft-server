@@ -10,6 +10,7 @@ import {
 } from '../components/organisms'
 import type { PruneResult, RestoreRequestInput } from '../components/organisms'
 import { Button } from '../components/atoms'
+import { PanelHeader } from '../components/molecules'
 import {
   useBackups,
   useCreateBackup,
@@ -38,14 +39,14 @@ export function BackupsPage() {
   const retention = useRetentionPolicy()
 
   if (backups.isPending) {
-    return <p className="text-sm text-gray-600">バックアップを読み込んでいます…</p>
+    return <p className="text-sm text-dim">バックアップを読み込んでいます…</p>
   }
   if (backups.error) {
-    return <p className="text-sm text-danger-700">{describeError(backups.error)}</p>
+    return <p className="text-sm text-danger-ink">{describeError(backups.error)}</p>
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <BackupSection data={backups.data} disabled={isBusy} />
       <RetentionSection disabled={isBusy} policy={retention.data?.policy} />
     </div>
@@ -67,14 +68,14 @@ function BackupSection({ data, disabled }: { data: ListBackupsResponse; disabled
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-gray-200 bg-white p-4">
+    <section className="hud-panel flex flex-col gap-4">
       <Header
         disabled={disabled}
         onCreate={() => setCreating(true)}
         onImport={() => setImporting((v) => !v)}
       />
 
-      {failure && <p className="text-sm text-danger-700">{describeError(failure)}</p>}
+      {failure && <p className="text-sm text-danger-ink">{describeError(failure)}</p>}
 
       {creating && (
         <CreateBackupDialog
@@ -157,17 +158,14 @@ type HeaderProps = {
 
 function Header({ disabled, onCreate, onImport }: HeaderProps) {
   return (
-    <div className="flex items-center gap-2">
-      <h2 className="text-sm font-semibold text-gray-900">バックアップ</h2>
-      <div className="ml-auto flex gap-2">
-        <Button disabled={disabled} onClick={onImport}>
-          zip を取り込む
-        </Button>
-        <Button tone="primary" disabled={disabled} onClick={onCreate}>
-          バックアップを取得
-        </Button>
-      </div>
-    </div>
+    <PanelHeader title="バックアップ" tag="VAULT // BACKUPS">
+      <Button disabled={disabled} onClick={onImport}>
+        zip を取り込む
+      </Button>
+      <Button tone="primary" disabled={disabled} onClick={onCreate}>
+        バックアップを取得
+      </Button>
+    </PanelHeader>
   )
 }
 
@@ -185,7 +183,7 @@ type RestoreSectionProps = {
  */
 function RestoreSection({ pending, preflight, disabled, onCancel, onConfirm }: RestoreSectionProps) {
   if (pending || !preflight) {
-    return <p className="text-sm text-gray-600">復元の内容を確認しています…</p>
+    return <p className="text-sm text-dim">復元の内容を確認しています…</p>
   }
   return (
     <RestoreDialog
@@ -213,11 +211,11 @@ function RetentionSection({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-gray-200 bg-white p-4">
-      <h2 className="text-sm font-semibold text-gray-900">保持ポリシー</h2>
+    <section className="hud-panel flex flex-col gap-4">
+      <PanelHeader title="保持ポリシー" tag="RETENTION" />
 
       {(save.error ?? prune.error) && (
-        <p className="text-sm text-danger-700">{describeError(save.error ?? prune.error)}</p>
+        <p className="text-sm text-danger-ink">{describeError(save.error ?? prune.error)}</p>
       )}
 
       <RetentionSettings

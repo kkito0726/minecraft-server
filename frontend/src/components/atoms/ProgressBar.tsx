@@ -1,5 +1,5 @@
 /**
- * 進捗の帯。
+ * 進捗の帯。経験値バーのように 10 等分の刻みを入れる。
  *
  * 総量が不明な場合（bytes が取れないアーカイブなど）は
  * 不確定として表示する。
@@ -21,13 +21,10 @@ export function ProgressBar({ done, total, label }: ProgressBarProps) {
       aria-valuemin={0}
       aria-valuemax={indeterminate ? undefined : total}
       aria-valuenow={indeterminate ? undefined : done}
-      className="h-1.5 w-full overflow-hidden rounded bg-gray-200"
+      className="xp-bar w-full"
     >
       <div
-        className={[
-          'h-full bg-gray-700 transition-[width]',
-          indeterminate ? 'w-1/3 animate-pulse' : '',
-        ].join(' ')}
+        className={indeterminate ? 'xp-fill xp-fill-indeterminate' : 'xp-fill'}
         style={indeterminate ? undefined : { width: `${ratio * 100}%` }}
       />
     </div>

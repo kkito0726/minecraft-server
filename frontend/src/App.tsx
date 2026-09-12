@@ -2,8 +2,16 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { NavLink, Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import { useMemo } from 'react'
 
+import { PixelIcon } from './components/atoms'
+import type { PixelIconName } from './components/atoms'
+import { BrandMark } from './components/molecules'
 import { AppShell } from './components/templates'
-import { InterruptedBanner, OperationBanner, TokenGate } from './components/organisms'
+import {
+  InterruptedBanner,
+  OperationBanner,
+  StatusStrip,
+  TokenGate,
+} from './components/organisms'
 import { OperationProvider } from './features/operations'
 import { verifyToken } from './features/auth/verify'
 import { createQueryClient } from './lib/queryClient'
@@ -11,11 +19,19 @@ import { BackupsPage } from './pages/BackupsPage'
 import { WorldsPage } from './pages/WorldsPage'
 import { ServerPage } from './pages/ServerPage'
 
-const NAV = [
-  { to: '/', label: 'サーバー' },
-  { to: '/worlds', label: 'ワールド' },
-  { to: '/backups', label: 'バックアップ' },
-] as const
+type NavEntry = {
+  to: string
+  label: string
+  /** 飾りの略号。読み上げには label だけを渡す。 */
+  code: string
+  icon: PixelIconName
+}
+
+const NAV: readonly NavEntry[] = [
+  { to: '/', label: 'サーバー', code: 'SRV', icon: 'server' },
+  { to: '/worlds', label: 'ワールド', code: 'WLD', icon: 'world' },
+  { to: '/backups', label: 'バックアップ', code: 'BAK', icon: 'backup' },
+]
 
 /**
  * アプリケーションのルート。
@@ -35,8 +51,10 @@ export function App() {
         <OperationProvider>
           <Router>
             <AppShell
-              brand="Minecraft サーバー管理コンソール"
+              brand={<BrandMark title="Minecraft サーバー管理コンソール" />}
               nav={<MainNav />}
+              status={<StatusStrip />}
+              footer={<ShellFooter />}
               banner={
                 <>
                   <InterruptedBanner />
@@ -58,24 +76,39 @@ export function App() {
   )
 }
 
+/**
+ * リンクの名前は label だけにする。アイコンと略号を aria-hidden にするのは、
+ * 読み上げで「SRV」と言わせないためと、リンクを名前で探す試験を壊さないため。
+ * 選択中の見た目は NavLink が付ける aria-current を CSS が拾う。
+ */
 function MainNav() {
   return (
     <>
-      {NAV.map(({ to, label }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === '/'}
-          className={({ isActive }) =>
-            [
-              'rounded px-2 py-1 text-sm',
-              isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100',
-            ].join(' ')
-          }
-        >
-          {label}
+      {NAV.map(({ to, label, code, icon }) => (
+        <NavLink key={to} to={to} end={to === '/'} className="nav-item">
+          <PixelIcon name={icon} className="size-5 shrink-0" />
+          <span>{label}</span>
+          <span aria-hidden="true" className="nav-code">
+            {code}
+          </span>
         </NavLink>
       ))}
     </>
+  )
+}
+
+const GROUND = ['world', 'world', 'world', 'world', 'world'] as const
+
+/** ナビゲーションの下の地面。飾りなので丸ごと読み上げから外す。 */
+function ShellFooter() {
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-3">
+      <div className="flex">
+        {GROUND.map((name, i) => (
+          <PixelIcon key={i} name={name} className="size-7 text-emerald-deep/70" />
+        ))}
+      </div>
+      <p className="hud-tag leading-relaxed">ACCESS // TAILNET ONLY</p>
+    </div>
   )
 }

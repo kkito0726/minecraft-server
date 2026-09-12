@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import { ContainerState, SavingState } from '../../gen/mcadmin/v1/server_pb'
-import { containerStateLabel, playerCountLabel, savingStateLabel, uptimeLabel } from './format'
+import {
+  containerStateLabel,
+  playerCountLabel,
+  savingStateLabel,
+  serverTone,
+  uptimeLabel,
+} from './format'
 
 describe('playerCountLabel', () => {
   /**
@@ -35,6 +41,20 @@ describe('containerStateLabel', () => {
     [ContainerState.UNSPECIFIED, false, '不明'],
   ])('%s healthy=%s → %s', (state, healthy, want) => {
     expect(containerStateLabel(state, healthy)).toBe(want)
+  })
+})
+
+describe('serverTone', () => {
+  // 実行中でもヘルスチェック前は遊べない。正常と同じ色にすると見分けられない。
+  it.each([
+    [ContainerState.RUNNING, true, 'ok'],
+    [ContainerState.RUNNING, false, 'warn'],
+    [ContainerState.RESTARTING, false, 'warn'],
+    [ContainerState.EXITED, false, 'off'],
+    [ContainerState.MISSING, false, 'off'],
+    [ContainerState.UNSPECIFIED, false, 'off'],
+  ])('%s healthy=%s → %s', (state, healthy, want) => {
+    expect(serverTone(state, healthy)).toBe(want)
   })
 })
 

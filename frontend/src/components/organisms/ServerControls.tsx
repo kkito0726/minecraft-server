@@ -6,6 +6,7 @@ import type { ServerAction } from '../../features/server'
 import { ContainerState } from '../../gen/mcadmin/v1/server_pb'
 import { describeError } from '../../lib/errors'
 import { Button } from '../atoms'
+import { PanelHeader } from '../molecules'
 
 /**
  * サーバーの起動・停止・再起動。
@@ -34,17 +35,17 @@ export function ServerControls() {
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-gray-200 bg-white p-4">
-      <h2 className="text-sm font-semibold text-gray-900">操作</h2>
+    <section className="hud-panel flex flex-col gap-4">
+      <PanelHeader title="操作" tag="CTRL // POWER" />
 
-      <div className="flex gap-2">
-        <Button tone="primary" disabled={isBusy || running} onClick={() => run('start')}>
+      <div className="flex flex-wrap gap-3">
+        <Button tone="primary" size="lg" disabled={isBusy || running} onClick={() => run('start')}>
           {ACTION_LABELS.start}
         </Button>
-        <Button disabled={isBusy || !running} onClick={() => run('restart')}>
+        <Button size="lg" disabled={isBusy || !running} onClick={() => run('restart')}>
           {ACTION_LABELS.restart}
         </Button>
-        <Button tone="danger" disabled={isBusy || !running} onClick={() => run('stop')}>
+        <Button tone="danger" size="lg" disabled={isBusy || !running} onClick={() => run('stop')}>
           {ACTION_LABELS.stop}
         </Button>
       </div>
@@ -58,9 +59,9 @@ export function ServerControls() {
         />
       )}
 
-      {actions.error && <p className="text-sm text-danger-700">{describeError(actions.error)}</p>}
+      {actions.error && <p className="text-sm text-danger-ink">{describeError(actions.error)}</p>}
 
-      {isBusy && <p className="text-xs text-gray-500">操作の実行中は変更できません。</p>}
+      {isBusy && <p className="text-xs text-faint">操作の実行中は変更できません。</p>}
     </section>
   )
 }
@@ -74,8 +75,8 @@ type ConfirmNoticeProps = {
 
 function ConfirmNotice({ action, online, onConfirm, onCancel }: ConfirmNoticeProps) {
   return (
-    <div className="flex flex-col gap-2 rounded border border-warn-500 bg-warn-50 p-3">
-      <p className="text-sm text-warn-700">
+    <div className="notice notice-warn flex flex-col gap-3">
+      <p>
         {online} 人が接続しています。{ACTION_LABELS[action]}すると全員が切断されます。
       </p>
       <div className="flex gap-2">

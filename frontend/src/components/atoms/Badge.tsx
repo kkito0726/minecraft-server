@@ -5,14 +5,16 @@ import type { ReactNode } from 'react'
  *
  * tone は見た目の強さであって意味ではない。
  * 「このバージョンは古い」という判断は molecules 以上で行う。
+ * 先頭の点は疑似要素で描く。文字として足すと、読み上げと
+ * 文言での検索の両方に紛れ込む。
  */
 export type BadgeTone = 'neutral' | 'ok' | 'warn' | 'danger'
 
 const toneClasses: Record<BadgeTone, string> = {
-  neutral: 'bg-gray-100 text-gray-700',
-  ok: 'bg-ok-50 text-ok-700',
-  warn: 'bg-warn-50 text-warn-700',
-  danger: 'bg-danger-50 text-danger-700',
+  neutral: 'badge-neutral',
+  ok: 'badge-ok',
+  warn: 'badge-warn',
+  danger: 'badge-danger',
 }
 
 export type BadgeProps = {
@@ -21,11 +23,5 @@ export type BadgeProps = {
 }
 
 export function Badge({ tone = 'neutral', children }: BadgeProps) {
-  return (
-    <span
-      className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${toneClasses[tone]}`}
-    >
-      {children}
-    </span>
-  )
+  return <span className={`badge ${toneClasses[tone]}`}>{children}</span>
 }

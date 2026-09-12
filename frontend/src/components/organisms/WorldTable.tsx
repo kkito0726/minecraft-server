@@ -1,7 +1,7 @@
 import { formatWorldVersion } from '../../features/worlds'
 import { formatBytes, formatDateTime } from '../../lib/format'
 import type { World } from '../../gen/mcadmin/v1/world_pb'
-import { Badge, Button } from '../atoms'
+import { Badge, Button, PixelIcon } from '../atoms'
 
 /**
  * ワールドの一覧。
@@ -20,19 +20,19 @@ export type WorldTableProps = {
 
 export function WorldTable(props: WorldTableProps) {
   if (props.worlds.length === 0) {
-    return <p className="text-sm text-gray-600">ワールドがありません。</p>
+    return <p className="text-sm text-dim">ワールドがありません。</p>
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="hud-table">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
-            <th className="py-2 pr-2 font-medium">名前</th>
-            <th className="py-2 pr-2 font-medium">バージョン</th>
-            <th className="py-2 pr-2 font-medium">大きさ</th>
-            <th className="py-2 pr-2 font-medium">最終プレイ</th>
-            <th className="py-2 font-medium">操作</th>
+          <tr>
+            <th>名前</th>
+            <th>バージョン</th>
+            <th>大きさ</th>
+            <th>最終プレイ</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -49,35 +49,40 @@ type WorldRowProps = WorldTableProps & { world: World }
 
 function WorldRow({ world, disabled, onSwitch, onClone, onRename, onDelete }: WorldRowProps) {
   return (
-    <tr className="border-b border-gray-100">
-      <td className="py-2 pr-2">
-        <span className="font-medium text-gray-900">{world.name}</span>
-        {world.active && (
-          <span className="ml-2">
-            <Badge tone="ok">稼働中</Badge>
-          </span>
-        )}
+    <tr data-active={world.active || undefined}>
+      <td>
+        <div className="flex items-center gap-2.5">
+          <PixelIcon
+            name="world"
+            className={`size-5 shrink-0 ${world.active ? 'text-emerald' : 'text-faint'}`}
+          />
+          <span className="font-semibold text-fg">{world.name}</span>
+          {world.active && <Badge tone="ok">稼働中</Badge>}
+        </div>
       </td>
-      <td className="py-2 pr-2 text-gray-700">{formatWorldVersion(world.version)}</td>
-      <td className="py-2 pr-2 text-gray-700">{formatBytes(world.sizeBytes)}</td>
-      <td className="py-2 pr-2 text-gray-700">
-        {formatDateTime(world.lastPlayed?.seconds) || '—'}
-      </td>
-      <td className="py-2">
-        <div className="flex gap-1">
+      <td>{formatWorldVersion(world.version)}</td>
+      <td className="whitespace-nowrap">{formatBytes(world.sizeBytes)}</td>
+      <td className="whitespace-nowrap">{formatDateTime(world.lastPlayed?.seconds) || '—'}</td>
+      <td>
+        <div className="flex gap-1.5">
           {!world.active && (
-            <Button disabled={disabled} onClick={() => onSwitch(world.name)}>
+            <Button size="sm" disabled={disabled} onClick={() => onSwitch(world.name)}>
               切替
             </Button>
           )}
-          <Button disabled={disabled} onClick={() => onClone(world.name)}>
+          <Button size="sm" disabled={disabled} onClick={() => onClone(world.name)}>
             複製
           </Button>
-          <Button disabled={disabled} onClick={() => onRename(world.name)}>
+          <Button size="sm" disabled={disabled} onClick={() => onRename(world.name)}>
             改名
           </Button>
           {/* 稼働中のワールドは削除できない。先に切り替えてもらう。 */}
-          <Button tone="danger" disabled={disabled || world.active} onClick={() => onDelete(world.name)}>
+          <Button
+            tone="danger"
+            size="sm"
+            disabled={disabled || world.active}
+            onClick={() => onDelete(world.name)}
+          >
             削除
           </Button>
         </div>
