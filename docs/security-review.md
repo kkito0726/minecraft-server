@@ -23,9 +23,13 @@
 インターネット側から届かないのは、ルーターが 8787 を転送していないからであって、
 `0.0.0.0` のおかげではない。
 
-LAN からの到達面を閉じたい場合は `ADMIN_ADDR` を Tailscale の IP
-（`100.x.y.z:8787`）にする。ただし起動時にその IP が確定している必要があり、
-Tailscale が上がる前に mcadmind が起動すると待ち受けに失敗する。
+LAN からの到達面を閉じたい場合は、`tailscale serve` を挟んで `ADMIN_ADDR` を
+`127.0.0.1:8787` に絞るのがよい。外向きの受け口は tailscaled が持つため、
+起動順の問題も起きない。
+
+`ADMIN_ADDR` を Tailscale の IP（`100.x.y.z:8787`）に直接する方法もあるが、
+起動時にその IP が確定している必要があり、Tailscale が上がる前に mcadmind が
+起動すると待ち受けに失敗する。
 
 ---
 
@@ -73,7 +77,13 @@ Tailscale が上がる前に mcadmind が起動すると待ち受けに失敗す
 平文 HTTP と h2c で動いている。`Authorization: Bearer` のトークンが平文で流れる。
 到達境界を Tailscale に任せる前提だからこの選択になっている。
 
-公開するなら、前段で TLS を終端する（Caddy など）か、Tailscale Funnel を使う。
+**tailnet の中で使う限りは `tailscale serve` で閉じられる。** 前段で TLS を終端し、
+証明書も Tailscale が管理するので、mcadmind 側の変更は要らない（手順は
+[admin-console.md](admin-console.md) の「ポート番号なしで開く」）。あわせて
+`ADMIN_ADDR` を `127.0.0.1:8787` に絞れば、LAN からの到達面も同時に閉じられる。
+
+インターネットへ公開する場合はこれでは足りない。前段で TLS を終端する（Caddy など）か
+Tailscale Funnel を使ったうえで、下の 2〜4 を片付ける必要がある。
 
 ### 2. レート制限とロックアウトがない（重い）
 

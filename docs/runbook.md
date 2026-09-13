@@ -50,6 +50,17 @@ docker compose down           # 停止
 中継する。画面の変更が即座に反映される代わりに、`mcadmind` も別途
 動かしておく必要がある。
 
+`tailscale serve` でポート番号なしの HTTPS にしている場合、経路がもう 1 つ増える。
+画面が開けないときは、mcadmind と serve のどちらが落ちているかを分けて見る。
+
+```bash
+systemctl status mcadmind        # mcadmind 自体
+tailscale serve status           # 中継の設定（消えていれば貼り直す）
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8787/   # 手元から直接
+```
+
+最後の `curl` が 200 を返すのに URL で開けないなら、原因は serve 側にある。
+
 **バイナリを作り直したら置き直す。** `make build` はフロントエンドを
 Go のバイナリへ埋め込む。埋め込みが古いと、画面だけが古いまま動く。
 

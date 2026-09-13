@@ -11,6 +11,7 @@ Java・RCON クライアント・バックアップツールはすべてコン�
 - 公開ポート: `25565` のみ（RCON 25575 はコンテナ内からのみ）
 - 接続経路: Tailscale（tailnet 内からのみ到達可能。ポート開放は不要）
 - 管理: ブラウザの管理コンソール（`mcadmind`、8787）。バックアップ・復元・ワールド切り替え
+  - `tailscale serve` を挟めば、ポート番号なしの HTTPS で開ける
 
 ## ドキュメント
 
@@ -251,6 +252,10 @@ sudo deploy/install.sh --project-dir ~/minecraft-server
 ```
 
 ブラウザで `http://<Tailscale のホスト名>:8787` を開き、初回だけトークンを入力します。
+
+Pi の上で `sudo tailscale serve --bg 8787` を実行しておくと、
+`https://<ホスト名>.<tailnet 名>.ts.net` としてポート番号なしの HTTPS で開けます
+（tailnet 側で MagicDNS と HTTPS 証明書を有効にしておく必要があります）。
 
 | 画面 | できること |
 |---|---|
