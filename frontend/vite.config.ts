@@ -5,6 +5,11 @@ import react from '@vitejs/plugin-react'
 // Go の //go:embed は親ディレクトリを参照できないため、backend 側に置く必要がある。
 const GO_EMBED_DIR = '../backend/internal/presentation/webui/dist'
 
+// デモ（--mode demo）はバックエンドに繋がないので、embed 先には出さない。
+// GitHub Pages のプロジェクトページに置くため、base にリポジトリ名が要る。
+const DEMO_OUT_DIR = 'dist-demo'
+const DEMO_BASE = '/minecraft-server/'
+
 // 開発時は Vite の dev サーバーが /rpc を mcadmind へ中継する。
 // 本番では mcadmind 自身が静的ファイルと /rpc の両方を提供するので中継は不要。
 //
@@ -12,50 +17,57 @@ const GO_EMBED_DIR = '../backend/internal/presentation/webui/dist'
 // 中継先を環境変数で差し替えられるようにしてある（test/compose.yaml）。
 const DEV_BACKEND = process.env.VITE_RPC_TARGET ?? 'http://127.0.0.1:8787'
 
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    outDir: GO_EMBED_DIR,
-    emptyOutDir: true,
-    // Pi 5 のディスクを無駄に使わないため、本番ではソースマップを出さない
-    sourcemap: false,
-  },
-  server: {
-    proxy: {
-      '/rpc': {
-        target: DEV_BACKEND,
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  const demo = mode === 'demo'
+
+  return {
+    plugins: [react()],
+    base: demo ? DEMO_BASE : '/',
+    // 定数に畳んで、通常のビルドからはデモの実装ごと落とす。
+    define: { __DEMO__: JSON.stringify(demo) },
+    build: {
+      outDir: demo ? DEMO_OUT_DIR : GO_EMBED_DIR,
+      emptyOutDir: true,
+      // Pi 5 のディスクを無駄に使わないため、本番ではソースマップを出さない
+      sourcemap: false,
+    },
+    server: {
+      proxy: {
+        '/rpc': {
+          target: DEV_BACKEND,
+          changeOrigin: true,
+        },
       },
     },
-  },
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/test/setup.ts'],
-    // 既定の 5 秒は userEvent.type には短い。1 文字ずつ実イベントを
-    // 起こすので、機械が混んでいるとそれだけで超える。落ちた理由が
-    // 「遅かった」なのか「壊れている」なのかを分けられなくなるため、
-    // 余裕を持たせる。本当に固まった試験はこれでも落ちる。
-    testTimeout: 20_000,
-    // E2E は Playwright が担当するので Vitest の対象から外す
-    exclude: ['node_modules/**', 'e2e/**', 'dist/**'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov'],
-      // 生成コードと E2E はカバレッジの分母に入れない
-      exclude: [
-        'src/gen/**',
-        'src/main.tsx',
-        'src/test/**',
-        'e2e/**',
-        '**/*.config.ts',
-      ],
-      thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./src/test/setup.ts'],
+      // 既定の 5 秒は userEvent.type には短い。1 文字ずつ実イベントを
+      // 起こすので、機械が混んでいるとそれだけで超える。落ちた理由が
+      // 「遅かった」なのか「壊れている」なのかを分けられなくなるため、
+      // 余裕を持たせる。本当に固まった試験はこれでも落ちる。
+      testTimeout: 20_000,
+      // E2E は Playwright が担当するので Vitest の対象から外す
+      exclude: ['node_modules/**', 'e2e/**', 'dist/**'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'lcov'],
+        // 生成コードと E2E はカバレッジの分母に入れない
+        exclude: [
+          'src/gen/**',
+          'src/main.tsx',
+          'src/test/**',
+          'e2e/**',
+          '**/*.config.ts',
+        ],
+        thresholds: {
+          lines: 80,
+          functions: 80,
+          branches: 80,
+          statements: 80,
+        },
       },
     },
-  },
+  }
 })

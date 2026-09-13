@@ -1,0 +1,64 @@
+name: デモ（GitHub Pages）
+
+# 公開デモはバックエンドに繋がない。ブラウザの中のモックだけで完結するため、
+# 混在コンテンツも CORS も関係なく、漏れて困るトークンも存在しない。
+# 本物の管理画面は今までどおり Go のバイナリに同梱して Pi から配信する。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 配信は 1 つだけ。走っている途中のものは取り消す。
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+
+jobs:
+  build:
+    name: デモをビルドする
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build:demo
+        working-directory: frontend
+
+      # 画面内のルーティングは履歴 API を使う。深いパスを直接開かれても
+      # 404 にせず、同じ index.html を返すための控え。
+      - name: 404 に index.html を置く
+        run: cp dist-demo/index.html dist-demo/404.html
+        working-directory: frontend
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist-demo
+
+  deploy:
+    name: Pages へ配信する
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
