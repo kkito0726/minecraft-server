@@ -23,6 +23,13 @@ export type TokenGateProps = {
    * 失敗したら例外を投げる。
    */
   verify: (token: string) => Promise<void>
+  /**
+   * 入力欄の初期値。
+   *
+   * 公開デモで、入口の画面を見せたうえですぐ入れるようにするために使う。
+   * 実運用では渡さない。
+   */
+  initialToken?: string | undefined
   children: ReactNode
 }
 
@@ -36,9 +43,9 @@ type Phase =
   /** 入場済み */
   | 'open'
 
-export function TokenGate({ verify, children }: TokenGateProps) {
+export function TokenGate({ verify, initialToken = '', children }: TokenGateProps) {
   const [phase, setPhase] = useState<Phase>(() => (readToken() ? 'checking' : 'asking'))
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState(initialToken)
   const [error, setError] = useState('')
 
   useStoredTokenCheck(phase, verify, setPhase)

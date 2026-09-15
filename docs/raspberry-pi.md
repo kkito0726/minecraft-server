@@ -76,6 +76,16 @@ tailnet に参加していない端末からは到達できない。
 > tailnet に招待した相手は全員 25565 に到達できる。`.env` の `MC_WHITELIST` は
 > それとは別に「誰がゲームに入れるか」を決めるので、両方設定しておく。
 
+管理コンソールをポート番号なしの HTTPS で開きたい場合は、`tailscale serve` を挟む。
+
+```bash
+sudo tailscale serve --bg 8787
+```
+
+`https://<ホスト名>.<tailnet 名>.ts.net` になり、証明書は Tailscale が管理する。
+tailnet の管理画面で MagicDNS と HTTPS 証明書を有効にしておくことが前提。
+詳細は [admin-console.md](admin-console.md) の「ポート番号なしで開く」にある。
+
 ### サーバー
 
 ```bash
@@ -207,6 +217,10 @@ zip の作成と展開は常に 32KB のバッファで流し、ファイル全�
 `ADMIN_ADDR` は `0.0.0.0:8787`。`compose.yaml` が 25565 を `0.0.0.0` に
 バインドしているのと同じ理由で、到達境界は Tailscale が持つ。
 `127.0.0.1` にすると Mac のブラウザから開けず、原因も分かりにくい。
+
+ただし `0.0.0.0` は tailnet だけでなく**家庭内 LAN からも届く**。閉じたい場合は
+`tailscale serve` を挟んだうえで `ADMIN_ADDR` を `127.0.0.1:8787` に絞る。
+外向きの受け口は tailscaled が持つので、起動順の問題も起きず、経路も暗号化される。
 
 **tailnet に参加できること ≠ 管理してよいこと**なので、`ADMIN_TOKEN` を別の層として
 必ず設定する（`MC_WHITELIST` が別レイヤーの制御として要るのと同じ構図）。

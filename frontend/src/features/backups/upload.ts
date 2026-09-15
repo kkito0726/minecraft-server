@@ -32,7 +32,17 @@ export type UploadOptions = {
  * fetch ではなく XMLHttpRequest を使うのは、送信側の進捗が取れるのが
  * 今のところこちらだけのため。30MB のワールドを無反応で待たせない。
  */
-export function uploadBackup(file: File, options: UploadOptions = {}): Promise<UploadResult> {
+export async function uploadBackup(
+  file: File,
+  options: UploadOptions = {},
+): Promise<UploadResult> {
+  // zip の受け口だけは Connect を通らないので、トランスポートの
+  // 差し替えでは代われない。デモではここで偽の取り込みに寄せる。
+  if (__DEMO__) {
+    const { uploadDemoBackup } = await import('../../demo/upload')
+    return uploadDemoBackup(file, options)
+  }
+
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', UPLOAD_URL)

@@ -79,6 +79,48 @@ http://<Tailscale のホスト名 or 100.x.y.z>:8787
 
 初回だけトークンを聞かれる。以降はブラウザに保存される。
 
+### 5. ポート番号なしで開く（任意・推奨）
+
+`tailscale serve` を挟むと、ポート番号なしの HTTPS で開けるようになる。
+
+```bash
+sudo tailscale serve --bg 8787     # Pi の上で実行する
+tailscale serve status             # 設定の確認
+```
+
+これで次の URL になる。証明書は Tailscale が取得・更新する。
+
+```
+https://<ホスト名>.<tailnet 名>.ts.net
+```
+
+**先に tailnet の管理画面で MagicDNS と HTTPS 証明書を有効にしておくこと。**
+どちらかが無効だと証明書を取れず、`serve` は失敗する。
+
+得られるものは 3 つある。
+
+- ポート番号が消える。URL を口頭で伝えやすくなる。
+- **経路が暗号化される。** 直接 8787 を開く場合は平文で、共有トークンもそのまま流れる。
+- 80 番や 443 番を掴むのは tailscaled なので、**mcadmind に root も特権も要らない。**
+
+あわせて `.env` の `ADMIN_ADDR` を `127.0.0.1:8787` に絞れる。外向きの受け口は
+tailscaled が持つため、mcadmind はループバックだけで待てばよくなり、
+家庭内 LAN からの到達面も閉じられる。
+
+代償は、Tailscale が落ちている間は管理画面も開けなくなること。もともと tailnet 経由を
+前提にしているので実質は変わらないが、`ADMIN_ADDR` を絞った場合は Pi にログインして
+`tailscale serve reset` するまで戻せない点は意識しておく。
+
+設定はノードに保存され、再起動後も残る。やめるときは次のとおり。
+
+```bash
+sudo tailscale serve reset
+```
+
+> `tailscale funnel` とは別物。`serve` は tailnet の中だけに公開する。
+> `funnel` はインターネットへ公開するもので、この管理画面には向かない
+> （[security-review.md](security-review.md) を参照）。
+
 ---
 
 ## 到達できる範囲
@@ -90,11 +132,19 @@ http://<Tailscale のホスト名 or 100.x.y.z>:8787
 
 | 段 | 何を守るか |
 |---|---|
-| Tailscale | tailnet の外からは 8787 に届かない |
+| Tailscale | tailnet の外からは届かない |
 | `ADMIN_TOKEN` | tailnet の中の他の端末・他の人からも守る |
 
-`ADMIN_ADDR` を `0.0.0.0:8787` にしてあるのは、`127.0.0.1` だと Pi の外から開けず、
-しかも原因が分かりにくいため。到達境界は Tailscale が持つ。
+`ADMIN_ADDR` の既定を `0.0.0.0:8787` にしてあるのは、`127.0.0.1` だと Pi の外から
+開けず、しかも原因が分かりにくいため。
+
+ただし **`0.0.0.0` は「同一ネットワークだけ」という意味ではない。** その機械が持つ
+全ての差込口で受けるので、tailnet だけでなく**家庭内 LAN からも届く**。
+インターネット側から届かないのは、ルーターが 8787 を転送していないからであって、
+`0.0.0.0` のおかげではない。LAN 側を守っているのは `ADMIN_TOKEN` だけになる。
+
+閉じたい場合は `tailscale serve` を使い、`ADMIN_ADDR` を `127.0.0.1:8787` に絞る
+（上の「ポート番号なしで開く」）。経路も暗号化される。
 
 トークンはブラウザの localStorage に置く。XSS に晒される代わりに使い勝手を取った
 判断で、Go 側で `default-src 'self'` の CSP と `nosniff` を付けて緩和している。

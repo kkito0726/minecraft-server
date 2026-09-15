@@ -47,9 +47,10 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TokenGate verify={verifyToken}>
+      <TokenGate verify={verifyToken} {...(__DEMO__ ? { initialToken: DEMO_TOKEN } : {})}>
         <OperationProvider>
-          <Router>
+          {/* 公開デモは /<リポジトリ名>/ の下に置かれる。基点を合わせないと再読み込みで 404 になる。 */}
+          <Router basename={import.meta.env.BASE_URL}>
             <AppShell
               brand={<BrandMark title="Minecraft サーバー管理コンソール" />}
               nav={<MainNav />}
@@ -57,6 +58,7 @@ export function App() {
               footer={<ShellFooter />}
               banner={
                 <>
+                  {__DEMO__ && <DemoBanner />}
                   <InterruptedBanner />
                   <OperationBanner />
                 </>
@@ -73,6 +75,34 @@ export function App() {
         </OperationProvider>
       </TokenGate>
     </QueryClientProvider>
+  )
+}
+
+/**
+ * 公開デモの入口に入れておくトークン。
+ *
+ * 何を入れても通るが、入口の画面そのものも見てもらいたいので、
+ * 画面は残したまま初期値だけ埋めておく。
+ */
+const DEMO_TOKEN = 'demo'.repeat(16)
+
+/**
+ * デモであることを常に見せる帯。
+ *
+ * 本物の管理画面と見分けがつかないまま操作されると、
+ * 「サーバーを止めた」と誤解させる。閉じられないようにしておく。
+ */
+function DemoBanner() {
+  return (
+    <div className="border-b border-diamond/40 bg-diamond/10 px-4 py-2.5 text-xs text-diamond lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="badge badge-neutral text-diamond">DEMO</span>
+        <span>
+          これはデモです。実際のサーバーには接続していません。
+          操作の結果はブラウザの中だけに残り、再読み込みで最初の状態に戻ります。
+        </span>
+      </div>
+    </div>
   )
 }
 
