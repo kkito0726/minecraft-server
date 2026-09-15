@@ -39,6 +39,8 @@ const (
 	KindWorldRename
 	// KindWorldDelete はワールドの削除。
 	KindWorldDelete
+	// KindServerApplySettings はゲーム設定の反映（.env を書いてから作り直す）。
+	KindServerApplySettings
 )
 
 // String は種類の名前を返す。進捗バナーにそのまま出る。
@@ -64,6 +66,8 @@ func (k Kind) String() string {
 		return "ワールドの改名"
 	case KindWorldDelete:
 		return "ワールドの削除"
+	case KindServerApplySettings:
+		return "ゲーム設定の反映"
 	default:
 		return "不明な操作"
 	}

@@ -124,9 +124,16 @@ func newHarness(t *testing.T) *harness {
 		t.Fatal(err)
 	}
 
+	gameSettings, err := serverctl.NewSettingsUseCase(serverctl.SettingsConfig{
+		Config: cfg, Runtime: rt, Lifecycle: lifecycle, Operations: ops,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	mux := http.NewServeMux()
 	sp, sh := mcadminv1connect.NewServerServiceHandler(
-		rpc.NewServerHandler(status, lifecycle, ops, nil))
+		rpc.NewServerHandler(status, lifecycle, gameSettings, ops, nil))
 	mux.Handle(sp, sh)
 	op, oh := mcadminv1connect.NewOperationServiceHandler(rpc.NewOperationHandler(ops))
 	mux.Handle(op, oh)

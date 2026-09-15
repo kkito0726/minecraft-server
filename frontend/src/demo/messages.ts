@@ -13,12 +13,25 @@ import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import { BackupSchema } from '../gen/mcadmin/v1/backup_pb'
 import { WorldVersionSchema } from '../gen/mcadmin/v1/common_pb'
 import { OperationSchema, WatchOperationResponseSchema } from '../gen/mcadmin/v1/operation_pb'
-import { ContainerState, GetStatusResponseSchema, SavingState } from '../gen/mcadmin/v1/server_pb'
+import {
+  ContainerState,
+  Difficulty,
+  GameSettingsSchema,
+  GetStatusResponseSchema,
+  SavingState,
+} from '../gen/mcadmin/v1/server_pb'
 import { QuarantineSchema, WorldSchema } from '../gen/mcadmin/v1/world_pb'
 import { getActiveOperation } from './operations'
 import type { DemoLogEvent, DemoOperation } from './operations'
 import { activeWorld } from './state'
-import type { DemoBackup, DemoQuarantine, DemoState, DemoVersion, DemoWorld } from './state'
+import type {
+  DemoBackup,
+  DemoGameSettings,
+  DemoQuarantine,
+  DemoState,
+  DemoVersion,
+  DemoWorld,
+} from './state'
 
 export function toVersion(version: DemoVersion | undefined) {
   if (!version) {
@@ -105,6 +118,23 @@ export function toOperation(operation: DemoOperation) {
     errorCode: operation.errorCode,
     errorMessage: operation.errorMessage,
     attributes: operation.attributes,
+  })
+}
+
+const DIFFICULTIES: Record<DemoGameSettings['difficulty'], Difficulty> = {
+  peaceful: Difficulty.PEACEFUL,
+  easy: Difficulty.EASY,
+  normal: Difficulty.NORMAL,
+  hard: Difficulty.HARD,
+}
+
+export function toGameSettings(settings: DemoGameSettings) {
+  return create(GameSettingsSchema, {
+    difficulty: DIFFICULTIES[settings.difficulty],
+    motd: settings.motd,
+    maxPlayers: settings.maxPlayers,
+    viewDistance: settings.viewDistance,
+    simulationDistance: settings.simulationDistance,
   })
 }
 

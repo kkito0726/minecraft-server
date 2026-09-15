@@ -73,6 +73,7 @@ func TestEnumConversionsAreExhaustive(t *testing.T) {
 			operation.KindBackupCreate, operation.KindBackupRestore,
 			operation.KindWorldSwitch, operation.KindWorldCreate, operation.KindWorldClone,
 			operation.KindWorldRename, operation.KindWorldDelete,
+			operation.KindServerApplySettings,
 		}
 		seen := map[mcadminv1.OperationKind]bool{}
 		for _, k := range kinds {

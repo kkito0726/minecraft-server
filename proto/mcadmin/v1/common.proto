@@ -36,6 +36,8 @@ enum OperationKind {
   OPERATION_KIND_WORLD_CLONE = 8;
   OPERATION_KIND_WORLD_RENAME = 9;
   OPERATION_KIND_WORLD_DELETE = 10;
+  // ゲーム設定を .env に書き、コンテナを作り直して反映する。
+  OPERATION_KIND_SERVER_APPLY_SETTINGS = 11;
 }
 
 // WorldVersion は level.dat から読んだワールドのバージョン。

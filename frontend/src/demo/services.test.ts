@@ -2,7 +2,7 @@ import { ConnectError } from '@connectrpc/connect'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BackupMode, RestoreTarget, VersionVerdict } from '../gen/mcadmin/v1/backup_pb'
-import { ContainerState } from '../gen/mcadmin/v1/server_pb'
+import { ContainerState, Difficulty } from '../gen/mcadmin/v1/server_pb'
 import { backupImpl } from './backupService'
 import { resetOperations } from './operations'
 import { serverImpl } from './serverService'
@@ -212,5 +212,58 @@ describe('BackupService', () => {
     call(backupImpl.deleteBackup, { backupId: target.id })
 
     expect(getState().backups.map((b) => b.id)).not.toContain(target.id)
+  })
+})
+
+describe('ServerService のゲーム設定', () => {
+  const settings = {
+    difficulty: Difficulty.HARD,
+    motd: 'デモのサーバー',
+    maxPlayers: 8,
+    viewDistance: 9,
+    simulationDistance: 6,
+  }
+
+  it('今の設定を返す', () => {
+    const res = call(serverImpl.getGameSettings, {}) as { settings: { difficulty: Difficulty } }
+    expect(res.settings.difficulty).toBe(Difficulty.NORMAL)
+  })
+
+  // 保存しただけでは、動いているサーバーの人数は変わらない。実物と同じ振る舞い。
+  it('保存だけなら操作は始まらず、状態表示の人数も変わらない', () => {
+    const res = call(serverImpl.updateGameSettings, { settings, applyNow: false }) as { operation?: unknown }
+
+    expect(res.operation).toBeUndefined()
+    expect(getState().gameSettings.maxPlayers).toBe(8)
+    expect(getState().maxPlayers).toBe(5)
+  })
+
+  it('今すぐ反映すると作り直し、終われば人数も変わる', async () => {
+    const res = call(serverImpl.updateGameSettings, { settings, applyNow: true }) as { operation?: unknown }
+    expect(res.operation).toBeDefined()
+
+    await runToEnd()
+    expect(getState().maxPlayers).toBe(8)
+  })
+
+  it('停止中は今すぐ反映を選んでも起動しない', async () => {
+    call(serverImpl.stopServer, {})
+    await runToEnd()
+
+    const res = call(serverImpl.updateGameSettings, { settings, applyNow: true }) as { operation?: unknown }
+    expect(res.operation).toBeUndefined()
+    expect(getState().running).toBe(false)
+  })
+
+  it('規則外の値は弾く', () => {
+    expect(() =>
+      call(serverImpl.updateGameSettings, { settings: { ...settings, simulationDistance: 20 }, applyNow: false }),
+    ).toThrow(ConnectError)
+  })
+
+  it('他の操作の最中は保存しない', () => {
+    call(serverImpl.restartServer, {})
+
+    expect(() => call(serverImpl.updateGameSettings, { settings, applyNow: false })).toThrow(ConnectError)
   })
 })

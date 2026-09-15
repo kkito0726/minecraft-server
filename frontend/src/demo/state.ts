@@ -42,6 +42,15 @@ export type DemoBackup = {
   entryRoots: string[]
 }
 
+/** .env のゲーム設定にあたるもの。保存しただけで反映していない値も持つ。 */
+export type DemoGameSettings = {
+  difficulty: 'peaceful' | 'easy' | 'normal' | 'hard'
+  motd: string
+  maxPlayers: number
+  viewDistance: number
+  simulationDistance: number
+}
+
 export type DemoState = {
   running: boolean
   healthy: boolean
@@ -56,6 +65,13 @@ export type DemoState = {
   backups: DemoBackup[]
   retention: { keepCount: number; keepDays: number }
   backupDir: string
+  /**
+   * .env に書かれているゲーム設定。
+   *
+   * 状態表示の maxPlayers とは別に持つ。保存しただけでは動いている
+   * サーバーの人数は変わらない、という実物の振る舞いをそのまま見せるため。
+   */
+  gameSettings: DemoGameSettings
 }
 
 /** 現行版。実機の値に合わせてある。 */
@@ -93,6 +109,13 @@ export function initialState(): DemoState {
     backups: seedBackups(),
     retention: { keepCount: 10, keepDays: 30 },
     backupDir: '/home/pi/minecraft-server/backups',
+    gameSettings: {
+      difficulty: 'normal',
+      motd: 'デモ用のマインクラフトサーバー',
+      maxPlayers: 5,
+      viewDistance: 7,
+      simulationDistance: 5,
+    },
   }
 }
 

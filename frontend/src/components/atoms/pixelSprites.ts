@@ -4,7 +4,7 @@
  * 濃淡は 3 段（a: 塗り / b: 中間 / c: 暗部）、'.' は透明。
  * 色は描く側の currentColor に従うので、ここは形と濃淡だけを決める。
  */
-export type PixelIconName = 'block' | 'server' | 'world' | 'backup'
+export type PixelIconName = 'block' | 'server' | 'world' | 'backup' | 'settings'
 
 export const SPRITE_SIZE = 12
 
@@ -68,6 +68,21 @@ export const SPRITES: Record<PixelIconName, readonly string[]> = {
     '.acccccccca.',
     '.aaaaaaaaaa.',
     '............',
+  ],
+  // 作業台。上面の格子と、側面に掛けた道具。
+  settings: [
+    'aaaaaaaaaaaa',
+    'abbbabbbabba',
+    'aaaaaaaaaaaa',
+    'cccccccccccc',
+    'cbbbccccbbbc',
+    'ccbccccccbcc',
+    'ccbccccccbcc',
+    'ccbccccccbcc',
+    'cccccccccccc',
+    'cccccccccccc',
+    'acccccccccca',
+    'aa........aa',
   ],
 }
 

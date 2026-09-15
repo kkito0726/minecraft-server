@@ -81,6 +81,20 @@ export const RENAME_STEPS: DemoStep[] = [
   { name: 'サーバーを起動しています', lines: ['Container minecraft-server Healthy'] },
 ]
 
+/**
+ * ゲーム設定の反映。
+ *
+ * 実物と同じく書き込みを先に行う。書き込みで失敗したとき、まだ誰も
+ * 切断されていない段階で止まる、という順序そのものを見せる。
+ */
+export const APPLY_SETTINGS_STEPS: DemoStep[] = [
+  { name: '設定を書き込んでいます', lines: ['MC_DIFFICULTY ほか 5 項目を .env に書きました'] },
+  { name: 'ワールドを保存しています', lines: ['save-all を送信しました'] },
+  { name: 'サーバーを停止しています', lines: ['Container minecraft-server Stopped'] },
+  { name: 'サーバーを起動しています', lines: ['Container minecraft-server Recreated'] },
+  { name: '起動を確認しています', lines: ['Container minecraft-server Healthy'] },
+]
+
 export const DELETE_STEPS: DemoStep[] = [
   { name: 'ワールドを退避しています', lines: ['data/<名前>.deleted-日時 へ退避しました'], warn: true },
 ]
