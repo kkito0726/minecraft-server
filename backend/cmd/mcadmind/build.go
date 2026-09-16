@@ -109,6 +109,7 @@ func build(ctx context.Context, opts options, logger *slog.Logger) (*app, error)
 type deps struct {
 	status     *serverctl.StatusUseCase
 	lifecycle  *serverctl.LifecycleUseCase
+	settings   *serverctl.SettingsUseCase
 	worlds     *worldctl.UseCase
 	backups    *backupctl.UseCase
 	ops        *operations.Manager
@@ -189,16 +190,7 @@ func buildUseCases(
 	ops *operations.Manager,
 	logger *slog.Logger,
 ) (deps, error) {
-	status, err := serverctl.NewStatusUseCase(serverctl.StatusConfig{
-		Runtime: in.runtime, Console: in.console, Config: config, Levels: in.levels,
-	})
-	if err != nil {
-		return deps{}, err
-	}
-
-	lifecycle, err := serverctl.NewLifecycleUseCase(serverctl.LifecycleConfig{
-		Runtime: in.runtime, Console: in.console, Operations: ops,
-	})
+	srv, err := buildServerUseCases(in, config, ops)
 	if err != nil {
 		return deps{}, err
 	}
@@ -230,9 +222,49 @@ func buildUseCases(
 	}
 
 	return deps{
-		status: status, lifecycle: lifecycle, worlds: worlds, backups: backups,
-		ops: ops, reconciler: reconciler,
+		status: srv.status, lifecycle: srv.lifecycle, settings: srv.settings,
+		worlds: worlds, backups: backups, ops: ops, reconciler: reconciler,
 	}, nil
+}
+
+// serverUseCases はサーバーそのものを扱うユースケースの束。
+type serverUseCases struct {
+	status    *serverctl.StatusUseCase
+	lifecycle *serverctl.LifecycleUseCase
+	settings  *serverctl.SettingsUseCase
+}
+
+// buildServerUseCases は状態取得・起動停止・ゲーム設定を組み立てる。
+//
+// ゲーム設定の反映は再起動と同じ停止・起動の手順を使うので、
+// 起動停止のユースケースを先に作って渡す。
+func buildServerUseCases(
+	in infra,
+	config *dotenv.Adapter,
+	ops *operations.Manager,
+) (serverUseCases, error) {
+	status, err := serverctl.NewStatusUseCase(serverctl.StatusConfig{
+		Runtime: in.runtime, Console: in.console, Config: config, Levels: in.levels,
+	})
+	if err != nil {
+		return serverUseCases{}, err
+	}
+
+	lifecycle, err := serverctl.NewLifecycleUseCase(serverctl.LifecycleConfig{
+		Runtime: in.runtime, Console: in.console, Operations: ops,
+	})
+	if err != nil {
+		return serverUseCases{}, err
+	}
+
+	gameSettings, err := serverctl.NewSettingsUseCase(serverctl.SettingsConfig{
+		Config: config, Runtime: in.runtime, Lifecycle: lifecycle, Operations: ops,
+	})
+	if err != nil {
+		return serverUseCases{}, err
+	}
+
+	return serverUseCases{status: status, lifecycle: lifecycle, settings: gameSettings}, nil
 }
 
 // settings は .env から読んだ管理コンソールの設定。
@@ -313,7 +345,7 @@ func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, er
 
 	handlers := map[string]http.Handler{}
 	serverPath, serverHandler := mcadminv1connect.NewServerServiceHandler(
-		rpc.NewServerHandler(d.status, d.lifecycle, d.ops, publicConfigKeys), withAuth)
+		rpc.NewServerHandler(d.status, d.lifecycle, d.settings, d.ops, publicConfigKeys), withAuth)
 	handlers[serverPath] = serverHandler
 
 	opPath, opHandler := mcadminv1connect.NewOperationServiceHandler(

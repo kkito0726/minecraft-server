@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mcadmin/v1/server.proto.
  */
 export const file_mcadmin_v1_server: GenFile = /*@__PURE__*/
-  fileDesc("ChdtY2FkbWluL3YxL3NlcnZlci5wcm90bxIKbWNhZG1pbi52MSISChBHZXRTdGF0dXNSZXF1ZXN0IrIDChFHZXRTdGF0dXNSZXNwb25zZRIzCg9jb250YWluZXJfc3RhdGUYASABKA4yGi5tY2FkbWluLnYxLkNvbnRhaW5lclN0YXRlEg8KB2hlYWx0aHkYAiABKAgSOAoUY29udGFpbmVyX3N0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmNvbmZpZ3VyZWRfdmVyc2lvbhgEIAEoCRIUCgxhY3RpdmVfbGV2ZWwYBSABKAkSNgoUYWN0aXZlX3dvcmxkX3ZlcnNpb24YBiABKAsyGC5tY2FkbWluLnYxLldvcmxkVmVyc2lvbhIWCg5vbmxpbmVfcGxheWVycxgHIAEoBRITCgttYXhfcGxheWVycxgIIAEoBRItCgxzYXZpbmdfc3RhdGUYCSABKA4yFy5tY2FkbWluLnYxLlNhdmluZ1N0YXRlEiYKHmludGVycnVwdGVkX29wZXJhdGlvbl9kZXRlY3RlZBgKIAEoCBIvChBhY3RpdmVfb3BlcmF0aW9uGAsgASgLMhUubWNhZG1pbi52MS5PcGVyYXRpb24iEgoQR2V0Q29uZmlnUmVxdWVzdCJ9ChFHZXRDb25maWdSZXNwb25zZRI5CgZ2YWx1ZXMYASADKAsyKS5tY2FkbWluLnYxLkdldENvbmZpZ1Jlc3BvbnNlLlZhbHVlc0VudHJ5Gi0KC1ZhbHVlc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiFAoSU3RhcnRTZXJ2ZXJSZXF1ZXN0Ij8KE1N0YXJ0U2VydmVyUmVzcG9uc2USKAoJb3BlcmF0aW9uGAEgASgLMhUubWNhZG1pbi52MS5PcGVyYXRpb24iEwoRU3RvcFNlcnZlclJlcXVlc3QiPgoSU3RvcFNlcnZlclJlc3BvbnNlEigKCW9wZXJhdGlvbhgBIAEoCzIVLm1jYWRtaW4udjEuT3BlcmF0aW9uIhYKFFJlc3RhcnRTZXJ2ZXJSZXF1ZXN0IkEKFVJlc3RhcnRTZXJ2ZXJSZXNwb25zZRIoCglvcGVyYXRpb24YASABKAsyFS5tY2FkbWluLnYxLk9wZXJhdGlvbiqnAQoOQ29udGFpbmVyU3RhdGUSHwobQ09OVEFJTkVSX1NUQVRFX1VOU1BFQ0lGSUVEEAASGwoXQ09OVEFJTkVSX1NUQVRFX1JVTk5JTkcQARIaChZDT05UQUlORVJfU1RBVEVfRVhJVEVEEAISHgoaQ09OVEFJTkVSX1NUQVRFX1JFU1RBUlRJTkcQAxIbChdDT05UQUlORVJfU1RBVEVfTUlTU0lORxAEKmYKC1NhdmluZ1N0YXRlEhwKGFNBVklOR19TVEFURV9VTlNQRUNJRklFRBAAEhsKF1NBVklOR19TVEFURV9BU1NVTUVEX09OEAESHAoYU0FWSU5HX1NUQVRFX1NVU1BFQ1RfT0ZGEAIyoAMKDVNlcnZlclNlcnZpY2USSgoJR2V0U3RhdHVzEhwubWNhZG1pbi52MS5HZXRTdGF0dXNSZXF1ZXN0Gh0ubWNhZG1pbi52MS5HZXRTdGF0dXNSZXNwb25zZSIAEkoKCUdldENvbmZpZxIcLm1jYWRtaW4udjEuR2V0Q29uZmlnUmVxdWVzdBodLm1jYWRtaW4udjEuR2V0Q29uZmlnUmVzcG9uc2UiABJQCgtTdGFydFNlcnZlchIeLm1jYWRtaW4udjEuU3RhcnRTZXJ2ZXJSZXF1ZXN0Gh8ubWNhZG1pbi52MS5TdGFydFNlcnZlclJlc3BvbnNlIgASTQoKU3RvcFNlcnZlchIdLm1jYWRtaW4udjEuU3RvcFNlcnZlclJlcXVlc3QaHi5tY2FkbWluLnYxLlN0b3BTZXJ2ZXJSZXNwb25zZSIAElYKDVJlc3RhcnRTZXJ2ZXISIC5tY2FkbWluLnYxLlJlc3RhcnRTZXJ2ZXJSZXF1ZXN0GiEubWNhZG1pbi52MS5SZXN0YXJ0U2VydmVyUmVzcG9uc2UiAEJIWkZnaXRodWIuY29tL2traXRvMDcyNi9taW5lY3JhZnQtc2VydmVyL2JhY2tlbmQvZ2VuL21jYWRtaW4vdjE7bWNhZG1pbnYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_mcadmin_v1_common, file_mcadmin_v1_operation]);
+  fileDesc("ChdtY2FkbWluL3YxL3NlcnZlci5wcm90bxIKbWNhZG1pbi52MSISChBHZXRTdGF0dXNSZXF1ZXN0IrIDChFHZXRTdGF0dXNSZXNwb25zZRIzCg9jb250YWluZXJfc3RhdGUYASABKA4yGi5tY2FkbWluLnYxLkNvbnRhaW5lclN0YXRlEg8KB2hlYWx0aHkYAiABKAgSOAoUY29udGFpbmVyX3N0YXJ0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmNvbmZpZ3VyZWRfdmVyc2lvbhgEIAEoCRIUCgxhY3RpdmVfbGV2ZWwYBSABKAkSNgoUYWN0aXZlX3dvcmxkX3ZlcnNpb24YBiABKAsyGC5tY2FkbWluLnYxLldvcmxkVmVyc2lvbhIWCg5vbmxpbmVfcGxheWVycxgHIAEoBRITCgttYXhfcGxheWVycxgIIAEoBRItCgxzYXZpbmdfc3RhdGUYCSABKA4yFy5tY2FkbWluLnYxLlNhdmluZ1N0YXRlEiYKHmludGVycnVwdGVkX29wZXJhdGlvbl9kZXRlY3RlZBgKIAEoCBIvChBhY3RpdmVfb3BlcmF0aW9uGAsgASgLMhUubWNhZG1pbi52MS5PcGVyYXRpb24iEgoQR2V0Q29uZmlnUmVxdWVzdCJ9ChFHZXRDb25maWdSZXNwb25zZRI5CgZ2YWx1ZXMYASADKAsyKS5tY2FkbWluLnYxLkdldENvbmZpZ1Jlc3BvbnNlLlZhbHVlc0VudHJ5Gi0KC1ZhbHVlc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiFAoSU3RhcnRTZXJ2ZXJSZXF1ZXN0Ij8KE1N0YXJ0U2VydmVyUmVzcG9uc2USKAoJb3BlcmF0aW9uGAEgASgLMhUubWNhZG1pbi52MS5PcGVyYXRpb24iEwoRU3RvcFNlcnZlclJlcXVlc3QiPgoSU3RvcFNlcnZlclJlc3BvbnNlEigKCW9wZXJhdGlvbhgBIAEoCzIVLm1jYWRtaW4udjEuT3BlcmF0aW9uIhYKFFJlc3RhcnRTZXJ2ZXJSZXF1ZXN0IkEKFVJlc3RhcnRTZXJ2ZXJSZXNwb25zZRIoCglvcGVyYXRpb24YASABKAsyFS5tY2FkbWluLnYxLk9wZXJhdGlvbiKRAQoMR2FtZVNldHRpbmdzEioKCmRpZmZpY3VsdHkYASABKA4yFi5tY2FkbWluLnYxLkRpZmZpY3VsdHkSDAoEbW90ZBgCIAEoCRITCgttYXhfcGxheWVycxgDIAEoBRIVCg12aWV3X2Rpc3RhbmNlGAQgASgFEhsKE3NpbXVsYXRpb25fZGlzdGFuY2UYBSABKAUiGAoWR2V0R2FtZVNldHRpbmdzUmVxdWVzdCJXChdHZXRHYW1lU2V0dGluZ3NSZXNwb25zZRIqCghzZXR0aW5ncxgBIAEoCzIYLm1jYWRtaW4udjEuR2FtZVNldHRpbmdzEhAKCHdhcm5pbmdzGAIgAygJIloKGVVwZGF0ZUdhbWVTZXR0aW5nc1JlcXVlc3QSKgoIc2V0dGluZ3MYASABKAsyGC5tY2FkbWluLnYxLkdhbWVTZXR0aW5ncxIRCglhcHBseV9ub3cYAiABKAgicgoaVXBkYXRlR2FtZVNldHRpbmdzUmVzcG9uc2USKgoIc2V0dGluZ3MYASABKAsyGC5tY2FkbWluLnYxLkdhbWVTZXR0aW5ncxIoCglvcGVyYXRpb24YAiABKAsyFS5tY2FkbWluLnYxLk9wZXJhdGlvbiqnAQoOQ29udGFpbmVyU3RhdGUSHwobQ09OVEFJTkVSX1NUQVRFX1VOU1BFQ0lGSUVEEAASGwoXQ09OVEFJTkVSX1NUQVRFX1JVTk5JTkcQARIaChZDT05UQUlORVJfU1RBVEVfRVhJVEVEEAISHgoaQ09OVEFJTkVSX1NUQVRFX1JFU1RBUlRJTkcQAxIbChdDT05UQUlORVJfU1RBVEVfTUlTU0lORxAEKmYKC1NhdmluZ1N0YXRlEhwKGFNBVklOR19TVEFURV9VTlNQRUNJRklFRBAAEhsKF1NBVklOR19TVEFURV9BU1NVTUVEX09OEAESHAoYU0FWSU5HX1NUQVRFX1NVU1BFQ1RfT0ZGEAIqggEKCkRpZmZpY3VsdHkSGgoWRElGRklDVUxUWV9VTlNQRUNJRklFRBAAEhcKE0RJRkZJQ1VMVFlfUEVBQ0VGVUwQARITCg9ESUZGSUNVTFRZX0VBU1kQAhIVChFESUZGSUNVTFRZX05PUk1BTBADEhMKD0RJRkZJQ1VMVFlfSEFSRBAEMuUECg1TZXJ2ZXJTZXJ2aWNlEkoKCUdldFN0YXR1cxIcLm1jYWRtaW4udjEuR2V0U3RhdHVzUmVxdWVzdBodLm1jYWRtaW4udjEuR2V0U3RhdHVzUmVzcG9uc2UiABJKCglHZXRDb25maWcSHC5tY2FkbWluLnYxLkdldENvbmZpZ1JlcXVlc3QaHS5tY2FkbWluLnYxLkdldENvbmZpZ1Jlc3BvbnNlIgASUAoLU3RhcnRTZXJ2ZXISHi5tY2FkbWluLnYxLlN0YXJ0U2VydmVyUmVxdWVzdBofLm1jYWRtaW4udjEuU3RhcnRTZXJ2ZXJSZXNwb25zZSIAEk0KClN0b3BTZXJ2ZXISHS5tY2FkbWluLnYxLlN0b3BTZXJ2ZXJSZXF1ZXN0Gh4ubWNhZG1pbi52MS5TdG9wU2VydmVyUmVzcG9uc2UiABJWCg1SZXN0YXJ0U2VydmVyEiAubWNhZG1pbi52MS5SZXN0YXJ0U2VydmVyUmVxdWVzdBohLm1jYWRtaW4udjEuUmVzdGFydFNlcnZlclJlc3BvbnNlIgASXAoPR2V0R2FtZVNldHRpbmdzEiIubWNhZG1pbi52MS5HZXRHYW1lU2V0dGluZ3NSZXF1ZXN0GiMubWNhZG1pbi52MS5HZXRHYW1lU2V0dGluZ3NSZXNwb25zZSIAEmUKElVwZGF0ZUdhbWVTZXR0aW5ncxIlLm1jYWRtaW4udjEuVXBkYXRlR2FtZVNldHRpbmdzUmVxdWVzdBomLm1jYWRtaW4udjEuVXBkYXRlR2FtZVNldHRpbmdzUmVzcG9uc2UiAEJIWkZnaXRodWIuY29tL2traXRvMDcyNi9taW5lY3JhZnQtc2VydmVyL2JhY2tlbmQvZ2VuL21jYWRtaW4vdjE7bWNhZG1pbnYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_mcadmin_v1_common, file_mcadmin_v1_operation]);
 
 /**
  * @generated from message mcadmin.v1.GetStatusRequest
@@ -237,6 +237,141 @@ export const RestartServerResponseSchema: GenMessage<RestartServerResponse> = /*
   messageDesc(file_mcadmin_v1_server, 9);
 
 /**
+ * GameSettings は管理画面から書き換えてよいゲーム設定。
+ *
+ * 欄を足すときは慎重に。MC_VERSION は片道のアップグレードを、MC_MEMORY は
+ * Pi が固まる状態を、画面のひと押しで起こせるようになる。
+ *
+ * @generated from message mcadmin.v1.GameSettings
+ */
+export type GameSettings = Message<"mcadmin.v1.GameSettings"> & {
+  /**
+   * @generated from field: mcadmin.v1.Difficulty difficulty = 1;
+   */
+  difficulty: Difficulty;
+
+  /**
+   * サーバー一覧に出る説明文。§ の色コードは使えるが、" $ ` \ と改行は使えない。
+   *
+   * @generated from field: string motd = 2;
+   */
+  motd: string;
+
+  /**
+   * @generated from field: int32 max_players = 3;
+   */
+  maxPlayers: number;
+
+  /**
+   * 描画距離（チャンク）。3〜32。
+   *
+   * @generated from field: int32 view_distance = 4;
+   */
+  viewDistance: number;
+
+  /**
+   * シミュレーション距離（チャンク）。3〜32、かつ描画距離以下。
+   *
+   * @generated from field: int32 simulation_distance = 5;
+   */
+  simulationDistance: number;
+};
+
+/**
+ * Describes the message mcadmin.v1.GameSettings.
+ * Use `create(GameSettingsSchema)` to create a new message.
+ */
+export const GameSettingsSchema: GenMessage<GameSettings> = /*@__PURE__*/
+  messageDesc(file_mcadmin_v1_server, 10);
+
+/**
+ * @generated from message mcadmin.v1.GetGameSettingsRequest
+ */
+export type GetGameSettingsRequest = Message<"mcadmin.v1.GetGameSettingsRequest"> & {
+};
+
+/**
+ * Describes the message mcadmin.v1.GetGameSettingsRequest.
+ * Use `create(GetGameSettingsRequestSchema)` to create a new message.
+ */
+export const GetGameSettingsRequestSchema: GenMessage<GetGameSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_mcadmin_v1_server, 11);
+
+/**
+ * @generated from message mcadmin.v1.GetGameSettingsResponse
+ */
+export type GetGameSettingsResponse = Message<"mcadmin.v1.GetGameSettingsResponse"> & {
+  /**
+   * @generated from field: mcadmin.v1.GameSettings settings = 1;
+   */
+  settings?: GameSettings | undefined;
+
+  /**
+   * .env に読めない値があったときの説明。既定値で補って表示していることを伝える。
+   *
+   * @generated from field: repeated string warnings = 2;
+   */
+  warnings: string[];
+};
+
+/**
+ * Describes the message mcadmin.v1.GetGameSettingsResponse.
+ * Use `create(GetGameSettingsResponseSchema)` to create a new message.
+ */
+export const GetGameSettingsResponseSchema: GenMessage<GetGameSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_mcadmin_v1_server, 12);
+
+/**
+ * @generated from message mcadmin.v1.UpdateGameSettingsRequest
+ */
+export type UpdateGameSettingsRequest = Message<"mcadmin.v1.UpdateGameSettingsRequest"> & {
+  /**
+   * @generated from field: mcadmin.v1.GameSettings settings = 1;
+   */
+  settings?: GameSettings | undefined;
+
+  /**
+   * 真なら、稼働中のサーバーを作り直して今すぐ反映する。
+   *
+   * @generated from field: bool apply_now = 2;
+   */
+  applyNow: boolean;
+};
+
+/**
+ * Describes the message mcadmin.v1.UpdateGameSettingsRequest.
+ * Use `create(UpdateGameSettingsRequestSchema)` to create a new message.
+ */
+export const UpdateGameSettingsRequestSchema: GenMessage<UpdateGameSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_mcadmin_v1_server, 13);
+
+/**
+ * @generated from message mcadmin.v1.UpdateGameSettingsResponse
+ */
+export type UpdateGameSettingsResponse = Message<"mcadmin.v1.UpdateGameSettingsResponse"> & {
+  /**
+   * 書き込んだ設定。
+   *
+   * @generated from field: mcadmin.v1.GameSettings settings = 1;
+   */
+  settings?: GameSettings | undefined;
+
+  /**
+   * apply_now が真で、サーバーが稼働中だったときだけ設定される。
+   *
+   * @generated from field: mcadmin.v1.Operation operation = 2;
+   */
+  operation?: Operation | undefined;
+};
+
+/**
+ * Describes the message mcadmin.v1.UpdateGameSettingsResponse.
+ * Use `create(UpdateGameSettingsResponseSchema)` to create a new message.
+ */
+export const UpdateGameSettingsResponseSchema: GenMessage<UpdateGameSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_mcadmin_v1_server, 14);
+
+/**
  * ContainerState は docker compose ps から読んだコンテナの状態。
  *
  * @generated from enum mcadmin.v1.ContainerState
@@ -313,6 +448,44 @@ export const SavingStateSchema: GenEnum<SavingState> = /*@__PURE__*/
   enumDesc(file_mcadmin_v1_server, 1);
 
 /**
+ * Difficulty は難易度。server.properties の difficulty に対応する。
+ *
+ * @generated from enum mcadmin.v1.Difficulty
+ */
+export enum Difficulty {
+  /**
+   * @generated from enum value: DIFFICULTY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: DIFFICULTY_PEACEFUL = 1;
+   */
+  PEACEFUL = 1,
+
+  /**
+   * @generated from enum value: DIFFICULTY_EASY = 2;
+   */
+  EASY = 2,
+
+  /**
+   * @generated from enum value: DIFFICULTY_NORMAL = 3;
+   */
+  NORMAL = 3,
+
+  /**
+   * @generated from enum value: DIFFICULTY_HARD = 4;
+   */
+  HARD = 4,
+}
+
+/**
+ * Describes the enum mcadmin.v1.Difficulty.
+ */
+export const DifficultySchema: GenEnum<Difficulty> = /*@__PURE__*/
+  enumDesc(file_mcadmin_v1_server, 2);
+
+/**
  * @generated from service mcadmin.v1.ServerService
  */
 export const ServerService: GenService<{
@@ -362,6 +535,33 @@ export const ServerService: GenService<{
     methodKind: "unary";
     input: typeof RestartServerRequestSchema;
     output: typeof RestartServerResponseSchema;
+  },
+  /**
+   * GetGameSettings は .env のゲーム設定（難易度・MOTD・人数・距離）を返す。
+   *
+   * 読めない値があっても失敗させず、既定値で補って warnings で伝える。
+   * 失敗させると、設定を直すための画面そのものが開けなくなる。
+   *
+   * @generated from rpc mcadmin.v1.ServerService.GetGameSettings
+   */
+  getGameSettings: {
+    methodKind: "unary";
+    input: typeof GetGameSettingsRequestSchema;
+    output: typeof GetGameSettingsResponseSchema;
+  },
+  /**
+   * UpdateGameSettings はゲーム設定を .env に書く。
+   *
+   * apply_now が真でサーバーが稼働中なら、書いたうえでコンテナを作り直して
+   * 反映する（接続中の人は切断される）。停止中は書くだけで、勝手に起動しない。
+   * バージョン・サーバー種別・メモリはこの RPC では変えられない。
+   *
+   * @generated from rpc mcadmin.v1.ServerService.UpdateGameSettings
+   */
+  updateGameSettings: {
+    methodKind: "unary";
+    input: typeof UpdateGameSettingsRequestSchema;
+    output: typeof UpdateGameSettingsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_mcadmin_v1_server, 0);

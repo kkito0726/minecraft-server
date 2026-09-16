@@ -75,6 +75,8 @@ func operationKindToProto(k operation.Kind) mcadminv1.OperationKind {
 		return mcadminv1.OperationKind_OPERATION_KIND_WORLD_RENAME
 	case operation.KindWorldDelete:
 		return mcadminv1.OperationKind_OPERATION_KIND_WORLD_DELETE
+	case operation.KindServerApplySettings:
+		return mcadminv1.OperationKind_OPERATION_KIND_SERVER_APPLY_SETTINGS
 	default:
 		return mcadminv1.OperationKind_OPERATION_KIND_UNSPECIFIED
 	}

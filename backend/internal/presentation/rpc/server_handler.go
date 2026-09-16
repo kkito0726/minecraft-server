@@ -18,6 +18,7 @@ type ServerHandler struct {
 
 	status     *serverctl.StatusUseCase
 	lifecycle  *serverctl.LifecycleUseCase
+	settings   *serverctl.SettingsUseCase
 	operations *operations.Manager
 	// configKeys は API から返してよい .env のキー。
 	//
@@ -30,12 +31,14 @@ type ServerHandler struct {
 func NewServerHandler(
 	status *serverctl.StatusUseCase,
 	lifecycle *serverctl.LifecycleUseCase,
+	gameSettings *serverctl.SettingsUseCase,
 	ops *operations.Manager,
 	configKeys []string,
 ) *ServerHandler {
 	return &ServerHandler{
 		status:     status,
 		lifecycle:  lifecycle,
+		settings:   gameSettings,
 		operations: ops,
 		configKeys: configKeys,
 	}
@@ -111,6 +114,49 @@ func (h *ServerHandler) RestartServer(
 	return connect.NewResponse(&mcadminv1.RestartServerResponse{
 		Operation: operationToProto(handle.Snapshot()),
 	}), nil
+}
+
+// GetGameSettings は .env のゲーム設定を返す。
+func (h *ServerHandler) GetGameSettings(
+	ctx context.Context,
+	_ *connect.Request[mcadminv1.GetGameSettingsRequest],
+) (*connect.Response[mcadminv1.GetGameSettingsResponse], error) {
+	reading, err := h.settings.Get(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&mcadminv1.GetGameSettingsResponse{
+		Settings: gameSettingsToProto(reading.Settings),
+		Warnings: reading.Warnings,
+	}), nil
+}
+
+// UpdateGameSettings はゲーム設定を .env に書き、求められれば反映する。
+func (h *ServerHandler) UpdateGameSettings(
+	ctx context.Context,
+	req *connect.Request[mcadminv1.UpdateGameSettingsRequest],
+) (*connect.Response[mcadminv1.UpdateGameSettingsResponse], error) {
+	s, err := gameSettingsFromProto(req.Msg.GetSettings())
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	out := &mcadminv1.UpdateGameSettingsResponse{Settings: gameSettingsToProto(s)}
+
+	if !req.Msg.GetApplyNow() {
+		if err := h.settings.Save(ctx, s); err != nil {
+			return nil, toConnectError(err)
+		}
+		return connect.NewResponse(out), nil
+	}
+
+	result, err := h.settings.SaveAndApply(ctx, s)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	if result.Started {
+		out.Operation = operationToProto(result.Handle.Snapshot())
+	}
+	return connect.NewResponse(out), nil
 }
 
 var _ mcadminv1connect.ServerServiceHandler = (*ServerHandler)(nil)

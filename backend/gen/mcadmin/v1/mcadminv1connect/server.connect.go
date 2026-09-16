@@ -48,6 +48,12 @@ const (
 	// ServerServiceRestartServerProcedure is the fully-qualified name of the ServerService's
 	// RestartServer RPC.
 	ServerServiceRestartServerProcedure = "/mcadmin.v1.ServerService/RestartServer"
+	// ServerServiceGetGameSettingsProcedure is the fully-qualified name of the ServerService's
+	// GetGameSettings RPC.
+	ServerServiceGetGameSettingsProcedure = "/mcadmin.v1.ServerService/GetGameSettings"
+	// ServerServiceUpdateGameSettingsProcedure is the fully-qualified name of the ServerService's
+	// UpdateGameSettings RPC.
+	ServerServiceUpdateGameSettingsProcedure = "/mcadmin.v1.ServerService/UpdateGameSettings"
 )
 
 // ServerServiceClient is a client for the mcadmin.v1.ServerService service.
@@ -62,6 +68,17 @@ type ServerServiceClient interface {
 	StartServer(context.Context, *connect.Request[v1.StartServerRequest]) (*connect.Response[v1.StartServerResponse], error)
 	StopServer(context.Context, *connect.Request[v1.StopServerRequest]) (*connect.Response[v1.StopServerResponse], error)
 	RestartServer(context.Context, *connect.Request[v1.RestartServerRequest]) (*connect.Response[v1.RestartServerResponse], error)
+	// GetGameSettings は .env のゲーム設定（難易度・MOTD・人数・距離）を返す。
+	//
+	// 読めない値があっても失敗させず、既定値で補って warnings で伝える。
+	// 失敗させると、設定を直すための画面そのものが開けなくなる。
+	GetGameSettings(context.Context, *connect.Request[v1.GetGameSettingsRequest]) (*connect.Response[v1.GetGameSettingsResponse], error)
+	// UpdateGameSettings はゲーム設定を .env に書く。
+	//
+	// apply_now が真でサーバーが稼働中なら、書いたうえでコンテナを作り直して
+	// 反映する（接続中の人は切断される）。停止中は書くだけで、勝手に起動しない。
+	// バージョン・サーバー種別・メモリはこの RPC では変えられない。
+	UpdateGameSettings(context.Context, *connect.Request[v1.UpdateGameSettingsRequest]) (*connect.Response[v1.UpdateGameSettingsResponse], error)
 }
 
 // NewServerServiceClient constructs a client for the mcadmin.v1.ServerService service. By default,
@@ -105,16 +122,30 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("RestartServer")),
 			connect.WithClientOptions(opts...),
 		),
+		getGameSettings: connect.NewClient[v1.GetGameSettingsRequest, v1.GetGameSettingsResponse](
+			httpClient,
+			baseURL+ServerServiceGetGameSettingsProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("GetGameSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateGameSettings: connect.NewClient[v1.UpdateGameSettingsRequest, v1.UpdateGameSettingsResponse](
+			httpClient,
+			baseURL+ServerServiceUpdateGameSettingsProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("UpdateGameSettings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // serverServiceClient implements ServerServiceClient.
 type serverServiceClient struct {
-	getStatus     *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
-	getConfig     *connect.Client[v1.GetConfigRequest, v1.GetConfigResponse]
-	startServer   *connect.Client[v1.StartServerRequest, v1.StartServerResponse]
-	stopServer    *connect.Client[v1.StopServerRequest, v1.StopServerResponse]
-	restartServer *connect.Client[v1.RestartServerRequest, v1.RestartServerResponse]
+	getStatus          *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
+	getConfig          *connect.Client[v1.GetConfigRequest, v1.GetConfigResponse]
+	startServer        *connect.Client[v1.StartServerRequest, v1.StartServerResponse]
+	stopServer         *connect.Client[v1.StopServerRequest, v1.StopServerResponse]
+	restartServer      *connect.Client[v1.RestartServerRequest, v1.RestartServerResponse]
+	getGameSettings    *connect.Client[v1.GetGameSettingsRequest, v1.GetGameSettingsResponse]
+	updateGameSettings *connect.Client[v1.UpdateGameSettingsRequest, v1.UpdateGameSettingsResponse]
 }
 
 // GetStatus calls mcadmin.v1.ServerService.GetStatus.
@@ -142,6 +173,16 @@ func (c *serverServiceClient) RestartServer(ctx context.Context, req *connect.Re
 	return c.restartServer.CallUnary(ctx, req)
 }
 
+// GetGameSettings calls mcadmin.v1.ServerService.GetGameSettings.
+func (c *serverServiceClient) GetGameSettings(ctx context.Context, req *connect.Request[v1.GetGameSettingsRequest]) (*connect.Response[v1.GetGameSettingsResponse], error) {
+	return c.getGameSettings.CallUnary(ctx, req)
+}
+
+// UpdateGameSettings calls mcadmin.v1.ServerService.UpdateGameSettings.
+func (c *serverServiceClient) UpdateGameSettings(ctx context.Context, req *connect.Request[v1.UpdateGameSettingsRequest]) (*connect.Response[v1.UpdateGameSettingsResponse], error) {
+	return c.updateGameSettings.CallUnary(ctx, req)
+}
+
 // ServerServiceHandler is an implementation of the mcadmin.v1.ServerService service.
 type ServerServiceHandler interface {
 	// GetStatus はコンテナとサーバーの現在の状態を返す（REQ-001）。
@@ -154,6 +195,17 @@ type ServerServiceHandler interface {
 	StartServer(context.Context, *connect.Request[v1.StartServerRequest]) (*connect.Response[v1.StartServerResponse], error)
 	StopServer(context.Context, *connect.Request[v1.StopServerRequest]) (*connect.Response[v1.StopServerResponse], error)
 	RestartServer(context.Context, *connect.Request[v1.RestartServerRequest]) (*connect.Response[v1.RestartServerResponse], error)
+	// GetGameSettings は .env のゲーム設定（難易度・MOTD・人数・距離）を返す。
+	//
+	// 読めない値があっても失敗させず、既定値で補って warnings で伝える。
+	// 失敗させると、設定を直すための画面そのものが開けなくなる。
+	GetGameSettings(context.Context, *connect.Request[v1.GetGameSettingsRequest]) (*connect.Response[v1.GetGameSettingsResponse], error)
+	// UpdateGameSettings はゲーム設定を .env に書く。
+	//
+	// apply_now が真でサーバーが稼働中なら、書いたうえでコンテナを作り直して
+	// 反映する（接続中の人は切断される）。停止中は書くだけで、勝手に起動しない。
+	// バージョン・サーバー種別・メモリはこの RPC では変えられない。
+	UpdateGameSettings(context.Context, *connect.Request[v1.UpdateGameSettingsRequest]) (*connect.Response[v1.UpdateGameSettingsResponse], error)
 }
 
 // NewServerServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -193,6 +245,18 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("RestartServer")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceGetGameSettingsHandler := connect.NewUnaryHandler(
+		ServerServiceGetGameSettingsProcedure,
+		svc.GetGameSettings,
+		connect.WithSchema(serverServiceMethods.ByName("GetGameSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceUpdateGameSettingsHandler := connect.NewUnaryHandler(
+		ServerServiceUpdateGameSettingsProcedure,
+		svc.UpdateGameSettings,
+		connect.WithSchema(serverServiceMethods.ByName("UpdateGameSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mcadmin.v1.ServerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ServerServiceGetStatusProcedure:
@@ -205,6 +269,10 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceStopServerHandler.ServeHTTP(w, r)
 		case ServerServiceRestartServerProcedure:
 			serverServiceRestartServerHandler.ServeHTTP(w, r)
+		case ServerServiceGetGameSettingsProcedure:
+			serverServiceGetGameSettingsHandler.ServeHTTP(w, r)
+		case ServerServiceUpdateGameSettingsProcedure:
+			serverServiceUpdateGameSettingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -232,4 +300,12 @@ func (UnimplementedServerServiceHandler) StopServer(context.Context, *connect.Re
 
 func (UnimplementedServerServiceHandler) RestartServer(context.Context, *connect.Request[v1.RestartServerRequest]) (*connect.Response[v1.RestartServerResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mcadmin.v1.ServerService.RestartServer is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) GetGameSettings(context.Context, *connect.Request[v1.GetGameSettingsRequest]) (*connect.Response[v1.GetGameSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mcadmin.v1.ServerService.GetGameSettings is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) UpdateGameSettings(context.Context, *connect.Request[v1.UpdateGameSettingsRequest]) (*connect.Response[v1.UpdateGameSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mcadmin.v1.ServerService.UpdateGameSettings is not implemented"))
 }

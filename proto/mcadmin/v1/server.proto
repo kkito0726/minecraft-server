@@ -20,6 +20,17 @@ service ServerService {
   rpc StartServer(StartServerRequest) returns (StartServerResponse) {}
   rpc StopServer(StopServerRequest) returns (StopServerResponse) {}
   rpc RestartServer(RestartServerRequest) returns (RestartServerResponse) {}
+  // GetGameSettings は .env のゲーム設定（難易度・MOTD・人数・距離）を返す。
+  //
+  // 読めない値があっても失敗させず、既定値で補って warnings で伝える。
+  // 失敗させると、設定を直すための画面そのものが開けなくなる。
+  rpc GetGameSettings(GetGameSettingsRequest) returns (GetGameSettingsResponse) {}
+  // UpdateGameSettings はゲーム設定を .env に書く。
+  //
+  // apply_now が真でサーバーが稼働中なら、書いたうえでコンテナを作り直して
+  // 反映する（接続中の人は切断される）。停止中は書くだけで、勝手に起動しない。
+  // バージョン・サーバー種別・メモリはこの RPC では変えられない。
+  rpc UpdateGameSettings(UpdateGameSettingsRequest) returns (UpdateGameSettingsResponse) {}
 }
 
 // ContainerState は docker compose ps から読んだコンテナの状態。
@@ -91,4 +102,49 @@ message RestartServerRequest {}
 
 message RestartServerResponse {
   Operation operation = 1;
+}
+
+// Difficulty は難易度。server.properties の difficulty に対応する。
+enum Difficulty {
+  DIFFICULTY_UNSPECIFIED = 0;
+  DIFFICULTY_PEACEFUL = 1;
+  DIFFICULTY_EASY = 2;
+  DIFFICULTY_NORMAL = 3;
+  DIFFICULTY_HARD = 4;
+}
+
+// GameSettings は管理画面から書き換えてよいゲーム設定。
+//
+// 欄を足すときは慎重に。MC_VERSION は片道のアップグレードを、MC_MEMORY は
+// Pi が固まる状態を、画面のひと押しで起こせるようになる。
+message GameSettings {
+  Difficulty difficulty = 1;
+  // サーバー一覧に出る説明文。§ の色コードは使えるが、" $ ` \ と改行は使えない。
+  string motd = 2;
+  int32 max_players = 3;
+  // 描画距離（チャンク）。3〜32。
+  int32 view_distance = 4;
+  // シミュレーション距離（チャンク）。3〜32、かつ描画距離以下。
+  int32 simulation_distance = 5;
+}
+
+message GetGameSettingsRequest {}
+
+message GetGameSettingsResponse {
+  GameSettings settings = 1;
+  // .env に読めない値があったときの説明。既定値で補って表示していることを伝える。
+  repeated string warnings = 2;
+}
+
+message UpdateGameSettingsRequest {
+  GameSettings settings = 1;
+  // 真なら、稼働中のサーバーを作り直して今すぐ反映する。
+  bool apply_now = 2;
+}
+
+message UpdateGameSettingsResponse {
+  // 書き込んだ設定。
+  GameSettings settings = 1;
+  // apply_now が真で、サーバーが稼働中だったときだけ設定される。
+  Operation operation = 2;
 }

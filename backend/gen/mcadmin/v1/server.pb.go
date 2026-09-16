@@ -137,6 +137,62 @@ func (SavingState) EnumDescriptor() ([]byte, []int) {
 	return file_mcadmin_v1_server_proto_rawDescGZIP(), []int{1}
 }
 
+// Difficulty は難易度。server.properties の difficulty に対応する。
+type Difficulty int32
+
+const (
+	Difficulty_DIFFICULTY_UNSPECIFIED Difficulty = 0
+	Difficulty_DIFFICULTY_PEACEFUL    Difficulty = 1
+	Difficulty_DIFFICULTY_EASY        Difficulty = 2
+	Difficulty_DIFFICULTY_NORMAL      Difficulty = 3
+	Difficulty_DIFFICULTY_HARD        Difficulty = 4
+)
+
+// Enum value maps for Difficulty.
+var (
+	Difficulty_name = map[int32]string{
+		0: "DIFFICULTY_UNSPECIFIED",
+		1: "DIFFICULTY_PEACEFUL",
+		2: "DIFFICULTY_EASY",
+		3: "DIFFICULTY_NORMAL",
+		4: "DIFFICULTY_HARD",
+	}
+	Difficulty_value = map[string]int32{
+		"DIFFICULTY_UNSPECIFIED": 0,
+		"DIFFICULTY_PEACEFUL":    1,
+		"DIFFICULTY_EASY":        2,
+		"DIFFICULTY_NORMAL":      3,
+		"DIFFICULTY_HARD":        4,
+	}
+)
+
+func (x Difficulty) Enum() *Difficulty {
+	p := new(Difficulty)
+	*p = x
+	return p
+}
+
+func (x Difficulty) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Difficulty) Descriptor() protoreflect.EnumDescriptor {
+	return file_mcadmin_v1_server_proto_enumTypes[2].Descriptor()
+}
+
+func (Difficulty) Type() protoreflect.EnumType {
+	return &file_mcadmin_v1_server_proto_enumTypes[2]
+}
+
+func (x Difficulty) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Difficulty.Descriptor instead.
+func (Difficulty) EnumDescriptor() ([]byte, []int) {
+	return file_mcadmin_v1_server_proto_rawDescGZIP(), []int{2}
+}
+
 type GetStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -625,6 +681,285 @@ func (x *RestartServerResponse) GetOperation() *Operation {
 	return nil
 }
 
+// GameSettings は管理画面から書き換えてよいゲーム設定。
+//
+// 欄を足すときは慎重に。MC_VERSION は片道のアップグレードを、MC_MEMORY は
+// Pi が固まる状態を、画面のひと押しで起こせるようになる。
+type GameSettings struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Difficulty Difficulty             `protobuf:"varint,1,opt,name=difficulty,proto3,enum=mcadmin.v1.Difficulty" json:"difficulty,omitempty"`
+	// サーバー一覧に出る説明文。§ の色コードは使えるが、" $ ` \ と改行は使えない。
+	Motd       string `protobuf:"bytes,2,opt,name=motd,proto3" json:"motd,omitempty"`
+	MaxPlayers int32  `protobuf:"varint,3,opt,name=max_players,json=maxPlayers,proto3" json:"max_players,omitempty"`
+	// 描画距離（チャンク）。3〜32。
+	ViewDistance int32 `protobuf:"varint,4,opt,name=view_distance,json=viewDistance,proto3" json:"view_distance,omitempty"`
+	// シミュレーション距離（チャンク）。3〜32、かつ描画距離以下。
+	SimulationDistance int32 `protobuf:"varint,5,opt,name=simulation_distance,json=simulationDistance,proto3" json:"simulation_distance,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GameSettings) Reset() {
+	*x = GameSettings{}
+	mi := &file_mcadmin_v1_server_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameSettings) ProtoMessage() {}
+
+func (x *GameSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_mcadmin_v1_server_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameSettings.ProtoReflect.Descriptor instead.
+func (*GameSettings) Descriptor() ([]byte, []int) {
+	return file_mcadmin_v1_server_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GameSettings) GetDifficulty() Difficulty {
+	if x != nil {
+		return x.Difficulty
+	}
+	return Difficulty_DIFFICULTY_UNSPECIFIED
+}
+
+func (x *GameSettings) GetMotd() string {
+	if x != nil {
+		return x.Motd
+	}
+	return ""
+}
+
+func (x *GameSettings) GetMaxPlayers() int32 {
+	if x != nil {
+		return x.MaxPlayers
+	}
+	return 0
+}
+
+func (x *GameSettings) GetViewDistance() int32 {
+	if x != nil {
+		return x.ViewDistance
+	}
+	return 0
+}
+
+func (x *GameSettings) GetSimulationDistance() int32 {
+	if x != nil {
+		return x.SimulationDistance
+	}
+	return 0
+}
+
+type GetGameSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGameSettingsRequest) Reset() {
+	*x = GetGameSettingsRequest{}
+	mi := &file_mcadmin_v1_server_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGameSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGameSettingsRequest) ProtoMessage() {}
+
+func (x *GetGameSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mcadmin_v1_server_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGameSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetGameSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_mcadmin_v1_server_proto_rawDescGZIP(), []int{11}
+}
+
+type GetGameSettingsResponse struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Settings *GameSettings          `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	// .env に読めない値があったときの説明。既定値で補って表示していることを伝える。
+	Warnings      []string `protobuf:"bytes,2,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGameSettingsResponse) Reset() {
+	*x = GetGameSettingsResponse{}
+	mi := &file_mcadmin_v1_server_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGameSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGameSettingsResponse) ProtoMessage() {}
+
+func (x *GetGameSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mcadmin_v1_server_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGameSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetGameSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_mcadmin_v1_server_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetGameSettingsResponse) GetSettings() *GameSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *GetGameSettingsResponse) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
+type UpdateGameSettingsRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Settings *GameSettings          `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	// 真なら、稼働中のサーバーを作り直して今すぐ反映する。
+	ApplyNow      bool `protobuf:"varint,2,opt,name=apply_now,json=applyNow,proto3" json:"apply_now,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateGameSettingsRequest) Reset() {
+	*x = UpdateGameSettingsRequest{}
+	mi := &file_mcadmin_v1_server_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateGameSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateGameSettingsRequest) ProtoMessage() {}
+
+func (x *UpdateGameSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mcadmin_v1_server_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateGameSettingsRequest.ProtoReflect.Descriptor instead.
+func (*UpdateGameSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_mcadmin_v1_server_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *UpdateGameSettingsRequest) GetSettings() *GameSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *UpdateGameSettingsRequest) GetApplyNow() bool {
+	if x != nil {
+		return x.ApplyNow
+	}
+	return false
+}
+
+type UpdateGameSettingsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 書き込んだ設定。
+	Settings *GameSettings `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	// apply_now が真で、サーバーが稼働中だったときだけ設定される。
+	Operation     *Operation `protobuf:"bytes,2,opt,name=operation,proto3" json:"operation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateGameSettingsResponse) Reset() {
+	*x = UpdateGameSettingsResponse{}
+	mi := &file_mcadmin_v1_server_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateGameSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateGameSettingsResponse) ProtoMessage() {}
+
+func (x *UpdateGameSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mcadmin_v1_server_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateGameSettingsResponse.ProtoReflect.Descriptor instead.
+func (*UpdateGameSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_mcadmin_v1_server_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *UpdateGameSettingsResponse) GetSettings() *GameSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *UpdateGameSettingsResponse) GetOperation() *Operation {
+	if x != nil {
+		return x.Operation
+	}
+	return nil
+}
+
 var File_mcadmin_v1_server_proto protoreflect.FileDescriptor
 
 const file_mcadmin_v1_server_proto_rawDesc = "" +
@@ -660,7 +995,26 @@ const file_mcadmin_v1_server_proto_rawDesc = "" +
 	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"\x16\n" +
 	"\x14RestartServerRequest\"L\n" +
 	"\x15RestartServerResponse\x123\n" +
-	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation*\xa7\x01\n" +
+	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"\xd1\x01\n" +
+	"\fGameSettings\x126\n" +
+	"\n" +
+	"difficulty\x18\x01 \x01(\x0e2\x16.mcadmin.v1.DifficultyR\n" +
+	"difficulty\x12\x12\n" +
+	"\x04motd\x18\x02 \x01(\tR\x04motd\x12\x1f\n" +
+	"\vmax_players\x18\x03 \x01(\x05R\n" +
+	"maxPlayers\x12#\n" +
+	"\rview_distance\x18\x04 \x01(\x05R\fviewDistance\x12/\n" +
+	"\x13simulation_distance\x18\x05 \x01(\x05R\x12simulationDistance\"\x18\n" +
+	"\x16GetGameSettingsRequest\"k\n" +
+	"\x17GetGameSettingsResponse\x124\n" +
+	"\bsettings\x18\x01 \x01(\v2\x18.mcadmin.v1.GameSettingsR\bsettings\x12\x1a\n" +
+	"\bwarnings\x18\x02 \x03(\tR\bwarnings\"n\n" +
+	"\x19UpdateGameSettingsRequest\x124\n" +
+	"\bsettings\x18\x01 \x01(\v2\x18.mcadmin.v1.GameSettingsR\bsettings\x12\x1b\n" +
+	"\tapply_now\x18\x02 \x01(\bR\bapplyNow\"\x87\x01\n" +
+	"\x1aUpdateGameSettingsResponse\x124\n" +
+	"\bsettings\x18\x01 \x01(\v2\x18.mcadmin.v1.GameSettingsR\bsettings\x123\n" +
+	"\toperation\x18\x02 \x01(\v2\x15.mcadmin.v1.OperationR\toperation*\xa7\x01\n" +
 	"\x0eContainerState\x12\x1f\n" +
 	"\x1bCONTAINER_STATE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17CONTAINER_STATE_RUNNING\x10\x01\x12\x1a\n" +
@@ -670,14 +1024,23 @@ const file_mcadmin_v1_server_proto_rawDesc = "" +
 	"\vSavingState\x12\x1c\n" +
 	"\x18SAVING_STATE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SAVING_STATE_ASSUMED_ON\x10\x01\x12\x1c\n" +
-	"\x18SAVING_STATE_SUSPECT_OFF\x10\x022\xa0\x03\n" +
+	"\x18SAVING_STATE_SUSPECT_OFF\x10\x02*\x82\x01\n" +
+	"\n" +
+	"Difficulty\x12\x1a\n" +
+	"\x16DIFFICULTY_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13DIFFICULTY_PEACEFUL\x10\x01\x12\x13\n" +
+	"\x0fDIFFICULTY_EASY\x10\x02\x12\x15\n" +
+	"\x11DIFFICULTY_NORMAL\x10\x03\x12\x13\n" +
+	"\x0fDIFFICULTY_HARD\x10\x042\xe5\x04\n" +
 	"\rServerService\x12J\n" +
 	"\tGetStatus\x12\x1c.mcadmin.v1.GetStatusRequest\x1a\x1d.mcadmin.v1.GetStatusResponse\"\x00\x12J\n" +
 	"\tGetConfig\x12\x1c.mcadmin.v1.GetConfigRequest\x1a\x1d.mcadmin.v1.GetConfigResponse\"\x00\x12P\n" +
 	"\vStartServer\x12\x1e.mcadmin.v1.StartServerRequest\x1a\x1f.mcadmin.v1.StartServerResponse\"\x00\x12M\n" +
 	"\n" +
 	"StopServer\x12\x1d.mcadmin.v1.StopServerRequest\x1a\x1e.mcadmin.v1.StopServerResponse\"\x00\x12V\n" +
-	"\rRestartServer\x12 .mcadmin.v1.RestartServerRequest\x1a!.mcadmin.v1.RestartServerResponse\"\x00BHZFgithub.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1b\x06proto3"
+	"\rRestartServer\x12 .mcadmin.v1.RestartServerRequest\x1a!.mcadmin.v1.RestartServerResponse\"\x00\x12\\\n" +
+	"\x0fGetGameSettings\x12\".mcadmin.v1.GetGameSettingsRequest\x1a#.mcadmin.v1.GetGameSettingsResponse\"\x00\x12e\n" +
+	"\x12UpdateGameSettings\x12%.mcadmin.v1.UpdateGameSettingsRequest\x1a&.mcadmin.v1.UpdateGameSettingsResponse\"\x00BHZFgithub.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1b\x06proto3"
 
 var (
 	file_mcadmin_v1_server_proto_rawDescOnce sync.Once
@@ -691,51 +1054,66 @@ func file_mcadmin_v1_server_proto_rawDescGZIP() []byte {
 	return file_mcadmin_v1_server_proto_rawDescData
 }
 
-var file_mcadmin_v1_server_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_mcadmin_v1_server_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_mcadmin_v1_server_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_mcadmin_v1_server_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_mcadmin_v1_server_proto_goTypes = []any{
-	(ContainerState)(0),           // 0: mcadmin.v1.ContainerState
-	(SavingState)(0),              // 1: mcadmin.v1.SavingState
-	(*GetStatusRequest)(nil),      // 2: mcadmin.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),     // 3: mcadmin.v1.GetStatusResponse
-	(*GetConfigRequest)(nil),      // 4: mcadmin.v1.GetConfigRequest
-	(*GetConfigResponse)(nil),     // 5: mcadmin.v1.GetConfigResponse
-	(*StartServerRequest)(nil),    // 6: mcadmin.v1.StartServerRequest
-	(*StartServerResponse)(nil),   // 7: mcadmin.v1.StartServerResponse
-	(*StopServerRequest)(nil),     // 8: mcadmin.v1.StopServerRequest
-	(*StopServerResponse)(nil),    // 9: mcadmin.v1.StopServerResponse
-	(*RestartServerRequest)(nil),  // 10: mcadmin.v1.RestartServerRequest
-	(*RestartServerResponse)(nil), // 11: mcadmin.v1.RestartServerResponse
-	nil,                           // 12: mcadmin.v1.GetConfigResponse.ValuesEntry
-	(*timestamppb.Timestamp)(nil), // 13: google.protobuf.Timestamp
-	(*WorldVersion)(nil),          // 14: mcadmin.v1.WorldVersion
-	(*Operation)(nil),             // 15: mcadmin.v1.Operation
+	(ContainerState)(0),                // 0: mcadmin.v1.ContainerState
+	(SavingState)(0),                   // 1: mcadmin.v1.SavingState
+	(Difficulty)(0),                    // 2: mcadmin.v1.Difficulty
+	(*GetStatusRequest)(nil),           // 3: mcadmin.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),          // 4: mcadmin.v1.GetStatusResponse
+	(*GetConfigRequest)(nil),           // 5: mcadmin.v1.GetConfigRequest
+	(*GetConfigResponse)(nil),          // 6: mcadmin.v1.GetConfigResponse
+	(*StartServerRequest)(nil),         // 7: mcadmin.v1.StartServerRequest
+	(*StartServerResponse)(nil),        // 8: mcadmin.v1.StartServerResponse
+	(*StopServerRequest)(nil),          // 9: mcadmin.v1.StopServerRequest
+	(*StopServerResponse)(nil),         // 10: mcadmin.v1.StopServerResponse
+	(*RestartServerRequest)(nil),       // 11: mcadmin.v1.RestartServerRequest
+	(*RestartServerResponse)(nil),      // 12: mcadmin.v1.RestartServerResponse
+	(*GameSettings)(nil),               // 13: mcadmin.v1.GameSettings
+	(*GetGameSettingsRequest)(nil),     // 14: mcadmin.v1.GetGameSettingsRequest
+	(*GetGameSettingsResponse)(nil),    // 15: mcadmin.v1.GetGameSettingsResponse
+	(*UpdateGameSettingsRequest)(nil),  // 16: mcadmin.v1.UpdateGameSettingsRequest
+	(*UpdateGameSettingsResponse)(nil), // 17: mcadmin.v1.UpdateGameSettingsResponse
+	nil,                                // 18: mcadmin.v1.GetConfigResponse.ValuesEntry
+	(*timestamppb.Timestamp)(nil),      // 19: google.protobuf.Timestamp
+	(*WorldVersion)(nil),               // 20: mcadmin.v1.WorldVersion
+	(*Operation)(nil),                  // 21: mcadmin.v1.Operation
 }
 var file_mcadmin_v1_server_proto_depIdxs = []int32{
 	0,  // 0: mcadmin.v1.GetStatusResponse.container_state:type_name -> mcadmin.v1.ContainerState
-	13, // 1: mcadmin.v1.GetStatusResponse.container_started_at:type_name -> google.protobuf.Timestamp
-	14, // 2: mcadmin.v1.GetStatusResponse.active_world_version:type_name -> mcadmin.v1.WorldVersion
+	19, // 1: mcadmin.v1.GetStatusResponse.container_started_at:type_name -> google.protobuf.Timestamp
+	20, // 2: mcadmin.v1.GetStatusResponse.active_world_version:type_name -> mcadmin.v1.WorldVersion
 	1,  // 3: mcadmin.v1.GetStatusResponse.saving_state:type_name -> mcadmin.v1.SavingState
-	15, // 4: mcadmin.v1.GetStatusResponse.active_operation:type_name -> mcadmin.v1.Operation
-	12, // 5: mcadmin.v1.GetConfigResponse.values:type_name -> mcadmin.v1.GetConfigResponse.ValuesEntry
-	15, // 6: mcadmin.v1.StartServerResponse.operation:type_name -> mcadmin.v1.Operation
-	15, // 7: mcadmin.v1.StopServerResponse.operation:type_name -> mcadmin.v1.Operation
-	15, // 8: mcadmin.v1.RestartServerResponse.operation:type_name -> mcadmin.v1.Operation
-	2,  // 9: mcadmin.v1.ServerService.GetStatus:input_type -> mcadmin.v1.GetStatusRequest
-	4,  // 10: mcadmin.v1.ServerService.GetConfig:input_type -> mcadmin.v1.GetConfigRequest
-	6,  // 11: mcadmin.v1.ServerService.StartServer:input_type -> mcadmin.v1.StartServerRequest
-	8,  // 12: mcadmin.v1.ServerService.StopServer:input_type -> mcadmin.v1.StopServerRequest
-	10, // 13: mcadmin.v1.ServerService.RestartServer:input_type -> mcadmin.v1.RestartServerRequest
-	3,  // 14: mcadmin.v1.ServerService.GetStatus:output_type -> mcadmin.v1.GetStatusResponse
-	5,  // 15: mcadmin.v1.ServerService.GetConfig:output_type -> mcadmin.v1.GetConfigResponse
-	7,  // 16: mcadmin.v1.ServerService.StartServer:output_type -> mcadmin.v1.StartServerResponse
-	9,  // 17: mcadmin.v1.ServerService.StopServer:output_type -> mcadmin.v1.StopServerResponse
-	11, // 18: mcadmin.v1.ServerService.RestartServer:output_type -> mcadmin.v1.RestartServerResponse
-	14, // [14:19] is the sub-list for method output_type
-	9,  // [9:14] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	21, // 4: mcadmin.v1.GetStatusResponse.active_operation:type_name -> mcadmin.v1.Operation
+	18, // 5: mcadmin.v1.GetConfigResponse.values:type_name -> mcadmin.v1.GetConfigResponse.ValuesEntry
+	21, // 6: mcadmin.v1.StartServerResponse.operation:type_name -> mcadmin.v1.Operation
+	21, // 7: mcadmin.v1.StopServerResponse.operation:type_name -> mcadmin.v1.Operation
+	21, // 8: mcadmin.v1.RestartServerResponse.operation:type_name -> mcadmin.v1.Operation
+	2,  // 9: mcadmin.v1.GameSettings.difficulty:type_name -> mcadmin.v1.Difficulty
+	13, // 10: mcadmin.v1.GetGameSettingsResponse.settings:type_name -> mcadmin.v1.GameSettings
+	13, // 11: mcadmin.v1.UpdateGameSettingsRequest.settings:type_name -> mcadmin.v1.GameSettings
+	13, // 12: mcadmin.v1.UpdateGameSettingsResponse.settings:type_name -> mcadmin.v1.GameSettings
+	21, // 13: mcadmin.v1.UpdateGameSettingsResponse.operation:type_name -> mcadmin.v1.Operation
+	3,  // 14: mcadmin.v1.ServerService.GetStatus:input_type -> mcadmin.v1.GetStatusRequest
+	5,  // 15: mcadmin.v1.ServerService.GetConfig:input_type -> mcadmin.v1.GetConfigRequest
+	7,  // 16: mcadmin.v1.ServerService.StartServer:input_type -> mcadmin.v1.StartServerRequest
+	9,  // 17: mcadmin.v1.ServerService.StopServer:input_type -> mcadmin.v1.StopServerRequest
+	11, // 18: mcadmin.v1.ServerService.RestartServer:input_type -> mcadmin.v1.RestartServerRequest
+	14, // 19: mcadmin.v1.ServerService.GetGameSettings:input_type -> mcadmin.v1.GetGameSettingsRequest
+	16, // 20: mcadmin.v1.ServerService.UpdateGameSettings:input_type -> mcadmin.v1.UpdateGameSettingsRequest
+	4,  // 21: mcadmin.v1.ServerService.GetStatus:output_type -> mcadmin.v1.GetStatusResponse
+	6,  // 22: mcadmin.v1.ServerService.GetConfig:output_type -> mcadmin.v1.GetConfigResponse
+	8,  // 23: mcadmin.v1.ServerService.StartServer:output_type -> mcadmin.v1.StartServerResponse
+	10, // 24: mcadmin.v1.ServerService.StopServer:output_type -> mcadmin.v1.StopServerResponse
+	12, // 25: mcadmin.v1.ServerService.RestartServer:output_type -> mcadmin.v1.RestartServerResponse
+	15, // 26: mcadmin.v1.ServerService.GetGameSettings:output_type -> mcadmin.v1.GetGameSettingsResponse
+	17, // 27: mcadmin.v1.ServerService.UpdateGameSettings:output_type -> mcadmin.v1.UpdateGameSettingsResponse
+	21, // [21:28] is the sub-list for method output_type
+	14, // [14:21] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_mcadmin_v1_server_proto_init() }
@@ -750,8 +1128,8 @@ func file_mcadmin_v1_server_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mcadmin_v1_server_proto_rawDesc), len(file_mcadmin_v1_server_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   11,
+			NumEnums:      3,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

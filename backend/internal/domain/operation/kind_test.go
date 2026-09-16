@@ -15,6 +15,7 @@ func TestKindString(t *testing.T) {
 		operation.KindBackupCreate, operation.KindBackupRestore,
 		operation.KindWorldSwitch, operation.KindWorldCreate, operation.KindWorldClone,
 		operation.KindWorldRename, operation.KindWorldDelete,
+		operation.KindServerApplySettings,
 		operation.KindUnspecified, operation.Kind(99),
 	}
 

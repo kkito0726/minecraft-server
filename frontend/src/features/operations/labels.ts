@@ -18,6 +18,7 @@ const KIND_LABELS: Record<OperationKind, string> = {
   [OperationKind.WORLD_CLONE]: 'ワールドの複製',
   [OperationKind.WORLD_RENAME]: 'ワールドの改名',
   [OperationKind.WORLD_DELETE]: 'ワールドの削除',
+  [OperationKind.SERVER_APPLY_SETTINGS]: 'ゲーム設定の反映',
 }
 
 export function kindLabel(kind: OperationKind): string {

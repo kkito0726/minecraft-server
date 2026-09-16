@@ -16,6 +16,7 @@ import { OperationProvider } from './features/operations'
 import { verifyToken } from './features/auth/verify'
 import { createQueryClient } from './lib/queryClient'
 import { BackupsPage } from './pages/BackupsPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { WorldsPage } from './pages/WorldsPage'
 import { ServerPage } from './pages/ServerPage'
 
@@ -31,6 +32,7 @@ const NAV: readonly NavEntry[] = [
   { to: '/', label: 'サーバー', code: 'SRV', icon: 'server' },
   { to: '/worlds', label: 'ワールド', code: 'WLD', icon: 'world' },
   { to: '/backups', label: 'バックアップ', code: 'BAK', icon: 'backup' },
+  { to: '/settings', label: '設定', code: 'CFG', icon: 'settings' },
 ]
 
 /**
@@ -68,6 +70,7 @@ export function App() {
                 <Route path="/" element={<ServerPage />} />
                 <Route path="/worlds" element={<WorldsPage />} />
                 <Route path="/backups" element={<BackupsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppShell>

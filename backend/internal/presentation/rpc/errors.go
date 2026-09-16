@@ -10,10 +10,18 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/backupctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
+	"github.com/kkito0726/minecraft-server/backend/internal/domain/settings"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/archive"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/config/dotenv"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
 )
+
+// errEnvConflict は .env の競合を画面へ伝える文言。
+//
+// dotenv.ErrConflict の本文はファイルの絶対パスを含む。そのまま返すと
+// 内部の配置を漏らすので、利用者が取るべき行動だけを伝える文言に差し替える。
+var errEnvConflict = errors.New(".env が外部から変更されました。読み込み直してから保存してください")
 
 // toConnectError はドメインやユースケースのエラーを Connect のコードに写す。
 //
@@ -48,8 +56,13 @@ func toConnectError(err error) error {
 		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, world.ErrInvalidName),
 		errors.Is(err, backup.ErrInvalidID),
-		errors.Is(err, backup.ErrInvalidRetentionPolicy):
+		errors.Is(err, backup.ErrInvalidRetentionPolicy),
+		errors.Is(err, settings.ErrInvalid):
 		return connect.NewError(connect.CodeInvalidArgument, err)
+	// 画面を開いている間に .env が手で書き換えられた。読み直せば利用者が直せる。
+	// 伏せて Internal にすると、何度保存しても理由が分からないまま失敗する。
+	case errors.Is(err, dotenv.ErrConflict):
+		return connect.NewError(connect.CodeAborted, errEnvConflict)
 	// 安全でないアーカイブは利用者が包み直せる。エントリ名は
 	// 利用者自身の zip から来たものなので、伝えても内部は漏れない。
 	case errors.Is(err, archive.ErrUnsafeEntry):

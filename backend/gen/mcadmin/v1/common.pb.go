@@ -148,6 +148,8 @@ const (
 	OperationKind_OPERATION_KIND_WORLD_CLONE    OperationKind = 8
 	OperationKind_OPERATION_KIND_WORLD_RENAME   OperationKind = 9
 	OperationKind_OPERATION_KIND_WORLD_DELETE   OperationKind = 10
+	// ゲーム設定を .env に書き、コンテナを作り直して反映する。
+	OperationKind_OPERATION_KIND_SERVER_APPLY_SETTINGS OperationKind = 11
 )
 
 // Enum value maps for OperationKind.
@@ -164,19 +166,21 @@ var (
 		8:  "OPERATION_KIND_WORLD_CLONE",
 		9:  "OPERATION_KIND_WORLD_RENAME",
 		10: "OPERATION_KIND_WORLD_DELETE",
+		11: "OPERATION_KIND_SERVER_APPLY_SETTINGS",
 	}
 	OperationKind_value = map[string]int32{
-		"OPERATION_KIND_UNSPECIFIED":    0,
-		"OPERATION_KIND_SERVER_START":   1,
-		"OPERATION_KIND_SERVER_STOP":    2,
-		"OPERATION_KIND_SERVER_RESTART": 3,
-		"OPERATION_KIND_BACKUP_CREATE":  4,
-		"OPERATION_KIND_BACKUP_RESTORE": 5,
-		"OPERATION_KIND_WORLD_SWITCH":   6,
-		"OPERATION_KIND_WORLD_CREATE":   7,
-		"OPERATION_KIND_WORLD_CLONE":    8,
-		"OPERATION_KIND_WORLD_RENAME":   9,
-		"OPERATION_KIND_WORLD_DELETE":   10,
+		"OPERATION_KIND_UNSPECIFIED":           0,
+		"OPERATION_KIND_SERVER_START":          1,
+		"OPERATION_KIND_SERVER_STOP":           2,
+		"OPERATION_KIND_SERVER_RESTART":        3,
+		"OPERATION_KIND_BACKUP_CREATE":         4,
+		"OPERATION_KIND_BACKUP_RESTORE":        5,
+		"OPERATION_KIND_WORLD_SWITCH":          6,
+		"OPERATION_KIND_WORLD_CREATE":          7,
+		"OPERATION_KIND_WORLD_CLONE":           8,
+		"OPERATION_KIND_WORLD_RENAME":          9,
+		"OPERATION_KIND_WORLD_DELETE":          10,
+		"OPERATION_KIND_SERVER_APPLY_SETTINGS": 11,
 	}
 )
 
@@ -317,7 +321,7 @@ const file_mcadmin_v1_common_proto_rawDesc = "" +
 	"\x17OPERATION_STATE_PENDING\x10\x01\x12\x1b\n" +
 	"\x17OPERATION_STATE_RUNNING\x10\x02\x12\x1d\n" +
 	"\x19OPERATION_STATE_SUCCEEDED\x10\x03\x12\x1a\n" +
-	"\x16OPERATION_STATE_FAILED\x10\x04*\xfc\x02\n" +
+	"\x16OPERATION_STATE_FAILED\x10\x04*\xa6\x03\n" +
 	"\rOperationKind\x12\x1e\n" +
 	"\x1aOPERATION_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bOPERATION_KIND_SERVER_START\x10\x01\x12\x1e\n" +
@@ -330,7 +334,8 @@ const file_mcadmin_v1_common_proto_rawDesc = "" +
 	"\x1aOPERATION_KIND_WORLD_CLONE\x10\b\x12\x1f\n" +
 	"\x1bOPERATION_KIND_WORLD_RENAME\x10\t\x12\x1f\n" +
 	"\x1bOPERATION_KIND_WORLD_DELETE\x10\n" +
-	"BHZFgithub.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1b\x06proto3"
+	"\x12(\n" +
+	"$OPERATION_KIND_SERVER_APPLY_SETTINGS\x10\vBHZFgithub.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1b\x06proto3"
 
 var (
 	file_mcadmin_v1_common_proto_rawDescOnce sync.Once
