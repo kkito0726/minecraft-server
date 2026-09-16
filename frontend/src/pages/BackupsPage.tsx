@@ -12,6 +12,7 @@ import type { PruneResult, RestoreRequestInput } from '../components/organisms'
 import { Button } from '../components/atoms'
 import { PanelHeader } from '../components/molecules'
 import {
+  useBackupDownload,
   useBackups,
   useCreateBackup,
   useDeleteBackup,
@@ -57,7 +58,7 @@ function BackupSection({ data, disabled }: { data: ListBackupsResponse; disabled
   const [restoring, setRestoring] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [importing, setImporting] = useState(false)
-  const { create, remove, restore, preflight, failure } = useBackupActions(restoring)
+  const { create, remove, restore, download, preflight, failure } = useBackupActions(restoring)
   const upload = useUploadBackup()
 
   const send = (input: RestoreRequestInput) => {
@@ -105,6 +106,7 @@ function BackupSection({ data, disabled }: { data: ListBackupsResponse; disabled
         disabled={disabled}
         onRestore={setRestoring}
         onDelete={(id) => remove.mutate(id)}
+        onDownload={(id) => download.mutate(id)}
       />
     </section>
   )
@@ -139,14 +141,16 @@ function useBackupActions(restoring: string | null) {
   const create = useCreateBackup()
   const remove = useDeleteBackup()
   const restore = useRestoreBackup()
+  const download = useBackupDownload()
   const preflight = usePreflightRestore(restoring)
 
   return {
     create,
     remove,
     restore,
+    download,
     preflight,
-    failure: create.error ?? remove.error ?? restore.error ?? preflight.error,
+    failure: create.error ?? remove.error ?? restore.error ?? download.error ?? preflight.error,
   }
 }
 

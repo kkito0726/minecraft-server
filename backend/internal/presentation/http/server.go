@@ -25,6 +25,14 @@ const rpcPrefix = "/rpc/"
 // 必要があるので公開する。
 const UploadBackupPath = "/upload/backup"
 
+// DownloadBackupPath は保管済みアーカイブを渡す場所。
+//
+// ブラウザのダウンロードはリンクを辿るだけで Authorization ヘッダーを
+// 付けられない。そのため**このルートだけは認証ミドルウェアで包まず**、
+// 認証済みの RPC が発行した短命の受取券だけを見る
+// （`presentation/download`）。
+const DownloadBackupPath = "/download/backup"
+
 // タイムアウト。
 //
 // WriteTimeout を設けないのは、進捗のストリーミングが分単位で続くため。

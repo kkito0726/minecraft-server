@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mcadmin/v1/backup.proto.
  */
 export const file_mcadmin_v1_backup: GenFile = /*@__PURE__*/
-  fileDesc("ChdtY2FkbWluL3YxL2JhY2t1cC5wcm90bxIKbWNhZG1pbi52MSLJAQoGQmFja3VwEgoKAmlkGAEgASgJEhIKCnNpemVfYnl0ZXMYAiABKAMSLgoKY3JlYXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGAoQZGVjbGFyZWRfdmVyc2lvbhgEIAEoCRIVCg1hcmNoaXZlX2xldmVsGAUgASgJEikKB3ZlcnNpb24YBiABKAsyGC5tY2FkbWluLnYxLldvcmxkVmVyc2lvbhITCgtlbnRyeV9yb290cxgHIAMoCSIUChJMaXN0QmFja3Vwc1JlcXVlc3QiZwoTTGlzdEJhY2t1cHNSZXNwb25zZRIjCgdiYWNrdXBzGAEgAygLMhIubWNhZG1pbi52MS5CYWNrdXASEQoJZGlyZWN0b3J5GAIgASgJEhgKEHRvdGFsX3NpemVfYnl0ZXMYAyABKAMiSQoTQ3JlYXRlQmFja3VwUmVxdWVzdBIkCgRtb2RlGAEgASgOMhYubWNhZG1pbi52MS5CYWNrdXBNb2RlEgwKBG5vdGUYAiABKAkiQAoUQ3JlYXRlQmFja3VwUmVzcG9uc2USKAoJb3BlcmF0aW9uGAEgASgLMhUubWNhZG1pbi52MS5PcGVyYXRpb24iKAoTRGVsZXRlQmFja3VwUmVxdWVzdBIRCgliYWNrdXBfaWQYASABKAkiKwoURGVsZXRlQmFja3VwUmVzcG9uc2USEwoLZnJlZWRfYnl0ZXMYASABKAMiLAoXUHJlZmxpZ2h0UmVzdG9yZVJlcXVlc3QSEQoJYmFja3VwX2lkGAEgASgJItkCChhQcmVmbGlnaHRSZXN0b3JlUmVzcG9uc2USIgoGYmFja3VwGAEgASgLMhIubWNhZG1pbi52MS5CYWNrdXASFQoNY3VycmVudF9sZXZlbBgCIAEoCRI3ChVjdXJyZW50X3dvcmxkX3ZlcnNpb24YAyABKAsyGC5tY2FkbWluLnYxLldvcmxkVmVyc2lvbhIdChVjb25maWd1cmVkX21jX3ZlcnNpb24YBCABKAkSKwoHdmVyZGljdBgFIAEoDjIaLm1jYWRtaW4udjEuVmVyc2lvblZlcmRpY3QSGwoTbGV2ZWxfbmFtZV9taXNtYXRjaBgGIAEoCBIQCgh3YXJuaW5ncxgHIAMoCRIdChVyZXF1aXJlc19jb25maXJtYXRpb24YCCABKAgSFgoOcmVxdWlyZWRfYnl0ZXMYCSABKAMSFwoPYXZhaWxhYmxlX2J5dGVzGAogASgDIpUBChRSZXN0b3JlQmFja3VwUmVxdWVzdBIRCgliYWNrdXBfaWQYASABKAkSKQoGdGFyZ2V0GAIgASgOMhkubWNhZG1pbi52MS5SZXN0b3JlVGFyZ2V0EiMKG2Fja25vd2xlZGdlX3ZlcnNpb25fd2FybmluZxgDIAEoCBIaChJjb25maXJtX2xldmVsX25hbWUYBCABKAkiQQoVUmVzdG9yZUJhY2t1cFJlc3BvbnNlEigKCW9wZXJhdGlvbhgBIAEoCzIVLm1jYWRtaW4udjEuT3BlcmF0aW9uIjgKD1JldGVudGlvblBvbGljeRISCgprZWVwX2NvdW50GAEgASgFEhEKCWtlZXBfZGF5cxgCIAEoBSIbChlHZXRSZXRlbnRpb25Qb2xpY3lSZXF1ZXN0IkkKGkdldFJldGVudGlvblBvbGljeVJlc3BvbnNlEisKBnBvbGljeRgBIAEoCzIbLm1jYWRtaW4udjEuUmV0ZW50aW9uUG9saWN5IkgKGVNldFJldGVudGlvblBvbGljeVJlcXVlc3QSKwoGcG9saWN5GAEgASgLMhsubWNhZG1pbi52MS5SZXRlbnRpb25Qb2xpY3kiSQoaU2V0UmV0ZW50aW9uUG9saWN5UmVzcG9uc2USKwoGcG9saWN5GAEgASgLMhsubWNhZG1pbi52MS5SZXRlbnRpb25Qb2xpY3kiJgoTUHJ1bmVCYWNrdXBzUmVxdWVzdBIPCgdkcnlfcnVuGAEgASgIIkAKFFBydW5lQmFja3Vwc1Jlc3BvbnNlEhMKC2RlbGV0ZWRfaWRzGAEgAygJEhMKC2ZyZWVkX2J5dGVzGAIgASgDKlQKCkJhY2t1cE1vZGUSGwoXQkFDS1VQX01PREVfVU5TUEVDSUZJRUQQABITCg9CQUNLVVBfTU9ERV9IT1QQARIUChBCQUNLVVBfTU9ERV9DT0xEEAIquQEKDlZlcnNpb25WZXJkaWN0Eh8KG1ZFUlNJT05fVkVSRElDVF9VTlNQRUNJRklFRBAAEhkKFVZFUlNJT05fVkVSRElDVF9NQVRDSBABEiYKIlZFUlNJT05fVkVSRElDVF9PTERFUl9XSUxMX1VQR1JBREUQAhImCiJWRVJTSU9OX1ZFUkRJQ1RfTkVXRVJfSU5DT01QQVRJQkxFEAMSGwoXVkVSU0lPTl9WRVJESUNUX1VOS05PV04QBCpzCg1SZXN0b3JlVGFyZ2V0Eh4KGlJFU1RPUkVfVEFSR0VUX1VOU1BFQ0lGSUVEEAASIAocUkVTVE9SRV9UQVJHRVRfQVJDSElWRV9MRVZFTBABEiAKHFJFU1RPUkVfVEFSR0VUX0NVUlJFTlRfTEVWRUwQAjLnBQoNQmFja3VwU2VydmljZRJQCgtMaXN0QmFja3VwcxIeLm1jYWRtaW4udjEuTGlzdEJhY2t1cHNSZXF1ZXN0Gh8ubWNhZG1pbi52MS5MaXN0QmFja3Vwc1Jlc3BvbnNlIgASUwoMQ3JlYXRlQmFja3VwEh8ubWNhZG1pbi52MS5DcmVhdGVCYWNrdXBSZXF1ZXN0GiAubWNhZG1pbi52MS5DcmVhdGVCYWNrdXBSZXNwb25zZSIAElMKDERlbGV0ZUJhY2t1cBIfLm1jYWRtaW4udjEuRGVsZXRlQmFja3VwUmVxdWVzdBogLm1jYWRtaW4udjEuRGVsZXRlQmFja3VwUmVzcG9uc2UiABJfChBQcmVmbGlnaHRSZXN0b3JlEiMubWNhZG1pbi52MS5QcmVmbGlnaHRSZXN0b3JlUmVxdWVzdBokLm1jYWRtaW4udjEuUHJlZmxpZ2h0UmVzdG9yZVJlc3BvbnNlIgASVgoNUmVzdG9yZUJhY2t1cBIgLm1jYWRtaW4udjEuUmVzdG9yZUJhY2t1cFJlcXVlc3QaIS5tY2FkbWluLnYxLlJlc3RvcmVCYWNrdXBSZXNwb25zZSIAEmUKEkdldFJldGVudGlvblBvbGljeRIlLm1jYWRtaW4udjEuR2V0UmV0ZW50aW9uUG9saWN5UmVxdWVzdBomLm1jYWRtaW4udjEuR2V0UmV0ZW50aW9uUG9saWN5UmVzcG9uc2UiABJlChJTZXRSZXRlbnRpb25Qb2xpY3kSJS5tY2FkbWluLnYxLlNldFJldGVudGlvblBvbGljeVJlcXVlc3QaJi5tY2FkbWluLnYxLlNldFJldGVudGlvblBvbGljeVJlc3BvbnNlIgASUwoMUHJ1bmVCYWNrdXBzEh8ubWNhZG1pbi52MS5QcnVuZUJhY2t1cHNSZXF1ZXN0GiAubWNhZG1pbi52MS5QcnVuZUJhY2t1cHNSZXNwb25zZSIAQkhaRmdpdGh1Yi5jb20va2tpdG8wNzI2L21pbmVjcmFmdC1zZXJ2ZXIvYmFja2VuZC9nZW4vbWNhZG1pbi92MTttY2FkbWludjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_mcadmin_v1_common, file_mcadmin_v1_operation]);
+  fileDesc("ChdtY2FkbWluL3YxL2JhY2t1cC5wcm90bxIKbWNhZG1pbi52MSLJAQoGQmFja3VwEgoKAmlkGAEgASgJEhIKCnNpemVfYnl0ZXMYAiABKAMSLgoKY3JlYXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGAoQZGVjbGFyZWRfdmVyc2lvbhgEIAEoCRIVCg1hcmNoaXZlX2xldmVsGAUgASgJEikKB3ZlcnNpb24YBiABKAsyGC5tY2FkbWluLnYxLldvcmxkVmVyc2lvbhITCgtlbnRyeV9yb290cxgHIAMoCSIUChJMaXN0QmFja3Vwc1JlcXVlc3QiZwoTTGlzdEJhY2t1cHNSZXNwb25zZRIjCgdiYWNrdXBzGAEgAygLMhIubWNhZG1pbi52MS5CYWNrdXASEQoJZGlyZWN0b3J5GAIgASgJEhgKEHRvdGFsX3NpemVfYnl0ZXMYAyABKAMiSQoTQ3JlYXRlQmFja3VwUmVxdWVzdBIkCgRtb2RlGAEgASgOMhYubWNhZG1pbi52MS5CYWNrdXBNb2RlEgwKBG5vdGUYAiABKAkiQAoUQ3JlYXRlQmFja3VwUmVzcG9uc2USKAoJb3BlcmF0aW9uGAEgASgLMhUubWNhZG1pbi52MS5PcGVyYXRpb24iKAoTRGVsZXRlQmFja3VwUmVxdWVzdBIRCgliYWNrdXBfaWQYASABKAkiKwoURGVsZXRlQmFja3VwUmVzcG9uc2USEwoLZnJlZWRfYnl0ZXMYASABKAMiLAoXUHJlZmxpZ2h0UmVzdG9yZVJlcXVlc3QSEQoJYmFja3VwX2lkGAEgASgJItkCChhQcmVmbGlnaHRSZXN0b3JlUmVzcG9uc2USIgoGYmFja3VwGAEgASgLMhIubWNhZG1pbi52MS5CYWNrdXASFQoNY3VycmVudF9sZXZlbBgCIAEoCRI3ChVjdXJyZW50X3dvcmxkX3ZlcnNpb24YAyABKAsyGC5tY2FkbWluLnYxLldvcmxkVmVyc2lvbhIdChVjb25maWd1cmVkX21jX3ZlcnNpb24YBCABKAkSKwoHdmVyZGljdBgFIAEoDjIaLm1jYWRtaW4udjEuVmVyc2lvblZlcmRpY3QSGwoTbGV2ZWxfbmFtZV9taXNtYXRjaBgGIAEoCBIQCgh3YXJuaW5ncxgHIAMoCRIdChVyZXF1aXJlc19jb25maXJtYXRpb24YCCABKAgSFgoOcmVxdWlyZWRfYnl0ZXMYCSABKAMSFwoPYXZhaWxhYmxlX2J5dGVzGAogASgDIpUBChRSZXN0b3JlQmFja3VwUmVxdWVzdBIRCgliYWNrdXBfaWQYASABKAkSKQoGdGFyZ2V0GAIgASgOMhkubWNhZG1pbi52MS5SZXN0b3JlVGFyZ2V0EiMKG2Fja25vd2xlZGdlX3ZlcnNpb25fd2FybmluZxgDIAEoCBIaChJjb25maXJtX2xldmVsX25hbWUYBCABKAkiQQoVUmVzdG9yZUJhY2t1cFJlc3BvbnNlEigKCW9wZXJhdGlvbhgBIAEoCzIVLm1jYWRtaW4udjEuT3BlcmF0aW9uIjAKG0NyZWF0ZUJhY2t1cERvd25sb2FkUmVxdWVzdBIRCgliYWNrdXBfaWQYASABKAkibgocQ3JlYXRlQmFja3VwRG93bmxvYWRSZXNwb25zZRILCgN1cmwYASABKAkSLgoKZXhwaXJlc19hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEQoJZmlsZV9uYW1lGAMgASgJIjgKD1JldGVudGlvblBvbGljeRISCgprZWVwX2NvdW50GAEgASgFEhEKCWtlZXBfZGF5cxgCIAEoBSIbChlHZXRSZXRlbnRpb25Qb2xpY3lSZXF1ZXN0IkkKGkdldFJldGVudGlvblBvbGljeVJlc3BvbnNlEisKBnBvbGljeRgBIAEoCzIbLm1jYWRtaW4udjEuUmV0ZW50aW9uUG9saWN5IkgKGVNldFJldGVudGlvblBvbGljeVJlcXVlc3QSKwoGcG9saWN5GAEgASgLMhsubWNhZG1pbi52MS5SZXRlbnRpb25Qb2xpY3kiSQoaU2V0UmV0ZW50aW9uUG9saWN5UmVzcG9uc2USKwoGcG9saWN5GAEgASgLMhsubWNhZG1pbi52MS5SZXRlbnRpb25Qb2xpY3kiJgoTUHJ1bmVCYWNrdXBzUmVxdWVzdBIPCgdkcnlfcnVuGAEgASgIIkAKFFBydW5lQmFja3Vwc1Jlc3BvbnNlEhMKC2RlbGV0ZWRfaWRzGAEgAygJEhMKC2ZyZWVkX2J5dGVzGAIgASgDKlQKCkJhY2t1cE1vZGUSGwoXQkFDS1VQX01PREVfVU5TUEVDSUZJRUQQABITCg9CQUNLVVBfTU9ERV9IT1QQARIUChBCQUNLVVBfTU9ERV9DT0xEEAIquQEKDlZlcnNpb25WZXJkaWN0Eh8KG1ZFUlNJT05fVkVSRElDVF9VTlNQRUNJRklFRBAAEhkKFVZFUlNJT05fVkVSRElDVF9NQVRDSBABEiYKIlZFUlNJT05fVkVSRElDVF9PTERFUl9XSUxMX1VQR1JBREUQAhImCiJWRVJTSU9OX1ZFUkRJQ1RfTkVXRVJfSU5DT01QQVRJQkxFEAMSGwoXVkVSU0lPTl9WRVJESUNUX1VOS05PV04QBCpzCg1SZXN0b3JlVGFyZ2V0Eh4KGlJFU1RPUkVfVEFSR0VUX1VOU1BFQ0lGSUVEEAASIAocUkVTVE9SRV9UQVJHRVRfQVJDSElWRV9MRVZFTBABEiAKHFJFU1RPUkVfVEFSR0VUX0NVUlJFTlRfTEVWRUwQAjLUBgoNQmFja3VwU2VydmljZRJQCgtMaXN0QmFja3VwcxIeLm1jYWRtaW4udjEuTGlzdEJhY2t1cHNSZXF1ZXN0Gh8ubWNhZG1pbi52MS5MaXN0QmFja3Vwc1Jlc3BvbnNlIgASUwoMQ3JlYXRlQmFja3VwEh8ubWNhZG1pbi52MS5DcmVhdGVCYWNrdXBSZXF1ZXN0GiAubWNhZG1pbi52MS5DcmVhdGVCYWNrdXBSZXNwb25zZSIAElMKDERlbGV0ZUJhY2t1cBIfLm1jYWRtaW4udjEuRGVsZXRlQmFja3VwUmVxdWVzdBogLm1jYWRtaW4udjEuRGVsZXRlQmFja3VwUmVzcG9uc2UiABJfChBQcmVmbGlnaHRSZXN0b3JlEiMubWNhZG1pbi52MS5QcmVmbGlnaHRSZXN0b3JlUmVxdWVzdBokLm1jYWRtaW4udjEuUHJlZmxpZ2h0UmVzdG9yZVJlc3BvbnNlIgASVgoNUmVzdG9yZUJhY2t1cBIgLm1jYWRtaW4udjEuUmVzdG9yZUJhY2t1cFJlcXVlc3QaIS5tY2FkbWluLnYxLlJlc3RvcmVCYWNrdXBSZXNwb25zZSIAEmsKFENyZWF0ZUJhY2t1cERvd25sb2FkEicubWNhZG1pbi52MS5DcmVhdGVCYWNrdXBEb3dubG9hZFJlcXVlc3QaKC5tY2FkbWluLnYxLkNyZWF0ZUJhY2t1cERvd25sb2FkUmVzcG9uc2UiABJlChJHZXRSZXRlbnRpb25Qb2xpY3kSJS5tY2FkbWluLnYxLkdldFJldGVudGlvblBvbGljeVJlcXVlc3QaJi5tY2FkbWluLnYxLkdldFJldGVudGlvblBvbGljeVJlc3BvbnNlIgASZQoSU2V0UmV0ZW50aW9uUG9saWN5EiUubWNhZG1pbi52MS5TZXRSZXRlbnRpb25Qb2xpY3lSZXF1ZXN0GiYubWNhZG1pbi52MS5TZXRSZXRlbnRpb25Qb2xpY3lSZXNwb25zZSIAElMKDFBydW5lQmFja3VwcxIfLm1jYWRtaW4udjEuUHJ1bmVCYWNrdXBzUmVxdWVzdBogLm1jYWRtaW4udjEuUHJ1bmVCYWNrdXBzUmVzcG9uc2UiAEJIWkZnaXRodWIuY29tL2traXRvMDcyNi9taW5lY3JhZnQtc2VydmVyL2JhY2tlbmQvZ2VuL21jYWRtaW4vdjE7bWNhZG1pbnYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_mcadmin_v1_common, file_mcadmin_v1_operation]);
 
 /**
  * Backup は保管済みのアーカイブ 1 つ。
@@ -351,6 +351,56 @@ export const RestoreBackupResponseSchema: GenMessage<RestoreBackupResponse> = /*
   messageDesc(file_mcadmin_v1_backup, 10);
 
 /**
+ * @generated from message mcadmin.v1.CreateBackupDownloadRequest
+ */
+export type CreateBackupDownloadRequest = Message<"mcadmin.v1.CreateBackupDownloadRequest"> & {
+  /**
+   * @generated from field: string backup_id = 1;
+   */
+  backupId: string;
+};
+
+/**
+ * Describes the message mcadmin.v1.CreateBackupDownloadRequest.
+ * Use `create(CreateBackupDownloadRequestSchema)` to create a new message.
+ */
+export const CreateBackupDownloadRequestSchema: GenMessage<CreateBackupDownloadRequest> = /*@__PURE__*/
+  messageDesc(file_mcadmin_v1_backup, 11);
+
+/**
+ * @generated from message mcadmin.v1.CreateBackupDownloadResponse
+ */
+export type CreateBackupDownloadResponse = Message<"mcadmin.v1.CreateBackupDownloadResponse"> & {
+  /**
+   * 受け取りの相対パス（同一オリジン）。画面はこれをそのまま開く。
+   *
+   * @generated from field: string url = 1;
+   */
+  url: string;
+
+  /**
+   * 券の期限。過ぎたら押し直す。
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 2;
+   */
+  expiresAt?: Timestamp | undefined;
+
+  /**
+   * 保存されるファイル名。
+   *
+   * @generated from field: string file_name = 3;
+   */
+  fileName: string;
+};
+
+/**
+ * Describes the message mcadmin.v1.CreateBackupDownloadResponse.
+ * Use `create(CreateBackupDownloadResponseSchema)` to create a new message.
+ */
+export const CreateBackupDownloadResponseSchema: GenMessage<CreateBackupDownloadResponse> = /*@__PURE__*/
+  messageDesc(file_mcadmin_v1_backup, 12);
+
+/**
  * RetentionPolicy はバックアップの保持条件。
  *
  * 世代数と日数の両方を満たさないものだけを削除し、設定がどうであれ
@@ -379,7 +429,7 @@ export type RetentionPolicy = Message<"mcadmin.v1.RetentionPolicy"> & {
  * Use `create(RetentionPolicySchema)` to create a new message.
  */
 export const RetentionPolicySchema: GenMessage<RetentionPolicy> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_backup, 11);
+  messageDesc(file_mcadmin_v1_backup, 13);
 
 /**
  * @generated from message mcadmin.v1.GetRetentionPolicyRequest
@@ -392,7 +442,7 @@ export type GetRetentionPolicyRequest = Message<"mcadmin.v1.GetRetentionPolicyRe
  * Use `create(GetRetentionPolicyRequestSchema)` to create a new message.
  */
 export const GetRetentionPolicyRequestSchema: GenMessage<GetRetentionPolicyRequest> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_backup, 12);
+  messageDesc(file_mcadmin_v1_backup, 14);
 
 /**
  * @generated from message mcadmin.v1.GetRetentionPolicyResponse
@@ -409,7 +459,7 @@ export type GetRetentionPolicyResponse = Message<"mcadmin.v1.GetRetentionPolicyR
  * Use `create(GetRetentionPolicyResponseSchema)` to create a new message.
  */
 export const GetRetentionPolicyResponseSchema: GenMessage<GetRetentionPolicyResponse> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_backup, 13);
+  messageDesc(file_mcadmin_v1_backup, 15);
 
 /**
  * @generated from message mcadmin.v1.SetRetentionPolicyRequest
@@ -426,7 +476,7 @@ export type SetRetentionPolicyRequest = Message<"mcadmin.v1.SetRetentionPolicyRe
  * Use `create(SetRetentionPolicyRequestSchema)` to create a new message.
  */
 export const SetRetentionPolicyRequestSchema: GenMessage<SetRetentionPolicyRequest> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_backup, 14);
+  messageDesc(file_mcadmin_v1_backup, 16);
 
 /**
  * @generated from message mcadmin.v1.SetRetentionPolicyResponse
@@ -443,7 +493,7 @@ export type SetRetentionPolicyResponse = Message<"mcadmin.v1.SetRetentionPolicyR
  * Use `create(SetRetentionPolicyResponseSchema)` to create a new message.
  */
 export const SetRetentionPolicyResponseSchema: GenMessage<SetRetentionPolicyResponse> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_backup, 15);
+  messageDesc(file_mcadmin_v1_backup, 17);
 
 /**
  * @generated from message mcadmin.v1.PruneBackupsRequest
@@ -462,7 +512,7 @@ export type PruneBackupsRequest = Message<"mcadmin.v1.PruneBackupsRequest"> & {
  * Use `create(PruneBackupsRequestSchema)` to create a new message.
  */
 export const PruneBackupsRequestSchema: GenMessage<PruneBackupsRequest> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_backup, 16);
+  messageDesc(file_mcadmin_v1_backup, 18);
 
 /**
  * @generated from message mcadmin.v1.PruneBackupsResponse
@@ -486,7 +536,7 @@ export type PruneBackupsResponse = Message<"mcadmin.v1.PruneBackupsResponse"> & 
  * Use `create(PruneBackupsResponseSchema)` to create a new message.
  */
 export const PruneBackupsResponseSchema: GenMessage<PruneBackupsResponse> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_backup, 17);
+  messageDesc(file_mcadmin_v1_backup, 19);
 
 /**
  * BackupMode は取得方式。
@@ -657,6 +707,20 @@ export const BackupService: GenService<{
     methodKind: "unary";
     input: typeof RestoreBackupRequestSchema;
     output: typeof RestoreBackupResponseSchema;
+  },
+  /**
+   * CreateBackupDownload は、手元の PC へ保存するための受取口を作る。
+   *
+   * ブラウザのダウンロードはリンクを辿るだけで Authorization ヘッダーを
+   * 付けられない。そこで認証済みのこの RPC で短命の受取券を発行し、
+   * 受け取りの口はその券だけを見る。券は押すたびに新しく出る。
+   *
+   * @generated from rpc mcadmin.v1.BackupService.CreateBackupDownload
+   */
+  createBackupDownload: {
+    methodKind: "unary";
+    input: typeof CreateBackupDownloadRequestSchema;
+    output: typeof CreateBackupDownloadResponseSchema;
   },
   /**
    * @generated from rpc mcadmin.v1.BackupService.GetRetentionPolicy

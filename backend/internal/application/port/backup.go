@@ -21,6 +21,18 @@ type StoredBackup struct {
 	CreatedAt time.Time
 }
 
+// ArchiveFile は読み出し用に開いたアーカイブ。
+//
+// Seek できる形で返す。HTTP の Range 要求に応えるために要る。
+// バックアップは 200MB 規模になるため、転送が途中で切れたときに
+// 最初からやり直させない。
+type ArchiveFile struct {
+	// Body はアーカイブの中身。呼び出し側が閉じる。
+	Body io.ReadSeekCloser
+	// Info は開いた時点の大きさと更新時刻。
+	Info StoredBackup
+}
+
 // ArchiveInfo はアーカイブを展開せずに読み取った構成。
 type ArchiveInfo struct {
 	// Level はエントリの接頭辞から判定したワールド名。判定できなければ空。
@@ -81,6 +93,11 @@ type BackupStore interface {
 	Delete(ctx context.Context, id backup.ID) (freedBytes int64, err error)
 	// Inspect はアーカイブの構成を、展開せずに読む。
 	Inspect(ctx context.Context, id backup.ID) (ArchiveInfo, error)
+	// Open は保管済みのアーカイブを読み出し用に開く。
+	//
+	// 中身をメモリに載せない。ダウンロードは 200MB 規模になるため、
+	// 呼び出し側がそのまま流せる形で返す（REQ-415）。
+	Open(ctx context.Context, id backup.ID) (ArchiveFile, error)
 	// OpenLevelDat はアーカイブ内の level.dat を、展開せずに開く。
 	OpenLevelDat(ctx context.Context, id backup.ID) (io.ReadCloser, error)
 	// Stage は受け取ったバイト列を保管先の一時ファイルへ書き、中身を調べる。

@@ -22,6 +22,12 @@ service BackupService {
   // クライアントが事前確認を通ったと主張しても信用せず、サーバー側で
   // PreflightRestore を再実行してから進む（REQ-113）。
   rpc RestoreBackup(RestoreBackupRequest) returns (RestoreBackupResponse) {}
+  // CreateBackupDownload は、手元の PC へ保存するための受取口を作る。
+  //
+  // ブラウザのダウンロードはリンクを辿るだけで Authorization ヘッダーを
+  // 付けられない。そこで認証済みのこの RPC で短命の受取券を発行し、
+  // 受け取りの口はその券だけを見る。券は押すたびに新しく出る。
+  rpc CreateBackupDownload(CreateBackupDownloadRequest) returns (CreateBackupDownloadResponse) {}
   rpc GetRetentionPolicy(GetRetentionPolicyRequest) returns (GetRetentionPolicyResponse) {}
   rpc SetRetentionPolicy(SetRetentionPolicyRequest) returns (SetRetentionPolicyResponse) {}
   // PruneBackups は保持ポリシーを手動で適用する。dry_run で対象だけ確認できる。
@@ -148,6 +154,19 @@ message RestoreBackupRequest {
 
 message RestoreBackupResponse {
   Operation operation = 1;
+}
+
+message CreateBackupDownloadRequest {
+  string backup_id = 1;
+}
+
+message CreateBackupDownloadResponse {
+  // 受け取りの相対パス（同一オリジン）。画面はこれをそのまま開く。
+  string url = 1;
+  // 券の期限。過ぎたら押し直す。
+  google.protobuf.Timestamp expires_at = 2;
+  // 保存されるファイル名。
+  string file_name = 3;
 }
 
 // RetentionPolicy はバックアップの保持条件。

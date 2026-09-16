@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -12,15 +13,51 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
 )
 
+// DownloadIssuer はダウンロード用の受取券を発行する。
+//
+// ブラウザのダウンロードはリンクを辿るだけで Authorization ヘッダーを
+// 付けられない。認証はこの RPC で済ませ、受け取りの口には短命の券を渡す。
+type DownloadIssuer interface {
+	Issue(backupID string) (url string, expiresAt time.Time, err error)
+}
+
 // BackupHandler は BackupService のハンドラ。
 type BackupHandler struct {
 	mcadminv1connect.UnimplementedBackupServiceHandler
 
-	backups *backupctl.UseCase
+	backups   *backupctl.UseCase
+	downloads DownloadIssuer
 }
 
 // NewBackupHandler は BackupHandler を作る。
-func NewBackupHandler(b *backupctl.UseCase) *BackupHandler { return &BackupHandler{backups: b} }
+func NewBackupHandler(b *backupctl.UseCase, downloads DownloadIssuer) *BackupHandler {
+	return &BackupHandler{backups: b, downloads: downloads}
+}
+
+// CreateBackupDownload は、手元の PC へ保存するための受取口を作る。
+//
+// 存在しない id で券を出さない。出してしまうと、押した直後ではなく
+// ダウンロードの途中で失敗し、理由が分かりにくくなる。
+func (h *BackupHandler) CreateBackupDownload(
+	ctx context.Context,
+	req *connect.Request[mcadminv1.CreateBackupDownloadRequest],
+) (*connect.Response[mcadminv1.CreateBackupDownloadResponse], error) {
+	fileName, err := h.backups.Exists(ctx, req.Msg.GetBackupId())
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
+	url, expiresAt, err := h.downloads.Issue(fileName)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+
+	return connect.NewResponse(&mcadminv1.CreateBackupDownloadResponse{
+		Url:       url,
+		ExpiresAt: timestamppb.New(expiresAt),
+		FileName:  fileName,
+	}), nil
+}
 
 // ListBackups は保管済みのバックアップを新しい順で返す。
 func (h *BackupHandler) ListBackups(

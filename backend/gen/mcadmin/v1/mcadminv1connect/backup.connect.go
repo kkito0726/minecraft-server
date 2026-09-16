@@ -50,6 +50,9 @@ const (
 	// BackupServiceRestoreBackupProcedure is the fully-qualified name of the BackupService's
 	// RestoreBackup RPC.
 	BackupServiceRestoreBackupProcedure = "/mcadmin.v1.BackupService/RestoreBackup"
+	// BackupServiceCreateBackupDownloadProcedure is the fully-qualified name of the BackupService's
+	// CreateBackupDownload RPC.
+	BackupServiceCreateBackupDownloadProcedure = "/mcadmin.v1.BackupService/CreateBackupDownload"
 	// BackupServiceGetRetentionPolicyProcedure is the fully-qualified name of the BackupService's
 	// GetRetentionPolicy RPC.
 	BackupServiceGetRetentionPolicyProcedure = "/mcadmin.v1.BackupService/GetRetentionPolicy"
@@ -75,6 +78,12 @@ type BackupServiceClient interface {
 	// クライアントが事前確認を通ったと主張しても信用せず、サーバー側で
 	// PreflightRestore を再実行してから進む（REQ-113）。
 	RestoreBackup(context.Context, *connect.Request[v1.RestoreBackupRequest]) (*connect.Response[v1.RestoreBackupResponse], error)
+	// CreateBackupDownload は、手元の PC へ保存するための受取口を作る。
+	//
+	// ブラウザのダウンロードはリンクを辿るだけで Authorization ヘッダーを
+	// 付けられない。そこで認証済みのこの RPC で短命の受取券を発行し、
+	// 受け取りの口はその券だけを見る。券は押すたびに新しく出る。
+	CreateBackupDownload(context.Context, *connect.Request[v1.CreateBackupDownloadRequest]) (*connect.Response[v1.CreateBackupDownloadResponse], error)
 	GetRetentionPolicy(context.Context, *connect.Request[v1.GetRetentionPolicyRequest]) (*connect.Response[v1.GetRetentionPolicyResponse], error)
 	SetRetentionPolicy(context.Context, *connect.Request[v1.SetRetentionPolicyRequest]) (*connect.Response[v1.SetRetentionPolicyResponse], error)
 	// PruneBackups は保持ポリシーを手動で適用する。dry_run で対象だけ確認できる。
@@ -122,6 +131,12 @@ func NewBackupServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(backupServiceMethods.ByName("RestoreBackup")),
 			connect.WithClientOptions(opts...),
 		),
+		createBackupDownload: connect.NewClient[v1.CreateBackupDownloadRequest, v1.CreateBackupDownloadResponse](
+			httpClient,
+			baseURL+BackupServiceCreateBackupDownloadProcedure,
+			connect.WithSchema(backupServiceMethods.ByName("CreateBackupDownload")),
+			connect.WithClientOptions(opts...),
+		),
 		getRetentionPolicy: connect.NewClient[v1.GetRetentionPolicyRequest, v1.GetRetentionPolicyResponse](
 			httpClient,
 			baseURL+BackupServiceGetRetentionPolicyProcedure,
@@ -145,14 +160,15 @@ func NewBackupServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // backupServiceClient implements BackupServiceClient.
 type backupServiceClient struct {
-	listBackups        *connect.Client[v1.ListBackupsRequest, v1.ListBackupsResponse]
-	createBackup       *connect.Client[v1.CreateBackupRequest, v1.CreateBackupResponse]
-	deleteBackup       *connect.Client[v1.DeleteBackupRequest, v1.DeleteBackupResponse]
-	preflightRestore   *connect.Client[v1.PreflightRestoreRequest, v1.PreflightRestoreResponse]
-	restoreBackup      *connect.Client[v1.RestoreBackupRequest, v1.RestoreBackupResponse]
-	getRetentionPolicy *connect.Client[v1.GetRetentionPolicyRequest, v1.GetRetentionPolicyResponse]
-	setRetentionPolicy *connect.Client[v1.SetRetentionPolicyRequest, v1.SetRetentionPolicyResponse]
-	pruneBackups       *connect.Client[v1.PruneBackupsRequest, v1.PruneBackupsResponse]
+	listBackups          *connect.Client[v1.ListBackupsRequest, v1.ListBackupsResponse]
+	createBackup         *connect.Client[v1.CreateBackupRequest, v1.CreateBackupResponse]
+	deleteBackup         *connect.Client[v1.DeleteBackupRequest, v1.DeleteBackupResponse]
+	preflightRestore     *connect.Client[v1.PreflightRestoreRequest, v1.PreflightRestoreResponse]
+	restoreBackup        *connect.Client[v1.RestoreBackupRequest, v1.RestoreBackupResponse]
+	createBackupDownload *connect.Client[v1.CreateBackupDownloadRequest, v1.CreateBackupDownloadResponse]
+	getRetentionPolicy   *connect.Client[v1.GetRetentionPolicyRequest, v1.GetRetentionPolicyResponse]
+	setRetentionPolicy   *connect.Client[v1.SetRetentionPolicyRequest, v1.SetRetentionPolicyResponse]
+	pruneBackups         *connect.Client[v1.PruneBackupsRequest, v1.PruneBackupsResponse]
 }
 
 // ListBackups calls mcadmin.v1.BackupService.ListBackups.
@@ -178,6 +194,11 @@ func (c *backupServiceClient) PreflightRestore(ctx context.Context, req *connect
 // RestoreBackup calls mcadmin.v1.BackupService.RestoreBackup.
 func (c *backupServiceClient) RestoreBackup(ctx context.Context, req *connect.Request[v1.RestoreBackupRequest]) (*connect.Response[v1.RestoreBackupResponse], error) {
 	return c.restoreBackup.CallUnary(ctx, req)
+}
+
+// CreateBackupDownload calls mcadmin.v1.BackupService.CreateBackupDownload.
+func (c *backupServiceClient) CreateBackupDownload(ctx context.Context, req *connect.Request[v1.CreateBackupDownloadRequest]) (*connect.Response[v1.CreateBackupDownloadResponse], error) {
+	return c.createBackupDownload.CallUnary(ctx, req)
 }
 
 // GetRetentionPolicy calls mcadmin.v1.BackupService.GetRetentionPolicy.
@@ -209,6 +230,12 @@ type BackupServiceHandler interface {
 	// クライアントが事前確認を通ったと主張しても信用せず、サーバー側で
 	// PreflightRestore を再実行してから進む（REQ-113）。
 	RestoreBackup(context.Context, *connect.Request[v1.RestoreBackupRequest]) (*connect.Response[v1.RestoreBackupResponse], error)
+	// CreateBackupDownload は、手元の PC へ保存するための受取口を作る。
+	//
+	// ブラウザのダウンロードはリンクを辿るだけで Authorization ヘッダーを
+	// 付けられない。そこで認証済みのこの RPC で短命の受取券を発行し、
+	// 受け取りの口はその券だけを見る。券は押すたびに新しく出る。
+	CreateBackupDownload(context.Context, *connect.Request[v1.CreateBackupDownloadRequest]) (*connect.Response[v1.CreateBackupDownloadResponse], error)
 	GetRetentionPolicy(context.Context, *connect.Request[v1.GetRetentionPolicyRequest]) (*connect.Response[v1.GetRetentionPolicyResponse], error)
 	SetRetentionPolicy(context.Context, *connect.Request[v1.SetRetentionPolicyRequest]) (*connect.Response[v1.SetRetentionPolicyResponse], error)
 	// PruneBackups は保持ポリシーを手動で適用する。dry_run で対象だけ確認できる。
@@ -252,6 +279,12 @@ func NewBackupServiceHandler(svc BackupServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(backupServiceMethods.ByName("RestoreBackup")),
 		connect.WithHandlerOptions(opts...),
 	)
+	backupServiceCreateBackupDownloadHandler := connect.NewUnaryHandler(
+		BackupServiceCreateBackupDownloadProcedure,
+		svc.CreateBackupDownload,
+		connect.WithSchema(backupServiceMethods.ByName("CreateBackupDownload")),
+		connect.WithHandlerOptions(opts...),
+	)
 	backupServiceGetRetentionPolicyHandler := connect.NewUnaryHandler(
 		BackupServiceGetRetentionPolicyProcedure,
 		svc.GetRetentionPolicy,
@@ -282,6 +315,8 @@ func NewBackupServiceHandler(svc BackupServiceHandler, opts ...connect.HandlerOp
 			backupServicePreflightRestoreHandler.ServeHTTP(w, r)
 		case BackupServiceRestoreBackupProcedure:
 			backupServiceRestoreBackupHandler.ServeHTTP(w, r)
+		case BackupServiceCreateBackupDownloadProcedure:
+			backupServiceCreateBackupDownloadHandler.ServeHTTP(w, r)
 		case BackupServiceGetRetentionPolicyProcedure:
 			backupServiceGetRetentionPolicyHandler.ServeHTTP(w, r)
 		case BackupServiceSetRetentionPolicyProcedure:
@@ -315,6 +350,10 @@ func (UnimplementedBackupServiceHandler) PreflightRestore(context.Context, *conn
 
 func (UnimplementedBackupServiceHandler) RestoreBackup(context.Context, *connect.Request[v1.RestoreBackupRequest]) (*connect.Response[v1.RestoreBackupResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mcadmin.v1.BackupService.RestoreBackup is not implemented"))
+}
+
+func (UnimplementedBackupServiceHandler) CreateBackupDownload(context.Context, *connect.Request[v1.CreateBackupDownloadRequest]) (*connect.Response[v1.CreateBackupDownloadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mcadmin.v1.BackupService.CreateBackupDownload is not implemented"))
 }
 
 func (UnimplementedBackupServiceHandler) GetRetentionPolicy(context.Context, *connect.Request[v1.GetRetentionPolicyRequest]) (*connect.Response[v1.GetRetentionPolicyResponse], error) {
