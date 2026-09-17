@@ -79,9 +79,14 @@ jobs:
         working-directory: backend
         run: go vet ./...
 
+      # バージョンを固定する。latest のままだと、リンタが上がった日に
+      # コードを一切変えていない PR が突然赤くなる。原因が自分の変更に
+      # 無い失敗は、向き合うコストだけが増える。
+      # backend/.golangci.yml で設定を固めているので、版も一緒に固める。
+      # 上げるのは意図的な PR として行う。
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.13.2
           working-directory: backend
 
       # dist/ が空（.gitkeep のみ）の状態でも通ることを確かめる意味も兼ねる
@@ -196,7 +201,10 @@ jobs:
       - name: install.sh の構文
         run: bash -n deploy/install.sh
 
-      - uses: ludeeus/action-shellcheck@master
+      # サードパーティの action はコミットの SHA で固定する（GitHub 公式の
+      # 推奨）。ブランチ参照だと、こちらを一切変更していなくても次の実行から
+      # 違うコードが走りうる。CI の実行環境そのものは取られてしまう。
+      - uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # v2.0.0
         with:
           scandir: ./deploy
 
