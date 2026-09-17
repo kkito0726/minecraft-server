@@ -45,6 +45,15 @@ const (
 	startTimeout = 300 * time.Second
 )
 
+/*
+rollbackTimeout は巻き戻しに与える時間の上限。
+
+巻き戻しは呼び出し元のキャンセルを引き継がないので、代わりに自前の
+締切を持つ。停止と起動の両方を含みうるため、起動の上限に停止のぶんを
+足した長さにしてある。
+*/
+const rollbackTimeout = startTimeout + stopTimeout
+
 var (
 	// ErrInvalidMode は取得方式が未知であることを表す。
 	ErrInvalidMode = errors.New("バックアップの取得方式が不正です")
