@@ -87,17 +87,22 @@ func buildPlan(r *zip.ReadCloser, opts ExtractOptions) ([]planItem, int64, error
 		if err := checkMode(f.Name, f.Mode()); err != nil {
 			return nil, 0, err
 		}
+		// 以降は区切りを / に揃えた名前だけを扱う。RewritePrefix は
+		// data/world/ の形で渡ってくるため、生の名前のままだと
+		// Windows 製のエントリに一致せず、書き換えが黙って効かない。
+		name := toSlash(f.Name)
+
 		// 書き換え前後の両方を検証する。書き換えの結果が
 		// 展開先の外を指すこともあるため。
-		if _, err := safeEntryName(f.Name); err != nil {
+		if _, err := safeEntryName(name); err != nil {
 			return nil, 0, err
 		}
-		rewritten, err := safeEntryName(opts.rewrite(f.Name))
+		rewritten, err := safeEntryName(opts.rewrite(name))
 		if err != nil {
 			return nil, 0, err
 		}
 
-		if strings.HasSuffix(f.Name, "/") {
+		if isDirEntry(name) {
 			plan = append(plan, planItem{name: rewritten, isDir: true})
 			continue
 		}
