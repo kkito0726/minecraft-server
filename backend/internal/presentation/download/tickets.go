@@ -68,7 +68,8 @@ func (t *Tickets) Issue(backupID string) (url string, expiresAt time.Time, err e
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.purge()
+	t.purgeExpired()
+	t.enforceCap()
 	expiresAt = t.now().Add(TicketTTL)
 	t.issued[token] = ticket{backupID: backupID, expiresAt: expiresAt}
 
@@ -86,7 +87,9 @@ func (t *Tickets) Redeem(token string) (backupID string, ok bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.purge()
+	// 期限切れの破棄だけを行う。上限の強制まで一緒に走らせると、
+	// 飽和状態では引き換えのたびに期限内の券が 1 枚消える。
+	t.purgeExpired()
 	found, ok := t.issued[token]
 	if !ok {
 		return "", false
@@ -94,16 +97,26 @@ func (t *Tickets) Redeem(token string) (backupID string, ok bool) {
 	return found.backupID, true
 }
 
-// purge は期限切れを捨て、上限を超えていれば古いものから捨てる。
-// 呼び出し側がロックを持っていること。
-func (t *Tickets) purge() {
+// purgeExpired は期限切れを捨てる。呼び出し側がロックを持っていること。
+func (t *Tickets) purgeExpired() {
 	now := t.now()
 	for token, issued := range t.issued {
 		if !issued.expiresAt.After(now) {
 			delete(t.issued, token)
 		}
 	}
+}
 
+/*
+enforceCap は上限を超えるぶんを古い順に捨てる。
+
+**発行からだけ呼ぶこと。** 券が増えるのは発行のときだけなので、
+上限の強制もそこに閉じる。引き換えから呼ぶと、飽和状態では毎回
+必ず 1 枚が追い出され、期限内の券が引き換えの瞬間に消える。
+
+呼び出し側がロックを持っていること。
+*/
+func (t *Tickets) enforceCap() {
 	for len(t.issued) >= maxTickets {
 		oldest := ""
 		for token, issued := range t.issued {
