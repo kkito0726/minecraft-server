@@ -49,10 +49,21 @@ const (
 rollbackTimeout は巻き戻しに与える時間の上限。
 
 巻き戻しは呼び出し元のキャンセルを引き継がないので、代わりに自前の
-締切を持つ。停止と起動の両方を含みうるため、起動の上限に停止のぶんを
-足した長さにしてある。
+締切を持つ。
+
+巻き戻しが行うのは「展開途中の削除」「退避の戻し」「起動」で、停止は
+含まない（止まっているところから戻すため）。いちばん長いのは起動の
+完了待ちで、WaitReady に startTimeout をそのまま渡している。外側の
+締切が内側より先に切れると、起動を待っている最中に打ち切ることに
+なるので、startTimeout に前段ぶんの余白を足した長さにする。
+
+rollbackMargin は前段（削除と戻し、docker compose の起動そのもの）に
+見込む余白。停止の上限と同じ長さを充ててある。
 */
-const rollbackTimeout = startTimeout + stopTimeout
+const (
+	rollbackMargin  = stopTimeout
+	rollbackTimeout = startTimeout + rollbackMargin
+)
 
 var (
 	// ErrInvalidMode は取得方式が未知であることを表す。
