@@ -21,6 +21,8 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/filesystem/worldfs"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/backupfs"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/lockfile"
+	"github.com/kkito0726/minecraft-server/backend/internal/presentation/download"
+	adminhttp "github.com/kkito0726/minecraft-server/backend/internal/presentation/http"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/rpc"
 )
 
@@ -89,7 +91,8 @@ func newBackupHarness(t *testing.T) *backupHarness {
 	}
 
 	mux := http.NewServeMux()
-	path, handler := mcadminv1connect.NewBackupServiceHandler(rpc.NewBackupHandler(uc))
+	path, handler := mcadminv1connect.NewBackupServiceHandler(
+		rpc.NewBackupHandler(uc, download.NewTickets(adminhttp.DownloadBackupPath)))
 	mux.Handle(path, handler)
 
 	srv := httptest.NewServer(mux)

@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"strings"
 )
 
 // SurveyResult は持ち込まれたアーカイブの中身。
@@ -50,7 +49,7 @@ func Survey(ctx context.Context, src string) (SurveyResult, error) {
 		if err != nil {
 			return SurveyResult{}, err
 		}
-		if strings.HasSuffix(f.Name, "/") {
+		if isDirEntry(f.Name) {
 			continue
 		}
 
@@ -127,7 +126,7 @@ func copyEntries(ctx context.Context, r *zip.ReadCloser, out io.Writer, prefix s
 		if err != nil {
 			return err
 		}
-		if strings.HasSuffix(f.Name, "/") {
+		if isDirEntry(f.Name) {
 			continue
 		}
 		if err := copyOneEntry(w, f, name, buf); err != nil {

@@ -147,6 +147,33 @@ func (s *Store) Delete(_ context.Context, id backup.ID) (int64, error) {
 	return info.Size(), nil
 }
 
+// Open は保管済みのアーカイブを読み出し用に開く。
+//
+// 中身は読まない。開いて大きさと更新時刻を添えて返すだけで、
+// 実際の転送は受け取り側が流す。Pi のメモリに 200MB を載せないため。
+func (s *Store) Open(_ context.Context, id backup.ID) (port.ArchiveFile, error) {
+	path := s.pathOf(id)
+
+	f, err := os.Open(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return port.ArchiveFile{}, fmt.Errorf("%w: %s", backup.ErrNotFound, id)
+	}
+	if err != nil {
+		return port.ArchiveFile{}, fmt.Errorf("アーカイブを開けません (%s): %w", id, err)
+	}
+
+	info, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return port.ArchiveFile{}, fmt.Errorf("アーカイブを読めません (%s): %w", id, err)
+	}
+
+	return port.ArchiveFile{
+		Body: f,
+		Info: port.StoredBackup{ID: id, SizeBytes: info.Size(), CreatedAt: info.ModTime()},
+	}, nil
+}
+
 // Inspect はアーカイブの構成を、展開せずに読む。
 func (s *Store) Inspect(ctx context.Context, id backup.ID) (port.ArchiveInfo, error) {
 	manifest, err := archive.Inspect(ctx, s.pathOf(id))

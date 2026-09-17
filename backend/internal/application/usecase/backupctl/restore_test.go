@@ -478,3 +478,82 @@ func TestRestoreKeepsServerStoppedWhenAlreadyStopped(t *testing.T) {
 		t.Errorf("呼び出し順が %q。停止も起動もしないはず", got)
 	}
 }
+
+/*
+中断で巻き戻しが走るとき、巻き戻し自体は中断に巻き込まれないこと。
+
+復元の ctx は signal.NotifyContext。展開の最中に systemctl restart や
+Ctrl-C が入ると、そのキャンセルが失敗の原因になる。巻き戻しが同じ
+ctx を使うと、呼ぶ先がどれも先頭で ctx.Err() を見て返すため、
+巻き戻しがまるごと no-op になる。
+
+そのとき残るのは「展開途中のワールド」と「.broken- のままの退避」で、
+復旧は SSH での手作業になる。巻き戻しは、呼び出し元がキャンセル
+されたからこそ走る処理なので、キャンセルは引き継がない。
+*/
+func TestRestoreRollsBackAfterCancellation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	h := newHarnessCtx(t, ctx, true, nil)
+	h.store.seed(t, archiveID, h.now())
+	h.worlds.add("world")
+	// 展開の最中に停止シグナルが届く。
+	h.store.extractHook = cancel
+	h.store.extractErr = context.Canceled
+
+	handle, err := h.uc.Restore(context.Background(), backupctl.RestoreRequest{
+		BackupID: archiveID, ConfirmLevelName: "world",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap := h.wait(t, handle.ID()); snap.State != operation.StateFailed {
+		t.Fatalf("状態が %v。失敗のはず", snap.State)
+	}
+
+	if !h.worlds.has("world") {
+		t.Error("退避したワールドが戻っていない。.broken- のまま残る")
+	}
+	if !strings.Contains(h.calls(), "Remove,RestoreQuarantine,Up,WaitReady") {
+		t.Errorf("巻き戻しが最後まで走っていない: %q", h.calls())
+	}
+}
+
+/*
+巻き戻しは、もともと停止していたサーバーを起こさないこと。
+
+「利用者が意図して止めているサーバーを、操作が勝手に起こしてはならない」
+は明示の不変条件で、正常系（startAfterRestore）は守っている。異常系だけ
+逆に振れると、止めていた理由（メンテナンス中、リソースを空けたい）が
+黙って失われる。
+*/
+func TestRestoreRollbackKeepsServerStoppedWhenAlreadyStopped(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.runtime.status.State = stoppedState()
+	h.store.seed(t, archiveID, h.now())
+	h.store.extractErr = errArchive
+	h.worlds.add("world")
+
+	handle, err := h.uc.Restore(context.Background(), backupctl.RestoreRequest{
+		BackupID: archiveID, ConfirmLevelName: "world",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap := h.wait(t, handle.ID()); snap.State != operation.StateFailed {
+		t.Fatalf("状態が %v。失敗のはず", snap.State)
+	}
+
+	// 退避を戻すところまでは走る。起こすところだけ走らない。
+	if !h.worlds.has("world") {
+		t.Error("退避したワールドが戻っていない")
+	}
+	if strings.Contains(h.calls(), "Up") {
+		t.Errorf("停止していたサーバーを起動している: %q", h.calls())
+	}
+}

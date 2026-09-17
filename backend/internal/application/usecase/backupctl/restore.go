@@ -250,7 +250,7 @@ func (u *UseCase) applyRestore(
 		return err
 	}
 	if err := u.extract(ctx, r, req, id, target); err != nil {
-		u.rollback(ctx, r, target, quarantine)
+		u.rollback(ctx, r, target, quarantine, wasRunning)
 		return err
 	}
 
@@ -259,7 +259,7 @@ func (u *UseCase) applyRestore(
 		return err
 	}
 	if err := u.switchLevel(ctx, r, target, set); err != nil {
-		u.rollback(ctx, r, target, quarantine)
+		u.rollback(ctx, r, target, quarantine, wasRunning)
 		return err
 	}
 
@@ -321,8 +321,27 @@ func (u *UseCase) extract(
 // バックアップ取得後に加えた変更だけなので、ワールドの地形が
 // 壊れることに比べれば影響が小さいと判断している。
 func (u *UseCase) rollback(
-	ctx context.Context, r operations.Reporter, target world.Name, q world.Quarantine,
+	ctx context.Context,
+	r operations.Reporter,
+	target world.Name,
+	q world.Quarantine,
+	wasRunning bool,
 ) {
+	/*
+		巻き戻しは失敗した処理のキャンセルを引き継がない。
+
+		操作の ctx は signal.NotifyContext なので、失敗の原因が
+		キャンセルそのもの（mcadmind の停止・再起動）であることがある。
+		同じ ctx を渡すと、呼ぶ先がどれも先頭で ctx.Err() を見て返し、
+		巻き戻しがまるごと no-op になる。展開途中のワールドが残り、
+		退避は .broken- のまま戻らず、復旧は手作業になる。
+
+		「退避は mv であって rm ではない」という設計の要は、
+		いちばん必要な場面でこそ効かなければ意味がない。
+	*/
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), rollbackTimeout)
+	defer cancel()
+
 	if err := u.cfg.Worlds.Remove(ctx, target); err != nil {
 		r.Logf(operation.LevelError, "展開途中のワールドを削除できませんでした: %v", err)
 	}
@@ -334,8 +353,23 @@ func (u *UseCase) rollback(
 			r.Logf(operation.LevelWarn, "%s を元に戻しました", target)
 		}
 	}
-	// 巻き戻したあとはサーバーを起こし直す。
-	// 止めたまま放置すると、復元の失敗がサーバーの停止に化ける。
+	u.startAfterRollback(ctx, r, wasRunning)
+}
+
+// startAfterRollback は巻き戻したあとにサーバーを起こし直す。
+//
+// 止めたまま放置すると、復元の失敗がサーバーの停止に化ける。ただし
+// もともと停止していたなら起こさない。利用者が意図して止めている
+// サーバーを操作が勝手に起こしてはならない（startAfterRestore と同じ判定）。
+//
+// 起こせなくても巻き戻し自体は成立しているので、記録に残すだけにする。
+func (u *UseCase) startAfterRollback(
+	ctx context.Context, r operations.Reporter, wasRunning bool,
+) {
+	if !wasRunning {
+		r.Logf(operation.LevelInfo, "もともと停止していたため起動しません")
+		return
+	}
 	if err := u.cfg.Runtime.Up(ctx, sinkTo(r)); err != nil {
 		r.Logf(operation.LevelError, "サーバーの起動に失敗しました: %v", err)
 		return

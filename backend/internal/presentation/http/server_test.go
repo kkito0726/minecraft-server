@@ -116,3 +116,60 @@ func TestListenAndServeStopsOnContextCancel(t *testing.T) {
 		t.Fatal("停止しない")
 	}
 }
+
+/*
+防御ヘッダはすべての経路に付くこと。
+
+いちばん JSON を返すのは /rpc/ なので、nosniff が要るのもそこ。
+docs/security-review.md は「外部スクリプトと外部通信の禁止」を
+CSP default-src 'self' が担うと書いているが、その記述は API の
+応答にも当てはまっていなければならない。
+
+受取券つきの URL（/download/backup?t=...）を扱う設計との相性という
+意味でも、Referrer-Policy: no-referrer は揃えておきたい。
+
+付け漏れは静かに起きるので、mux 全体を包んで構造的に起きなくする。
+*/
+func TestSecurityHeadersOnEveryRoute(t *testing.T) {
+	t.Parallel()
+
+	ok := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	srv, err := New(Config{
+		Addr:   "127.0.0.1:0",
+		Assets: fstest.MapFS{"index.html": {Data: []byte("x")}},
+		RPC:    map[string]http.Handler{"/mcadmin.v1.TestService/": ok},
+		Routes: map[string]http.Handler{"/upload/backup": ok},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	paths := []string{
+		"/rpc/mcadmin.v1.TestService/Method",
+		"/upload/backup",
+		"/",
+	}
+	want := map[string]string{
+		"X-Content-Type-Options": "nosniff",
+		"Referrer-Policy":        "no-referrer",
+		"X-Frame-Options":        "DENY",
+	}
+
+	for _, path := range paths {
+		rec := httptest.NewRecorder()
+		srv.http.Handler.ServeHTTP(rec, httptest.NewRequestWithContext(
+			t.Context(), http.MethodPost, path, nil))
+
+		for key, value := range want {
+			if got := rec.Header().Get(key); got != value {
+				t.Errorf("%s の %s が %q。%q のはず", path, key, got, value)
+			}
+		}
+		if rec.Header().Get("Content-Security-Policy") == "" {
+			t.Errorf("%s に CSP が付いていない", path)
+		}
+	}
+}

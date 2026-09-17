@@ -69,9 +69,7 @@ func normalizeEntryName(name string) (cleaned, normalized string, err error) {
 		return "", "", fmt.Errorf("%w: エントリ名が空です", ErrUnsafeEntry)
 	}
 
-	// zip の仕様上の区切りは / だが、Windows で作られたアーカイブは
-	// \ を含むことがある。判定前に統一する。
-	normalized = strings.ReplaceAll(name, `\`, "/")
+	normalized = toSlash(name)
 
 	// ドライブレターつきの絶対パス（C:\... など）
 	if len(normalized) >= 2 && normalized[1] == ':' {
@@ -87,6 +85,26 @@ func normalizeEntryName(name string) (cleaned, normalized string, err error) {
 		return "", "", fmt.Errorf("%w: %q が展開先の外を指しています", ErrUnsafeEntry, name)
 	}
 	return cleaned, normalized, nil
+}
+
+// toSlash は区切りを / に揃える。
+//
+// zip の仕様上の区切りは / だが、Windows で作られたアーカイブは
+// \ を含むことがある。名前の判定はすべてこれを通してから行う。
+func toSlash(name string) string {
+	return strings.ReplaceAll(name, `\`, "/")
+}
+
+// isDirEntry はエントリがディレクトリを表すかを返す。
+//
+// 生の名前で末尾の / を見ると、`data\world\` のような Windows 製の
+// エントリをファイルとして扱う。ディレクトリの位置に 0 バイトの
+// ファイルが書かれ、その配下を作れずに展開が途中で失敗する。
+//
+// 展開・読み取り・包み直しの 4 つの入口が同じ判定を要るので、
+// 各自で書かずにここへ寄せる。
+func isDirEntry(name string) bool {
+	return strings.HasSuffix(toSlash(name), "/")
 }
 
 // checkMode はエントリの種別を検証する。

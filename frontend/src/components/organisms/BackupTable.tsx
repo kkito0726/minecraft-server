@@ -16,9 +16,11 @@ export type BackupTableProps = {
   disabled: boolean
   onRestore: (id: string) => void
   onDelete: (id: string) => void
+  /** 手元の PC へ保存する。 */
+  onDownload: (id: string) => void
 }
 
-export function BackupTable({ data, disabled, onRestore, onDelete }: BackupTableProps) {
+export function BackupTable({ data, disabled, onRestore, onDelete, onDownload }: BackupTableProps) {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
 
   return (
@@ -49,6 +51,7 @@ export function BackupTable({ data, disabled, onRestore, onDelete }: BackupTable
                   confirming={pendingDelete === backup.id}
                   onRestore={onRestore}
                   onDelete={onDelete}
+                  onDownload={onDownload}
                   onAskDelete={setPendingDelete}
                 />
               ))}
@@ -68,6 +71,7 @@ type BackupRowProps = {
   confirming: boolean
   onRestore: (id: string) => void
   onDelete: (id: string) => void
+  onDownload: (id: string) => void
   onAskDelete: (id: string | null) => void
 }
 
@@ -77,6 +81,7 @@ function BackupRow({
   confirming,
   onRestore,
   onDelete,
+  onDownload,
   onAskDelete,
 }: BackupRowProps) {
   return (
@@ -95,6 +100,7 @@ function BackupRow({
           confirming={confirming}
           onRestore={onRestore}
           onDelete={onDelete}
+          onDownload={onDownload}
           onAskDelete={onAskDelete}
         />
       </td>
@@ -108,12 +114,17 @@ function RowActions({
   confirming,
   onRestore,
   onDelete,
+  onDownload,
   onAskDelete,
 }: BackupRowProps) {
   return (
     <div className="flex gap-1.5">
       <Button size="sm" disabled={disabled} onClick={() => onRestore(backup.id)}>
         復元
+      </Button>
+      {/* 手元へ落とすだけ。サーバーには触らないので、操作の実行中でも押せる。 */}
+      <Button size="sm" onClick={() => onDownload(backup.id)}>
+        ダウンロード
       </Button>
       {/* 削除は取り消せない。一度で消えないよう二度押しさせる。 */}
       {confirming ? (

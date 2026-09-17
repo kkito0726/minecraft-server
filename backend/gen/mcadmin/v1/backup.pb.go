@@ -860,6 +860,113 @@ func (x *RestoreBackupResponse) GetOperation() *Operation {
 	return nil
 }
 
+type CreateBackupDownloadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BackupId      string                 `protobuf:"bytes,1,opt,name=backup_id,json=backupId,proto3" json:"backup_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateBackupDownloadRequest) Reset() {
+	*x = CreateBackupDownloadRequest{}
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateBackupDownloadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateBackupDownloadRequest) ProtoMessage() {}
+
+func (x *CreateBackupDownloadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateBackupDownloadRequest.ProtoReflect.Descriptor instead.
+func (*CreateBackupDownloadRequest) Descriptor() ([]byte, []int) {
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *CreateBackupDownloadRequest) GetBackupId() string {
+	if x != nil {
+		return x.BackupId
+	}
+	return ""
+}
+
+type CreateBackupDownloadResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 受け取りの相対パス（同一オリジン）。画面はこれをそのまま開く。
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	// 券の期限。過ぎたら押し直す。
+	ExpiresAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	// 保存されるファイル名。
+	FileName      string `protobuf:"bytes,3,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateBackupDownloadResponse) Reset() {
+	*x = CreateBackupDownloadResponse{}
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateBackupDownloadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateBackupDownloadResponse) ProtoMessage() {}
+
+func (x *CreateBackupDownloadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateBackupDownloadResponse.ProtoReflect.Descriptor instead.
+func (*CreateBackupDownloadResponse) Descriptor() ([]byte, []int) {
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *CreateBackupDownloadResponse) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *CreateBackupDownloadResponse) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *CreateBackupDownloadResponse) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
 // RetentionPolicy はバックアップの保持条件。
 //
 // 世代数と日数の両方を満たさないものだけを削除し、設定がどうであれ
@@ -876,7 +983,7 @@ type RetentionPolicy struct {
 
 func (x *RetentionPolicy) Reset() {
 	*x = RetentionPolicy{}
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[11]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -888,7 +995,7 @@ func (x *RetentionPolicy) String() string {
 func (*RetentionPolicy) ProtoMessage() {}
 
 func (x *RetentionPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[11]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -901,7 +1008,7 @@ func (x *RetentionPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetentionPolicy.ProtoReflect.Descriptor instead.
 func (*RetentionPolicy) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{11}
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RetentionPolicy) GetKeepCount() int32 {
@@ -926,7 +1033,7 @@ type GetRetentionPolicyRequest struct {
 
 func (x *GetRetentionPolicyRequest) Reset() {
 	*x = GetRetentionPolicyRequest{}
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[12]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -938,7 +1045,7 @@ func (x *GetRetentionPolicyRequest) String() string {
 func (*GetRetentionPolicyRequest) ProtoMessage() {}
 
 func (x *GetRetentionPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[12]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -951,7 +1058,7 @@ func (x *GetRetentionPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRetentionPolicyRequest.ProtoReflect.Descriptor instead.
 func (*GetRetentionPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{12}
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{14}
 }
 
 type GetRetentionPolicyResponse struct {
@@ -963,7 +1070,7 @@ type GetRetentionPolicyResponse struct {
 
 func (x *GetRetentionPolicyResponse) Reset() {
 	*x = GetRetentionPolicyResponse{}
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[13]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -975,7 +1082,7 @@ func (x *GetRetentionPolicyResponse) String() string {
 func (*GetRetentionPolicyResponse) ProtoMessage() {}
 
 func (x *GetRetentionPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[13]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -988,7 +1095,7 @@ func (x *GetRetentionPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRetentionPolicyResponse.ProtoReflect.Descriptor instead.
 func (*GetRetentionPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{13}
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetRetentionPolicyResponse) GetPolicy() *RetentionPolicy {
@@ -1007,7 +1114,7 @@ type SetRetentionPolicyRequest struct {
 
 func (x *SetRetentionPolicyRequest) Reset() {
 	*x = SetRetentionPolicyRequest{}
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[14]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1019,7 +1126,7 @@ func (x *SetRetentionPolicyRequest) String() string {
 func (*SetRetentionPolicyRequest) ProtoMessage() {}
 
 func (x *SetRetentionPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[14]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1032,7 +1139,7 @@ func (x *SetRetentionPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetRetentionPolicyRequest.ProtoReflect.Descriptor instead.
 func (*SetRetentionPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{14}
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SetRetentionPolicyRequest) GetPolicy() *RetentionPolicy {
@@ -1051,7 +1158,7 @@ type SetRetentionPolicyResponse struct {
 
 func (x *SetRetentionPolicyResponse) Reset() {
 	*x = SetRetentionPolicyResponse{}
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[15]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1063,7 +1170,7 @@ func (x *SetRetentionPolicyResponse) String() string {
 func (*SetRetentionPolicyResponse) ProtoMessage() {}
 
 func (x *SetRetentionPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[15]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1076,7 +1183,7 @@ func (x *SetRetentionPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetRetentionPolicyResponse.ProtoReflect.Descriptor instead.
 func (*SetRetentionPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{15}
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SetRetentionPolicyResponse) GetPolicy() *RetentionPolicy {
@@ -1096,7 +1203,7 @@ type PruneBackupsRequest struct {
 
 func (x *PruneBackupsRequest) Reset() {
 	*x = PruneBackupsRequest{}
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[16]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1108,7 +1215,7 @@ func (x *PruneBackupsRequest) String() string {
 func (*PruneBackupsRequest) ProtoMessage() {}
 
 func (x *PruneBackupsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[16]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1121,7 +1228,7 @@ func (x *PruneBackupsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PruneBackupsRequest.ProtoReflect.Descriptor instead.
 func (*PruneBackupsRequest) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{16}
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PruneBackupsRequest) GetDryRun() bool {
@@ -1142,7 +1249,7 @@ type PruneBackupsResponse struct {
 
 func (x *PruneBackupsResponse) Reset() {
 	*x = PruneBackupsResponse{}
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[17]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1154,7 +1261,7 @@ func (x *PruneBackupsResponse) String() string {
 func (*PruneBackupsResponse) ProtoMessage() {}
 
 func (x *PruneBackupsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_backup_proto_msgTypes[17]
+	mi := &file_mcadmin_v1_backup_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1167,7 +1274,7 @@ func (x *PruneBackupsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PruneBackupsResponse.ProtoReflect.Descriptor instead.
 func (*PruneBackupsResponse) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{17}
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PruneBackupsResponse) GetDeletedIds() []string {
@@ -1236,7 +1343,14 @@ const file_mcadmin_v1_backup_proto_rawDesc = "" +
 	"\x1backnowledge_version_warning\x18\x03 \x01(\bR\x19acknowledgeVersionWarning\x12,\n" +
 	"\x12confirm_level_name\x18\x04 \x01(\tR\x10confirmLevelName\"L\n" +
 	"\x15RestoreBackupResponse\x123\n" +
-	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"M\n" +
+	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\":\n" +
+	"\x1bCreateBackupDownloadRequest\x12\x1b\n" +
+	"\tbackup_id\x18\x01 \x01(\tR\bbackupId\"\x88\x01\n" +
+	"\x1cCreateBackupDownloadResponse\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x129\n" +
+	"\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\x1b\n" +
+	"\tfile_name\x18\x03 \x01(\tR\bfileName\"M\n" +
 	"\x0fRetentionPolicy\x12\x1d\n" +
 	"\n" +
 	"keep_count\x18\x01 \x01(\x05R\tkeepCount\x12\x1b\n" +
@@ -1269,13 +1383,14 @@ const file_mcadmin_v1_backup_proto_rawDesc = "" +
 	"\rRestoreTarget\x12\x1e\n" +
 	"\x1aRESTORE_TARGET_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cRESTORE_TARGET_ARCHIVE_LEVEL\x10\x01\x12 \n" +
-	"\x1cRESTORE_TARGET_CURRENT_LEVEL\x10\x022\xe7\x05\n" +
+	"\x1cRESTORE_TARGET_CURRENT_LEVEL\x10\x022\xd4\x06\n" +
 	"\rBackupService\x12P\n" +
 	"\vListBackups\x12\x1e.mcadmin.v1.ListBackupsRequest\x1a\x1f.mcadmin.v1.ListBackupsResponse\"\x00\x12S\n" +
 	"\fCreateBackup\x12\x1f.mcadmin.v1.CreateBackupRequest\x1a .mcadmin.v1.CreateBackupResponse\"\x00\x12S\n" +
 	"\fDeleteBackup\x12\x1f.mcadmin.v1.DeleteBackupRequest\x1a .mcadmin.v1.DeleteBackupResponse\"\x00\x12_\n" +
 	"\x10PreflightRestore\x12#.mcadmin.v1.PreflightRestoreRequest\x1a$.mcadmin.v1.PreflightRestoreResponse\"\x00\x12V\n" +
-	"\rRestoreBackup\x12 .mcadmin.v1.RestoreBackupRequest\x1a!.mcadmin.v1.RestoreBackupResponse\"\x00\x12e\n" +
+	"\rRestoreBackup\x12 .mcadmin.v1.RestoreBackupRequest\x1a!.mcadmin.v1.RestoreBackupResponse\"\x00\x12k\n" +
+	"\x14CreateBackupDownload\x12'.mcadmin.v1.CreateBackupDownloadRequest\x1a(.mcadmin.v1.CreateBackupDownloadResponse\"\x00\x12e\n" +
 	"\x12GetRetentionPolicy\x12%.mcadmin.v1.GetRetentionPolicyRequest\x1a&.mcadmin.v1.GetRetentionPolicyResponse\"\x00\x12e\n" +
 	"\x12SetRetentionPolicy\x12%.mcadmin.v1.SetRetentionPolicyRequest\x1a&.mcadmin.v1.SetRetentionPolicyResponse\"\x00\x12S\n" +
 	"\fPruneBackups\x12\x1f.mcadmin.v1.PruneBackupsRequest\x1a .mcadmin.v1.PruneBackupsResponse\"\x00BHZFgithub.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1b\x06proto3"
@@ -1293,68 +1408,73 @@ func file_mcadmin_v1_backup_proto_rawDescGZIP() []byte {
 }
 
 var file_mcadmin_v1_backup_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_mcadmin_v1_backup_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_mcadmin_v1_backup_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_mcadmin_v1_backup_proto_goTypes = []any{
-	(BackupMode)(0),                    // 0: mcadmin.v1.BackupMode
-	(VersionVerdict)(0),                // 1: mcadmin.v1.VersionVerdict
-	(RestoreTarget)(0),                 // 2: mcadmin.v1.RestoreTarget
-	(*Backup)(nil),                     // 3: mcadmin.v1.Backup
-	(*ListBackupsRequest)(nil),         // 4: mcadmin.v1.ListBackupsRequest
-	(*ListBackupsResponse)(nil),        // 5: mcadmin.v1.ListBackupsResponse
-	(*CreateBackupRequest)(nil),        // 6: mcadmin.v1.CreateBackupRequest
-	(*CreateBackupResponse)(nil),       // 7: mcadmin.v1.CreateBackupResponse
-	(*DeleteBackupRequest)(nil),        // 8: mcadmin.v1.DeleteBackupRequest
-	(*DeleteBackupResponse)(nil),       // 9: mcadmin.v1.DeleteBackupResponse
-	(*PreflightRestoreRequest)(nil),    // 10: mcadmin.v1.PreflightRestoreRequest
-	(*PreflightRestoreResponse)(nil),   // 11: mcadmin.v1.PreflightRestoreResponse
-	(*RestoreBackupRequest)(nil),       // 12: mcadmin.v1.RestoreBackupRequest
-	(*RestoreBackupResponse)(nil),      // 13: mcadmin.v1.RestoreBackupResponse
-	(*RetentionPolicy)(nil),            // 14: mcadmin.v1.RetentionPolicy
-	(*GetRetentionPolicyRequest)(nil),  // 15: mcadmin.v1.GetRetentionPolicyRequest
-	(*GetRetentionPolicyResponse)(nil), // 16: mcadmin.v1.GetRetentionPolicyResponse
-	(*SetRetentionPolicyRequest)(nil),  // 17: mcadmin.v1.SetRetentionPolicyRequest
-	(*SetRetentionPolicyResponse)(nil), // 18: mcadmin.v1.SetRetentionPolicyResponse
-	(*PruneBackupsRequest)(nil),        // 19: mcadmin.v1.PruneBackupsRequest
-	(*PruneBackupsResponse)(nil),       // 20: mcadmin.v1.PruneBackupsResponse
-	(*timestamppb.Timestamp)(nil),      // 21: google.protobuf.Timestamp
-	(*WorldVersion)(nil),               // 22: mcadmin.v1.WorldVersion
-	(*Operation)(nil),                  // 23: mcadmin.v1.Operation
+	(BackupMode)(0),                      // 0: mcadmin.v1.BackupMode
+	(VersionVerdict)(0),                  // 1: mcadmin.v1.VersionVerdict
+	(RestoreTarget)(0),                   // 2: mcadmin.v1.RestoreTarget
+	(*Backup)(nil),                       // 3: mcadmin.v1.Backup
+	(*ListBackupsRequest)(nil),           // 4: mcadmin.v1.ListBackupsRequest
+	(*ListBackupsResponse)(nil),          // 5: mcadmin.v1.ListBackupsResponse
+	(*CreateBackupRequest)(nil),          // 6: mcadmin.v1.CreateBackupRequest
+	(*CreateBackupResponse)(nil),         // 7: mcadmin.v1.CreateBackupResponse
+	(*DeleteBackupRequest)(nil),          // 8: mcadmin.v1.DeleteBackupRequest
+	(*DeleteBackupResponse)(nil),         // 9: mcadmin.v1.DeleteBackupResponse
+	(*PreflightRestoreRequest)(nil),      // 10: mcadmin.v1.PreflightRestoreRequest
+	(*PreflightRestoreResponse)(nil),     // 11: mcadmin.v1.PreflightRestoreResponse
+	(*RestoreBackupRequest)(nil),         // 12: mcadmin.v1.RestoreBackupRequest
+	(*RestoreBackupResponse)(nil),        // 13: mcadmin.v1.RestoreBackupResponse
+	(*CreateBackupDownloadRequest)(nil),  // 14: mcadmin.v1.CreateBackupDownloadRequest
+	(*CreateBackupDownloadResponse)(nil), // 15: mcadmin.v1.CreateBackupDownloadResponse
+	(*RetentionPolicy)(nil),              // 16: mcadmin.v1.RetentionPolicy
+	(*GetRetentionPolicyRequest)(nil),    // 17: mcadmin.v1.GetRetentionPolicyRequest
+	(*GetRetentionPolicyResponse)(nil),   // 18: mcadmin.v1.GetRetentionPolicyResponse
+	(*SetRetentionPolicyRequest)(nil),    // 19: mcadmin.v1.SetRetentionPolicyRequest
+	(*SetRetentionPolicyResponse)(nil),   // 20: mcadmin.v1.SetRetentionPolicyResponse
+	(*PruneBackupsRequest)(nil),          // 21: mcadmin.v1.PruneBackupsRequest
+	(*PruneBackupsResponse)(nil),         // 22: mcadmin.v1.PruneBackupsResponse
+	(*timestamppb.Timestamp)(nil),        // 23: google.protobuf.Timestamp
+	(*WorldVersion)(nil),                 // 24: mcadmin.v1.WorldVersion
+	(*Operation)(nil),                    // 25: mcadmin.v1.Operation
 }
 var file_mcadmin_v1_backup_proto_depIdxs = []int32{
-	21, // 0: mcadmin.v1.Backup.created_at:type_name -> google.protobuf.Timestamp
-	22, // 1: mcadmin.v1.Backup.version:type_name -> mcadmin.v1.WorldVersion
+	23, // 0: mcadmin.v1.Backup.created_at:type_name -> google.protobuf.Timestamp
+	24, // 1: mcadmin.v1.Backup.version:type_name -> mcadmin.v1.WorldVersion
 	3,  // 2: mcadmin.v1.ListBackupsResponse.backups:type_name -> mcadmin.v1.Backup
 	0,  // 3: mcadmin.v1.CreateBackupRequest.mode:type_name -> mcadmin.v1.BackupMode
-	23, // 4: mcadmin.v1.CreateBackupResponse.operation:type_name -> mcadmin.v1.Operation
+	25, // 4: mcadmin.v1.CreateBackupResponse.operation:type_name -> mcadmin.v1.Operation
 	3,  // 5: mcadmin.v1.PreflightRestoreResponse.backup:type_name -> mcadmin.v1.Backup
-	22, // 6: mcadmin.v1.PreflightRestoreResponse.current_world_version:type_name -> mcadmin.v1.WorldVersion
+	24, // 6: mcadmin.v1.PreflightRestoreResponse.current_world_version:type_name -> mcadmin.v1.WorldVersion
 	1,  // 7: mcadmin.v1.PreflightRestoreResponse.verdict:type_name -> mcadmin.v1.VersionVerdict
 	2,  // 8: mcadmin.v1.RestoreBackupRequest.target:type_name -> mcadmin.v1.RestoreTarget
-	23, // 9: mcadmin.v1.RestoreBackupResponse.operation:type_name -> mcadmin.v1.Operation
-	14, // 10: mcadmin.v1.GetRetentionPolicyResponse.policy:type_name -> mcadmin.v1.RetentionPolicy
-	14, // 11: mcadmin.v1.SetRetentionPolicyRequest.policy:type_name -> mcadmin.v1.RetentionPolicy
-	14, // 12: mcadmin.v1.SetRetentionPolicyResponse.policy:type_name -> mcadmin.v1.RetentionPolicy
-	4,  // 13: mcadmin.v1.BackupService.ListBackups:input_type -> mcadmin.v1.ListBackupsRequest
-	6,  // 14: mcadmin.v1.BackupService.CreateBackup:input_type -> mcadmin.v1.CreateBackupRequest
-	8,  // 15: mcadmin.v1.BackupService.DeleteBackup:input_type -> mcadmin.v1.DeleteBackupRequest
-	10, // 16: mcadmin.v1.BackupService.PreflightRestore:input_type -> mcadmin.v1.PreflightRestoreRequest
-	12, // 17: mcadmin.v1.BackupService.RestoreBackup:input_type -> mcadmin.v1.RestoreBackupRequest
-	15, // 18: mcadmin.v1.BackupService.GetRetentionPolicy:input_type -> mcadmin.v1.GetRetentionPolicyRequest
-	17, // 19: mcadmin.v1.BackupService.SetRetentionPolicy:input_type -> mcadmin.v1.SetRetentionPolicyRequest
-	19, // 20: mcadmin.v1.BackupService.PruneBackups:input_type -> mcadmin.v1.PruneBackupsRequest
-	5,  // 21: mcadmin.v1.BackupService.ListBackups:output_type -> mcadmin.v1.ListBackupsResponse
-	7,  // 22: mcadmin.v1.BackupService.CreateBackup:output_type -> mcadmin.v1.CreateBackupResponse
-	9,  // 23: mcadmin.v1.BackupService.DeleteBackup:output_type -> mcadmin.v1.DeleteBackupResponse
-	11, // 24: mcadmin.v1.BackupService.PreflightRestore:output_type -> mcadmin.v1.PreflightRestoreResponse
-	13, // 25: mcadmin.v1.BackupService.RestoreBackup:output_type -> mcadmin.v1.RestoreBackupResponse
-	16, // 26: mcadmin.v1.BackupService.GetRetentionPolicy:output_type -> mcadmin.v1.GetRetentionPolicyResponse
-	18, // 27: mcadmin.v1.BackupService.SetRetentionPolicy:output_type -> mcadmin.v1.SetRetentionPolicyResponse
-	20, // 28: mcadmin.v1.BackupService.PruneBackups:output_type -> mcadmin.v1.PruneBackupsResponse
-	21, // [21:29] is the sub-list for method output_type
-	13, // [13:21] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	25, // 9: mcadmin.v1.RestoreBackupResponse.operation:type_name -> mcadmin.v1.Operation
+	23, // 10: mcadmin.v1.CreateBackupDownloadResponse.expires_at:type_name -> google.protobuf.Timestamp
+	16, // 11: mcadmin.v1.GetRetentionPolicyResponse.policy:type_name -> mcadmin.v1.RetentionPolicy
+	16, // 12: mcadmin.v1.SetRetentionPolicyRequest.policy:type_name -> mcadmin.v1.RetentionPolicy
+	16, // 13: mcadmin.v1.SetRetentionPolicyResponse.policy:type_name -> mcadmin.v1.RetentionPolicy
+	4,  // 14: mcadmin.v1.BackupService.ListBackups:input_type -> mcadmin.v1.ListBackupsRequest
+	6,  // 15: mcadmin.v1.BackupService.CreateBackup:input_type -> mcadmin.v1.CreateBackupRequest
+	8,  // 16: mcadmin.v1.BackupService.DeleteBackup:input_type -> mcadmin.v1.DeleteBackupRequest
+	10, // 17: mcadmin.v1.BackupService.PreflightRestore:input_type -> mcadmin.v1.PreflightRestoreRequest
+	12, // 18: mcadmin.v1.BackupService.RestoreBackup:input_type -> mcadmin.v1.RestoreBackupRequest
+	14, // 19: mcadmin.v1.BackupService.CreateBackupDownload:input_type -> mcadmin.v1.CreateBackupDownloadRequest
+	17, // 20: mcadmin.v1.BackupService.GetRetentionPolicy:input_type -> mcadmin.v1.GetRetentionPolicyRequest
+	19, // 21: mcadmin.v1.BackupService.SetRetentionPolicy:input_type -> mcadmin.v1.SetRetentionPolicyRequest
+	21, // 22: mcadmin.v1.BackupService.PruneBackups:input_type -> mcadmin.v1.PruneBackupsRequest
+	5,  // 23: mcadmin.v1.BackupService.ListBackups:output_type -> mcadmin.v1.ListBackupsResponse
+	7,  // 24: mcadmin.v1.BackupService.CreateBackup:output_type -> mcadmin.v1.CreateBackupResponse
+	9,  // 25: mcadmin.v1.BackupService.DeleteBackup:output_type -> mcadmin.v1.DeleteBackupResponse
+	11, // 26: mcadmin.v1.BackupService.PreflightRestore:output_type -> mcadmin.v1.PreflightRestoreResponse
+	13, // 27: mcadmin.v1.BackupService.RestoreBackup:output_type -> mcadmin.v1.RestoreBackupResponse
+	15, // 28: mcadmin.v1.BackupService.CreateBackupDownload:output_type -> mcadmin.v1.CreateBackupDownloadResponse
+	18, // 29: mcadmin.v1.BackupService.GetRetentionPolicy:output_type -> mcadmin.v1.GetRetentionPolicyResponse
+	20, // 30: mcadmin.v1.BackupService.SetRetentionPolicy:output_type -> mcadmin.v1.SetRetentionPolicyResponse
+	22, // 31: mcadmin.v1.BackupService.PruneBackups:output_type -> mcadmin.v1.PruneBackupsResponse
+	23, // [23:32] is the sub-list for method output_type
+	14, // [14:23] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_mcadmin_v1_backup_proto_init() }
@@ -1370,7 +1490,7 @@ func file_mcadmin_v1_backup_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mcadmin_v1_backup_proto_rawDesc), len(file_mcadmin_v1_backup_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

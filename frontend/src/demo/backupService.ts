@@ -188,6 +188,30 @@ export const backupImpl: Partial<ServiceImpl<typeof BackupService>> = {
     return { freedBytes: backup.sizeBytes }
   },
 
+  /**
+   * デモには実物のアーカイブが無い。
+   *
+   * 押したら何も起きない、という見え方は誤解を招くので、説明だけを書いた
+   * 小さなファイルを渡す。実物では認証つきの短命なリンクから zip が落ちる。
+   */
+  createBackupDownload: (req) => {
+    const backup = requireBackup(req.backupId)
+    const text = [
+      'これはデモです。実際のバックアップではありません。',
+      '',
+      `実物の管理コンソールでは、ここで ${backup.id}（${backup.sizeBytes} バイト）の`,
+      'zip が手元の PC に保存されます。',
+      '',
+      'ダウンロードのリンクは、認証済みの操作で発行される 10 分間だけ有効な',
+      '使い捨てのものです。押すたびに新しく発行されます。',
+    ].join('\n')
+
+    return {
+      url: `data:text/plain;charset=utf-8,${encodeURIComponent(text)}`,
+      fileName: `${backup.id}.txt`,
+    }
+  },
+
   preflightRestore: (req) => {
     const state = getState()
     const backup = requireBackup(req.backupId)

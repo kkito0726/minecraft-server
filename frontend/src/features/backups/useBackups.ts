@@ -11,6 +11,7 @@ import type {
 import { queryKeys } from '../../lib/queryKeys'
 import { useOperation } from '../operations'
 import { backupClient } from './client'
+import { startDownload } from './download'
 import type { RetentionInput } from './retention'
 
 export function useBackups(): UseQueryResult<ListBackupsResponse> {
@@ -95,6 +96,22 @@ export function useDeleteBackup() {
   return useMutation({
     mutationFn: (backupId: string) => backupClient.deleteBackup({ backupId }),
     onSuccess: invalidate,
+  })
+}
+
+/**
+ * バックアップを手元の PC に保存する。
+ *
+ * リンクには Authorization ヘッダーを付けられないので、認証つきのこの RPC で
+ * 短命の受取口を作り、その URL を開く。押すたびに新しく発行されるため、
+ * 一覧にある限り、取得した直後でも後日でも同じように落とせる。
+ *
+ * 一覧は変わらないので無効化しない。読むだけで何も増えない。
+ */
+export function useBackupDownload() {
+  return useMutation({
+    mutationFn: (backupId: string) => backupClient.createBackupDownload({ backupId }),
+    onSuccess: (res) => startDownload(res.url, res.fileName),
   })
 }
 

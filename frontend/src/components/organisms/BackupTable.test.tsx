@@ -38,13 +38,20 @@ function list(overrides: Overrides = {}) {
   })
 }
 
-function renderTable(overrides: Overrides = {}) {
+function renderTable(overrides: Overrides = {}, props: { disabled?: boolean } = {}) {
   const onRestore = vi.fn()
   const onDelete = vi.fn()
+  const onDownload = vi.fn()
   render(
-    <BackupTable data={list(overrides)} disabled={false} onRestore={onRestore} onDelete={onDelete} />,
+    <BackupTable
+      data={list(overrides)}
+      disabled={props.disabled ?? false}
+      onRestore={onRestore}
+      onDelete={onDelete}
+      onDownload={onDownload}
+    />,
   )
-  return { onRestore, onDelete }
+  return { onRestore, onDelete, onDownload }
 }
 
 describe('BackupTable', () => {
@@ -94,6 +101,24 @@ describe('BackupTable', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '本当に削除' }))
     expect(onDelete).toHaveBeenCalledWith('backup-26.2-world-20260910-160000.zip')
+  })
+
+  it('手元へダウンロードできる', async () => {
+    const { onDownload } = renderTable()
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'ダウンロード' })[0]!)
+    expect(onDownload).toHaveBeenCalledWith('backup-26.2-world-20260910-160000.zip')
+  })
+
+  /**
+   * ダウンロードは読むだけで、サーバーにも data/ にも触らない。
+   * 操作の実行中に押せなくする理由がない。
+   */
+  it('操作の実行中でもダウンロードは押せる', () => {
+    renderTable({}, { disabled: true })
+
+    expect(screen.getAllByRole('button', { name: 'ダウンロード' })[0]).toBeEnabled()
+    expect(screen.getAllByRole('button', { name: '復元' })[0]).toBeDisabled()
   })
 
   it('1 つも無いときに案内を出す', () => {

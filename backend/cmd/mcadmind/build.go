@@ -26,6 +26,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/leveldat"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/backupfs"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/lockfile"
+	"github.com/kkito0726/minecraft-server/backend/internal/presentation/download"
 	adminhttp "github.com/kkito0726/minecraft-server/backend/internal/presentation/http"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/http/auth"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/rpc"
@@ -356,8 +357,11 @@ func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, er
 		rpc.NewWorldHandler(d.worlds), withAuth)
 	handlers[worldPath] = worldHandler
 
+	// ダウンロードの受取券。発行は認証済みの RPC、受け取りは券だけを見る。
+	tickets := download.NewTickets(adminhttp.DownloadBackupPath)
+
 	backupPath, backupHandler := mcadminv1connect.NewBackupServiceHandler(
-		rpc.NewBackupHandler(d.backups), withAuth)
+		rpc.NewBackupHandler(d.backups, tickets), withAuth)
 	handlers[backupPath] = backupHandler
 
 	assets, err := webui.Assets()
@@ -370,6 +374,10 @@ func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, er
 	routes := map[string]http.Handler{
 		adminhttp.UploadBackupPath: interceptor.Middleware(
 			upload.NewHandler(d.backups, logger)),
+		// **ここだけは認証で包まない。** ブラウザのダウンロードはリンクを
+		// 辿るだけで Authorization ヘッダーを付けられないため、上の RPC が
+		// 発行した短命の受取券を認可として使う。包むと必ず 401 になる。
+		adminhttp.DownloadBackupPath: download.NewHandler(tickets, d.backups, logger),
 	}
 
 	return adminhttp.New(adminhttp.Config{

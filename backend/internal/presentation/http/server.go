@@ -25,6 +25,14 @@ const rpcPrefix = "/rpc/"
 // 必要があるので公開する。
 const UploadBackupPath = "/upload/backup"
 
+// DownloadBackupPath は保管済みアーカイブを渡す場所。
+//
+// ブラウザのダウンロードはリンクを辿るだけで Authorization ヘッダーを
+// 付けられない。そのため**このルートだけは認証ミドルウェアで包まず**、
+// 認証済みの RPC が発行した短命の受取券だけを見る
+// （`presentation/download`）。
+const DownloadBackupPath = "/download/backup"
+
 // タイムアウト。
 //
 // WriteTimeout を設けないのは、進捗のストリーミングが分単位で続くため。
@@ -79,13 +87,11 @@ func New(cfg Config) (*Server, error) {
 	for path, handler := range cfg.RPC {
 		mux.Handle(rpcPrefix+strings.TrimPrefix(path, "/"), http.StripPrefix("/rpc", handler))
 	}
-	// 静的ファイル以外にも同じ防御ヘッダを付ける。JSON を返すので
-	// とくに nosniff が要る。
 	for path, handler := range cfg.Routes {
-		mux.Handle(path, securityHeaders(handler))
+		mux.Handle(path, handler)
 	}
 	if cfg.Assets != nil {
-		mux.Handle("/", securityHeaders(spaHandler(cfg.Assets)))
+		mux.Handle("/", spaHandler(cfg.Assets))
 	}
 
 	// Connect は gRPC 互換のために HTTP/2 を使う。TLS 無しで HTTP/2 を
@@ -99,9 +105,20 @@ func New(cfg Config) (*Server, error) {
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true)
 
+	/*
+		防御ヘッダは mux 全体に付ける。
+
+		経路ごとに包むと、足した経路に付け忘れても何も起きず、
+		守り漏れが静かに残る（実際 /rpc/ だけ抜けていた）。JSON を
+		いちばん返すのは /rpc/ なので、nosniff が要るのもそこ。
+
+		securityHeaders はヘッダを足すだけで ResponseWriter を
+		包み直さないため、進捗のストリーミングに要る http.Flusher は
+		そのまま通る。
+	*/
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           mux,
+		Handler:           securityHeaders(mux),
 		Protocols:         protocols,
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleTimeout,

@@ -48,7 +48,16 @@ type fakeRuntime struct {
 	upErr  error
 }
 
-func (f *fakeRuntime) Up(context.Context, port.LogSink) error   { f.rec.add("Up"); return f.upErr }
+// Up と WaitReady は ctx を尊重する。実装は exec.CommandContext 経由で
+// docker compose を起動するため、キャンセル済みの ctx では必ず失敗する。
+func (f *fakeRuntime) Up(ctx context.Context, _ port.LogSink) error {
+	f.rec.add("Up")
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return f.upErr
+}
+
 func (f *fakeRuntime) Down(context.Context, port.LogSink) error { f.rec.add("Down"); return nil }
 
 func (f *fakeRuntime) Status(context.Context) (server.ContainerStatus, error) {
@@ -60,9 +69,9 @@ func (f *fakeRuntime) WaitStopped(context.Context, time.Duration) error {
 	return nil
 }
 
-func (f *fakeRuntime) WaitReady(context.Context, time.Duration) error {
+func (f *fakeRuntime) WaitReady(ctx context.Context, _ time.Duration) error {
 	f.rec.add("WaitReady")
-	return nil
+	return ctx.Err()
 }
 
 type fakeConsole struct {
@@ -145,11 +154,14 @@ type fakeStore struct {
 	createdLevels []string
 	createErr     error
 	// 取り込み
-	staged          *fakeStaged
-	stageErr        error
-	stagedLimit     int64
-	inspectErr      error
-	extractErr      error
+	staged      *fakeStaged
+	stageErr    error
+	stagedLimit int64
+	inspectErr  error
+	extractErr  error
+	// extractHook は Extract の最中に呼ばれる。展開中に停止シグナルが
+	// 届く状況（ctx のキャンセル）を作るために使う。
+	extractHook     func()
 	extractRewrites []string
 	levelDat        string
 	info            port.ArchiveInfo
@@ -230,8 +242,12 @@ func (f *fakeStore) Extract(
 
 	f.mu.Lock()
 	f.extractRewrites = append(f.extractRewrites, rewriteLevel)
+	hook := f.extractHook
 	f.mu.Unlock()
 
+	if hook != nil {
+		hook()
+	}
 	if f.extractErr != nil {
 		return f.extractErr
 	}
@@ -360,8 +376,13 @@ func (f *fakeWorlds) Quarantine(
 	return q, nil
 }
 
-func (f *fakeWorlds) Restore(_ context.Context, _ world.Quarantine, to world.Name) error {
+// Restore と Remove は ctx を尊重する。worldfs の実装が先頭で ctx.Err() を
+// 見て返すため、キャンセル済みの ctx では何もせずに失敗する。
+func (f *fakeWorlds) Restore(ctx context.Context, _ world.Quarantine, to world.Name) error {
 	f.rec.add("RestoreQuarantine")
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -369,8 +390,11 @@ func (f *fakeWorlds) Restore(_ context.Context, _ world.Quarantine, to world.Nam
 	return nil
 }
 
-func (f *fakeWorlds) Remove(_ context.Context, name world.Name) error {
+func (f *fakeWorlds) Remove(ctx context.Context, name world.Name) error {
 	f.rec.add("Remove")
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -501,6 +525,16 @@ func (h *harness) now() time.Time { return time.Now() }
 func newHarness(t *testing.T, running bool, values map[string]string) *harness {
 	t.Helper()
 
+	return newHarnessCtx(t, context.Background(), running, values)
+}
+
+// newHarnessCtx は操作の寿命を決める context を指定して組み立てる。
+// mcadmind が停止シグナルを受けた状況を再現するために使う。
+func newHarnessCtx(
+	t *testing.T, baseCtx context.Context, running bool, values map[string]string,
+) *harness {
+	t.Helper()
+
 	rec := &recorder{}
 	state := server.ContainerMissing
 	if running {
@@ -518,7 +552,7 @@ func newHarness(t *testing.T, running bool, values map[string]string) *harness {
 	lock := &fakeLock{}
 	levels := &fakeLevels{version: readableVersion(t)}
 
-	mgr, err := operations.NewManager(operations.Config{Lock: lock})
+	mgr, err := operations.NewManager(operations.Config{Lock: lock, BaseCtx: baseCtx})
 	if err != nil {
 		t.Fatal(err)
 	}

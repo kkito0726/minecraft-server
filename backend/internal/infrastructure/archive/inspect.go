@@ -51,7 +51,7 @@ func Inspect(ctx context.Context, src string) (Manifest, error) {
 		if err != nil {
 			return Manifest{}, err
 		}
-		if strings.HasSuffix(f.Name, "/") {
+		if isDirEntry(f.Name) {
 			continue
 		}
 
