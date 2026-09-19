@@ -40,7 +40,8 @@ LAN からの到達面を閉じたい場合は、`tailscale serve` を挟んで 
 
 | 防御 | 実装 |
 |---|---|
-| 外部スクリプトと外部通信の禁止 | CSP `default-src 'self'`（`presentation/http/static.go`） |
+| 外部スクリプトと外部通信の禁止 | CSP `default-src 'self'`。定義は `presentation/http/static.go`、適用は mux 全体（`presentation/http/server.go`） |
+| MIME 推測・埋め込み・Referer の抑止 | `X-Content-Type-Options: nosniff` / `X-Frame-Options: DENY` / `Referrer-Policy: no-referrer`。CSP と同じ包みで付く |
 | クロスオリジンからの API 利用を不可 | CORS を実装していない（同一オリジン前提のため不要） |
 | トークンの定数時間比較 | `crypto/subtle`（`presentation/http/auth/auth.go`） |
 | 短いトークンを起動時に拒否 | 32 文字未満はエラー。生成コマンドを添えて止まる |
@@ -52,6 +53,10 @@ LAN からの到達面を閉じたい場合は、`tailscale serve` を挟んで 
 | ディスクの枯渇対策 | 取り込みの上限は空き容量の半分（`backupctl/import.go`） |
 | 認証前の情報漏らし防止 | 認証インターセプタをログの外側に置く。失敗したリクエストの中身を記録しない |
 | ダウンロードの受け渡し | 認証済みの RPC が出す 10 分の受取券。対象のバックアップに固定（`presentation/download`） |
+
+**防御ヘッダは経路ごとではなく mux 全体に掛けている。** 以前は静的ファイルと zip の
+受け口だけを包んでおり、いちばん JSON を返す `/rpc/` に付いていなかった。経路を足した
+ときの付け忘れが静かに残る形だったので、包む場所を 1 つに寄せてある。
 
 **ダウンロードの口だけは認証ミドルウェアを通らない。** ブラウザのダウンロードはリンクを
 辿るだけで Authorization ヘッダーを付けられないため、認証済みの RPC が発行した短命の
