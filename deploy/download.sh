@@ -81,4 +81,5 @@ chmod 0755 "$tmp/$asset"
 mv "$tmp/$asset" "$dest/$asset"
 
 echo "置きました: $dest/$asset"
-echo "次: sudo $here/install.sh --project-dir $dest"
+# --dest を既定から動かした時も通るように、拾わせる先を明示する。
+echo "次: sudo $here/install.sh --binary $dest/$asset"
