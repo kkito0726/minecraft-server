@@ -1,0 +1,128 @@
+name: リリース
+
+# CI（ci.yml）は main への push と PR でしか走らない。つまりタグを打った
+# 時点で検証は走らないので、タグは CI が通った main のコミットにだけ打つ。
+#
+# タグを打った時だけ配る。main への push で配らないのは、Pi に入っている
+# ものを「どのタグか」で言い切れるようにするため。rolling latest だと
+# 同じ URL の中身が黙って変わり、手元と実機の差を追えなくなる。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.26'
+  NODE_VERSION: '22'
+
+jobs:
+  build:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} を作る
+    runs-on: ubuntu-latest
+
+    strategy:
+      # 片方が落ちても、もう片方の結果は見たい。どちらの組み合わせで
+      # 壊れたのかが一度で分かる。
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: arm64   # Raspberry Pi 5
+          - goos: linux
+            goarch: amd64   # x86 の Linux 機
+          # darwin を足すならここに 2 行。mcadmind は docker を操る常駐
+          # サービスで、開発機で試すだけなら make build が既にある。
+
+    steps:
+      # make の VERSION は git describe --tags を使う。既定の浅い取得だと
+      # タグが降りてこず、バイナリに dev が焼き込まれる。
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - working-directory: frontend
+        run: npm ci
+
+      - name: 埋め込み先を用意する
+        run: make ensure-embed
+
+      - name: クロスビルドする
+        run: make build-cross GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}
+
+      # CI の build job と同じ関門。embed したデータは、そのパッケージを
+      # 参照していないとリンカに削除される。配ってから白い画面で気づくと、
+      # 取り下げたタグが手元に残った人の分まで面倒を見ることになる。
+      - name: フロントエンドが埋め込まれているか
+        env:
+          ASSET: mcadmind-${{ matrix.goos }}-${{ matrix.goarch }}
+        run: |
+          if ! strings "$ASSET" | grep -q 'assets/index-'; then
+            echo "::error::$ASSET にフロントエンドが埋め込まれていません"
+            exit 1
+          fi
+          file "$ASSET"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: mcadmind-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: mcadmind-${{ matrix.goos }}-${{ matrix.goarch }}
+          retention-days: 7
+
+  release:
+    name: Release を作って資産を添える
+    needs: build
+    runs-on: ubuntu-latest
+
+    # Release の作成にはこれが要る。トップレベルは read のままにして、
+    # 書き込みを必要とする job だけに与える。
+    permissions:
+      contents: write
+
+    steps:
+      # 添付は 1 つの job でまとめて行う。matrix の各 job から
+      # gh release create を呼ぶと、先に着いた 1 つだけが成功して
+      # 残りが「既にある」で落ちる。
+      - uses: actions/download-artifact@v5
+        with:
+          path: dist
+          merge-multiple: true
+
+      # 資産ごとに .sha256 を並べるより、1 枚にまとめたほうが受け取る側が
+      # 楽になる。落としたものだけを検証する（sha256sum --ignore-missing -c）。
+      - name: SHA256SUMS を作る
+        working-directory: dist
+        run: |
+          sha256sum mcadmind-* > SHA256SUMS
+          cat SHA256SUMS
+
+      # v1.2.3-rc1 のようなタグは pre-release にする。これをしないと
+      # releases/latest/download が rc を指してしまい、download.sh が
+      # 試作版を掴む。
+      - name: Release を作る
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=()
+          case "$TAG" in
+            *-*) prerelease=(--prerelease) ;;
+          esac
+          gh release create "$TAG" \
+            dist/mcadmind-* dist/SHA256SUMS \
+            --title "$TAG" \
+            --generate-notes \
+            "${prerelease[@]}"

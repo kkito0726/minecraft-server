@@ -198,13 +198,20 @@ jobs:
           cat /tmp/mcadmind.service
           systemd-analyze verify /tmp/mcadmind.service
 
-      - name: install.sh の構文
-        run: bash -n deploy/install.sh
+      - name: シェルスクリプトの構文
+        run: |
+          for script in deploy/*.sh; do
+            bash -n "$script"
+          done
 
       # サードパーティの action はコミットの SHA で固定する（GitHub 公式の
       # 推奨）。ブランチ参照だと、こちらを一切変更していなくても次の実行から
       # 違うコードが走りうる。CI の実行環境そのものは取られてしまう。
+      # -x を付けて source 先（platform.sh）まで追わせる。追わないと
+      # 「読めなかった」という指摘そのものが出て落ちる。
       - uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # v2.0.0
+        env:
+          SHELLCHECK_OPTS: -x
         with:
           scandir: ./deploy
 

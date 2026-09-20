@@ -11,6 +11,10 @@ data/
 # 管理コンソール — バックエンド
 /mcadmind
 /mcadmind-arm64
+# make build-cross と deploy/download.sh の出力
+/mcadmind-linux-*
+/mcadmind-darwin-*
+/SHA256SUMS
 backend/internal/presentation/webui/dist/*
 !backend/internal/presentation/webui/dist/.gitkeep
 coverage.out
