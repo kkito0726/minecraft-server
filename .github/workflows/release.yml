@@ -1,0 +1,88 @@
+name: リリース
+
+# CI（ci.yml）は main への push と PR でしか走らない。つまりタグを打った
+# 時点で検証は走らないので、タグは CI が通った main のコミットにだけ打つ。
+#
+# タグを打った時だけ配る。main への push で配らないのは、Pi に入っている
+# ものを「どのタグか」で言い切れるようにするため。rolling latest だと
+# 同じ URL の中身が黙って変わり、手元と実機の差を追えなくなる。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.26'
+  NODE_VERSION: '22'
+
+jobs:
+  release:
+    name: Pi 5 向け arm64 を Release に添付する
+    runs-on: ubuntu-latest
+
+    # Release の作成にはこれが要る。トップレベルは read のままにして、
+    # 書き込みを必要とする job だけに与える。
+    permissions:
+      contents: write
+
+    steps:
+      # make の VERSION は git describe --tags を使う。既定の浅い取得だと
+      # タグが降りてこず、バイナリに dev が焼き込まれる。
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - working-directory: frontend
+        run: npm ci
+
+      - name: 埋め込み先を用意する
+        run: make ensure-embed
+
+      - name: Pi 5 向けにクロスビルドする
+        run: make build-arm64
+
+      # CI の build job と同じ関門。embed したデータは、そのパッケージを
+      # 参照していないとリンカに削除される。配ってから白い画面で気づくと、
+      # 取り下げたタグが手元に残った人の分まで面倒を見ることになる。
+      - name: フロントエンドが埋め込まれているか
+        run: |
+          if ! strings mcadmind-arm64 | grep -q 'assets/index-'; then
+            echo "::error::バイナリにフロントエンドが埋め込まれていません"
+            exit 1
+          fi
+          file mcadmind-arm64
+
+      # Pi 側で sha256sum -c mcadmind-arm64.sha256 を実行できる形にする。
+      - name: チェックサムを作る
+        run: sha256sum mcadmind-arm64 > mcadmind-arm64.sha256
+
+      # v1.2.3-rc1 のようなタグは pre-release にする。これをしないと
+      # releases/latest/download が rc を指してしまい、手順書の curl が
+      # 試作版を掴む。
+      - name: Release を作る
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=()
+          case "$TAG" in
+            *-*) prerelease=(--prerelease) ;;
+          esac
+          gh release create "$TAG" \
+            mcadmind-arm64 mcadmind-arm64.sha256 \
+            --title "$TAG" \
+            --generate-notes \
+            "${prerelease[@]}"
