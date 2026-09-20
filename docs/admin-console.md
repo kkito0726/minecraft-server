@@ -6,7 +6,7 @@
 
 要件と設計の詳細は [spec/admin-console/](spec/admin-console/) にある。
 画面の操作が何を呼んで `data/` と `.env` に届くかは
-[spec/admin-console/sequences.md](spec/admin-console/sequences.md) に図で書いた。
+[sequence/](sequence/) に図で書いた。1 ユースケースにつき 1 ファイルに分けてある。
 ここは**動かす側の手順**だけを扱う。
 日々の起動・停止と障害対応は [runbook.md](runbook.md) にまとめてある。
 

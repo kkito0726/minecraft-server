@@ -3,7 +3,7 @@
 `mcadmind` に常駐モードと CLI モードを持たせ、ブラウザを開かずにワールドや
 バックアップを操作できるようにするための設計。実装前の調査と方針を残す。
 
-画面から何が呼ばれるかは [spec/admin-console/sequences.md](spec/admin-console/sequences.md)、
+画面から何が呼ばれるかは [sequence/](sequence/)、
 公開運用に関わる論点は [security-review.md](security-review.md) にある。
 
 ---
