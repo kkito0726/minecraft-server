@@ -15,6 +15,10 @@ readonly MIN_TOKEN_LENGTH=32
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$here/.." && pwd)"
 
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=platform.sh
+. "$here/platform.sh"
+
 project_dir="$repo_root"
 binary=""
 service_user="${SUDO_USER:-$(id -un)}"
@@ -26,7 +30,7 @@ usage() {
 
   --project-dir <パス>  compose.yaml と .env があるディレクトリ
                         （既定: このリポジトリ）
-  --binary <パス>       配置する mcadmind（既定: mcadmind-arm64 か mcadmind）
+  --binary <パス>       配置する mcadmind（既定: この機械に合うものを探す）
   --user <名前>         サービスを動かすユーザー（既定: sudo を実行した人）
   --dry-run             何も書き換えず、置こうとする内容だけ表示する
   -h, --help            この案内
@@ -69,12 +73,21 @@ for required in compose.yaml .env; do
 done
 
 if [ -z "$binary" ]; then
-  # Pi へ配るのは arm64。同じ機械でビルドしたなら mcadmind。
-  for candidate in "$repo_root/mcadmind-arm64" "$repo_root/mcadmind"; do
+  # download.sh が置いたもの（mcadmind-linux-arm64）を最優先にする。
+  # 開発機で --dry-run する時は OS / CPU の判定が落ちるので、その場合は
+  # 昔ながらの名前だけを見る。判定できない機械で止める理由は無い。
+  candidates=()
+  if goos="$(mc_goos 2>/dev/null)" && goarch="$(mc_goarch 2>/dev/null)"; then
+    candidates+=("$repo_root/mcadmind-$goos-$goarch")
+  fi
+  # make build-arm64 の出力と、同じ機械で make build したもの。
+  candidates+=("$repo_root/mcadmind-arm64" "$repo_root/mcadmind")
+
+  for candidate in "${candidates[@]}"; do
     [ -f "$candidate" ] && { binary="$candidate"; break; }
   done
 fi
-[ -n "$binary" ] || require "配置するバイナリがありません（make build-arm64 を実行してください）"
+[ -n "$binary" ] || require "配置するバイナリがありません（deploy/download.sh で取得するか、make build-arm64 を実行してください）"
 [ -z "$binary" ] || [ -f "$binary" ] || require "バイナリが見つかりません: $binary"
 
 id "$service_user" >/dev/null 2>&1 || die "ユーザーがいません: $service_user"

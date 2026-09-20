@@ -69,11 +69,26 @@ build-front: ## フロントエンドをビルドして Go の embed 先へ出�
 build-back: ensure-embed ## バックエンドをビルドする（ホストのアーキテクチャ向け）
 	cd $(BACKEND_DIR) && go build -ldflags '$(LDFLAGS)' -o ../$(BIN_NAME) ./cmd/mcadmind
 
+# 配る先の OS / CPU を指定して作る。出力名は既定で mcadmind-<os>-<arch>。
+# Release に載せる資産はこれで作るので、ldflags と VERSION の扱いを
+# ここ 1 箇所に集める。
+GOOS      ?= linux
+GOARCH    ?= arm64
+CROSS_OUT ?= $(BIN_NAME)-$(GOOS)-$(GOARCH)
+
+.PHONY: build-cross
+build-cross: build-front ## GOOS/GOARCH を指定して静的バイナリを作る
+	cd $(BACKEND_DIR) && CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
+		go build -ldflags '$(LDFLAGS)' -o ../$(CROSS_OUT) ./cmd/mcadmind
+	@file $(CROSS_OUT) 2>/dev/null || true
+
+# 出力名を mcadmind-arm64 のまま据え置く。手順書と install.sh と CI が
+# この名前を指しているうえ、手元で作ったものと Release から落としたものは
+# 区別が付いたほうが良い。
 .PHONY: build-arm64
-build-arm64: build-front ## Raspberry Pi 5 用の静的バイナリを作る
-	cd $(BACKEND_DIR) && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
-		go build -ldflags '$(LDFLAGS)' -o ../$(BIN_NAME)-arm64 ./cmd/mcadmind
-	@file $(BIN_NAME)-arm64 2>/dev/null || true
+build-arm64: ## Raspberry Pi 5 用の静的バイナリを作る（出力: mcadmind-arm64）
+	@$(MAKE) --no-print-directory build-cross \
+		GOOS=linux GOARCH=arm64 CROSS_OUT=$(BIN_NAME)-arm64
 
 # --- テスト ---
 
