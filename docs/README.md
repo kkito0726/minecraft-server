@@ -12,5 +12,5 @@
 | [demo.md](demo.md) | 公開デモ（GitHub Pages）。バックエンド無しで画面を触れるようにした仕組みと、本番に混ざらない保証 |
 | [security-review.md](security-review.md) | 管理コンソールのセキュリティ調査。いま効いている防御と、インターネット公開時に足りないもの |
 | [cli-design.md](cli-design.md) | CLI 化（cobra）の設計。常駐と CLI の分け方、並行実行時の排他と落とし穴 |
-| [spec/admin-console/sequences.md](spec/admin-console/sequences.md) | ユースケースごとのシーケンス図。画面の操作が data/ と .env に届くまで |
+| [sequence/](sequence/) | ユースケースごとのシーケンス図。画面の操作が data/ と .env に届くまで。1 ユースケース 1 ファイル |
 | [spec/admin-console/](spec/admin-console/) | 管理コンソールの要件定義。EARS 記法の機能要件、ユーザストーリー、受け入れ基準、ヒアリング記録、実測ノート |
