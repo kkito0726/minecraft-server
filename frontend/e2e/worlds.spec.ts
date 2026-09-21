@@ -158,3 +158,35 @@ test('使えない名前は送る前に弾かれる', async ({ page }) => {
   await expect(page.getByRole('button', { name: '作成する' })).toBeDisabled()
   await expect(banner(page)).toHaveCount(0)
 })
+
+/**
+ * MC_HARDCORE はサーバー全体の値だが、ハードコアかどうかは本来ワールドが
+ * level.dat に持っている。切り替えのたびに切り替え先に合わせる。
+ * 合わせないと、普通に作ったワールドがハードコアで動いてしまう。
+ */
+test.describe('ハードコアのワールドとの行き来', () => {
+  test.use({ worlds: ['hardmode', 'casual'], hardcoreWorlds: ['hardmode'] })
+
+  test('切り替え先の level.dat に合わせてハードコアと難易度が変わる', async ({ page, server }) => {
+    await signIn(page)
+    await page.getByRole('link', { name: 'ワールド' }).click()
+
+    // 切り替える前に分かる。
+    const hardRow = page.getByRole('row', { name: /^hardmode / })
+    const casualRow = page.getByRole('row', { name: /^casual / })
+    await expect(hardRow.getByText('ハードコア')).toBeVisible()
+    await expect(casualRow.getByText('ハードコア')).toHaveCount(0)
+
+    // 普通のワールドへ: ハードコアを外し、難易度はそのワールドの値（normal）に戻る。
+    await casualRow.getByRole('button', { name: '切替' }).click()
+    await waitForOperation(page)
+    expect(envValue(server.dir, 'MC_HARDCORE')).toBe('FALSE')
+    expect(envValue(server.dir, 'MC_DIFFICULTY')).toBe('normal')
+
+    // ハードコアのワールドへ戻る: ハードコアに戻し、難易度をハードにする。
+    await hardRow.getByRole('button', { name: '切替' }).click()
+    await waitForOperation(page)
+    expect(envValue(server.dir, 'MC_HARDCORE')).toBe('TRUE')
+    expect(envValue(server.dir, 'MC_DIFFICULTY')).toBe('hard')
+  })
+})

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
+	"github.com/kkito0726/minecraft-server/backend/internal/domain/settings"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/shared"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 )
@@ -29,6 +30,25 @@ func (a *Adapter) ReadWorld(_ context.Context, name world.Name) shared.WorldVers
 		return shared.UnreadableWorldVersion()
 	}
 	return v
+}
+
+// ReadSettings は data/<名前>/level.dat に焼かれた設定を読む。
+//
+// 読めなければ何も分からないものとして返す。呼ぶ側は Has* が偽の項目に
+// 触らない。ここで「偽」と決めつけると、読めなかっただけのハードコアの
+// ワールドを普通のワールドとして扱ってしまう。
+func (a *Adapter) ReadSettings(_ context.Context, name world.Name) port.LevelSettings {
+	info, err := ReadFile(filepath.Join(a.dataDir, name.String(), "level.dat"))
+	if err != nil {
+		return port.LevelSettings{}
+	}
+	out := port.LevelSettings{Hardcore: info.Hardcore, HasHardcore: info.HasHardcore}
+	if info.HasDifficulty {
+		if d, err := settings.ParseDifficulty(info.Difficulty); err == nil {
+			out.Difficulty, out.HasDifficulty = d, true
+		}
+	}
+	return out
 }
 
 // Read は任意の入力から読む。アーカイブ内の level.dat に使う。

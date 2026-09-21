@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/server"
@@ -15,6 +16,7 @@ import (
 )
 
 type harness struct {
+	levels  *fakeLevels
 	uc      *worldctl.UseCase
 	ops     *operations.Manager
 	rec     *recorder
@@ -47,16 +49,21 @@ func newHarness(t *testing.T, running bool, names ...string) *harness {
 		t.Fatal(err)
 	}
 
+	levels := &fakeLevels{
+		version:  shared.UnreadableWorldVersion(),
+		settings: map[string]port.LevelSettings{},
+	}
 	uc, err := worldctl.New(worldctl.Config{
 		Runtime: runtime, Console: console, Worlds: worlds, Config: config,
-		Levels: &fakeLevels{version: shared.UnreadableWorldVersion()}, Operations: mgr,
+		Levels: levels, Operations: mgr,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return &harness{
-		uc: uc, ops: mgr, rec: rec, worlds: worlds,
+		levels: levels,
+		uc:     uc, ops: mgr, rec: rec, worlds: worlds,
 		config: config, runtime: runtime, con: console, lock: lock,
 	}
 }

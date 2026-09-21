@@ -21,6 +21,8 @@ export type DemoWorld = {
   lastPlayed: Date
   version: DemoVersion
   hasSessionLock: boolean
+  /** level.dat に焼かれたハードコアの印。無ければ偽として扱う。 */
+  hardcore?: boolean
 }
 
 export type DemoQuarantine = {

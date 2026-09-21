@@ -67,3 +67,22 @@ func TestWorldCanDelete(t *testing.T) {
 		t.Errorf("非稼働は削除できるはず。err=%v", err)
 	}
 }
+
+// 印を付けても元の値は変えない。
+func TestWithHardcoreDoesNotMutate(t *testing.T) {
+	t.Parallel()
+
+	n, err := world.NewName("hardmode")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := world.NewWorld(n, false, 0, time.Time{}, shared.UnreadableWorldVersion(), false)
+	marked := original.WithHardcore(true)
+
+	if original.IsHardcore() {
+		t.Error("元の値が書き換わっている")
+	}
+	if !marked.IsHardcore() {
+		t.Error("印が付いていない")
+	}
+}

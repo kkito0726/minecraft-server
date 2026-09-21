@@ -54,6 +54,7 @@ export function toWorld(state: DemoState, world: DemoWorld) {
     lastPlayed: timestampFromDate(world.lastPlayed),
     version: toVersion(world.version),
     hasSessionLock: world.hasSessionLock,
+    hardcore: world.hardcore ?? false,
   })
 }
 

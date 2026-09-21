@@ -92,6 +92,10 @@ func (stubLevels) ReadWorld(context.Context, world.Name) shared.WorldVersion {
 
 // Read は level.dat を読めないものとして扱う。取り込みが版に
 // 依存しないこと（読めなくても止まらないこと）を確かめたい。
+func (stubLevels) ReadSettings(context.Context, world.Name) port.LevelSettings {
+	return port.LevelSettings{}
+}
+
 func (stubLevels) Read(context.Context, io.Reader) shared.WorldVersion {
 	return shared.UnreadableWorldVersion()
 }

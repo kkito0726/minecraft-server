@@ -164,6 +164,7 @@ func worldToProto(w world.World) *mcadminv1.World {
 		SizeBytes:      w.SizeBytes(),
 		Version:        worldVersionToProto(w.Version()),
 		HasSessionLock: w.HasSessionLock(),
+		Hardcore:       w.IsHardcore(),
 	}
 	if !w.LastPlayed().IsZero() {
 		out.LastPlayed = timestamppb.New(w.LastPlayed())

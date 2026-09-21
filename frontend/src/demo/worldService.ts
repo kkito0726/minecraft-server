@@ -63,7 +63,21 @@ export const worldImpl: Partial<ServiceImpl<typeof WorldService>> = {
           kind: OperationKind.WORLD_SWITCH,
           steps: SWITCH_STEPS,
           attributes: { world_name: req.name },
-          commit: () => updateState((s) => ({ ...s, activeLevel: req.name })),
+          // 実物と同じく、切り替え先のワールドの印に .env を合わせる。
+          // ハードコアに入るときは難易度もハードにする。
+          commit: () =>
+            updateState((s) => {
+              const hardcore = s.worlds.find((w) => w.name === req.name)?.hardcore ?? false
+              return {
+                ...s,
+                activeLevel: req.name,
+                gameSettings: {
+                  ...s.gameSettings,
+                  hardcore,
+                  ...(hardcore ? { difficulty: 'hard' as const } : {}),
+                },
+              }
+            }),
         }),
       ),
     }))
@@ -107,6 +121,7 @@ export const worldImpl: Partial<ServiceImpl<typeof WorldService>> = {
                     levelName: req.name,
                   },
                   hasSessionLock: true,
+                  hardcore: req.hardcore,
                 },
               ],
             })),

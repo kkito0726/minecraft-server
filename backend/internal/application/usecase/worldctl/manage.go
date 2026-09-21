@@ -31,9 +31,16 @@ func (u *UseCase) List(ctx context.Context) (Listing, error) {
 		active = world.Name{}
 	}
 
-	worlds, err := u.cfg.Worlds.List(ctx, active)
+	listed, err := u.cfg.Worlds.List(ctx, active)
 	if err != nil {
 		return Listing{}, err
+	}
+	// 切り替える前にハードコアだと分かるように印を足す。level.dat は
+	// バージョンのためにも読んでいるので 2 度読みになるが、数 KB の圧縮
+	// ファイルで、ワールドは数個しか無い。読む層を分けておく方を取る。
+	worlds := make([]world.World, len(listed))
+	for i, w := range listed {
+		worlds[i] = w.WithHardcore(u.cfg.Levels.ReadSettings(ctx, w.Name()).Hardcore)
 	}
 	quarantines, err := u.cfg.Worlds.ListQuarantines(ctx)
 	if err != nil {
@@ -380,7 +387,7 @@ func (u *UseCase) runRename(
 	if err := r.Step(); err != nil {
 		return err
 	}
-	if err := u.setLevel(ctx, target); err != nil {
+	if err := u.setLevel(ctx, r, target); err != nil {
 		return err
 	}
 

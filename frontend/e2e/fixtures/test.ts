@@ -12,6 +12,8 @@ type Options = {
   readyDelaySeconds: number
   /** 最初から置いておくワールド。先頭が MC_LEVEL になる。 */
   worlds: string[]
+  /** level.dat にハードコアの印を立てるワールド。 */
+  hardcoreWorlds: string[]
 }
 
 type Fixtures = {
@@ -27,9 +29,10 @@ type Fixtures = {
 export const test = base.extend<Options & Fixtures>({
   readyDelaySeconds: [0, { option: true }],
   worlds: [['world'], { option: true }],
+  hardcoreWorlds: [[], { option: true }],
 
-  server: async ({ readyDelaySeconds, worlds }, use) => {
-    const server = await startServer({ readyDelaySeconds, worlds })
+  server: async ({ readyDelaySeconds, worlds, hardcoreWorlds }, use) => {
+    const server = await startServer({ readyDelaySeconds, worlds, hardcoreWorlds })
     try {
       await use({ url: server.url, dir: server.dir })
     } finally {

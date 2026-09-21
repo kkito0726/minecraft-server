@@ -75,6 +75,9 @@ type fakeLevels struct{ version shared.WorldVersion }
 
 func (f *fakeLevels) ReadWorld(context.Context, world.Name) shared.WorldVersion { return f.version }
 func (f *fakeLevels) Read(context.Context, io.Reader) shared.WorldVersion       { return f.version }
+func (f *fakeLevels) ReadSettings(context.Context, world.Name) port.LevelSettings {
+	return port.LevelSettings{}
+}
 
 // --- テストサーバー ---
 

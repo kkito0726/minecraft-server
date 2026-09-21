@@ -41,6 +41,9 @@ message World {
   WorldVersion version = 5;
   // session.lock が残っているか。停止時に消えないため、これ自体は異常ではない。
   bool has_session_lock = 6;
+  // level.dat に焼かれたハードコアの印。切り替えるとサーバーもハードコアになる。
+  // 読めなければ偽。
+  bool hardcore = 7;
 }
 
 // Quarantine は復元や削除で退避されたディレクトリ。
