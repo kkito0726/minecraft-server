@@ -18,6 +18,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/application/reconcile"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/backupctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/serverctl"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/sysmetrics"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/config/dotenv"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/console/rcon"
@@ -26,6 +27,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/leveldat"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/backupfs"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/lockfile"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/system"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/download"
 	adminhttp "github.com/kkito0726/minecraft-server/backend/internal/presentation/http"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/http/auth"
@@ -113,6 +115,7 @@ type deps struct {
 	settings   *serverctl.SettingsUseCase
 	worlds     *worldctl.UseCase
 	backups    *backupctl.UseCase
+	metrics    *sysmetrics.UseCase
 	ops        *operations.Manager
 	reconciler *reconcile.Reconciler
 }
@@ -181,7 +184,16 @@ func buildDeps(
 		return deps{}, err
 	}
 
-	return buildUseCases(in, config, ops, logger)
+	d, err := buildUseCases(in, config, ops, logger)
+	if err != nil {
+		return deps{}, err
+	}
+
+	// 資源の使用状況は外部と話さないので infra には置かない。
+	// 容量を測る対象は data/ と backups/ が載るプロジェクトディレクトリ。
+	d.metrics = sysmetrics.NewUseCase(system.New(), opts.projectDir)
+
+	return d, nil
 }
 
 // buildUseCases はユースケース層を組み立てる。
@@ -344,25 +356,9 @@ func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, er
 	// 記録に残す必要はないし、残せば攻撃者の入力をログに書くことになる。
 	withAuth := connect.WithInterceptors(interceptor, rpc.NewLoggingInterceptor(logger))
 
-	handlers := map[string]http.Handler{}
-	serverPath, serverHandler := mcadminv1connect.NewServerServiceHandler(
-		rpc.NewServerHandler(d.status, d.lifecycle, d.settings, d.ops, publicConfigKeys), withAuth)
-	handlers[serverPath] = serverHandler
-
-	opPath, opHandler := mcadminv1connect.NewOperationServiceHandler(
-		rpc.NewOperationHandler(d.ops), withAuth)
-	handlers[opPath] = opHandler
-
-	worldPath, worldHandler := mcadminv1connect.NewWorldServiceHandler(
-		rpc.NewWorldHandler(d.worlds), withAuth)
-	handlers[worldPath] = worldHandler
-
 	// ダウンロードの受取券。発行は認証済みの RPC、受け取りは券だけを見る。
 	tickets := download.NewTickets(adminhttp.DownloadBackupPath)
-
-	backupPath, backupHandler := mcadminv1connect.NewBackupServiceHandler(
-		rpc.NewBackupHandler(d.backups, tickets), withAuth)
-	handlers[backupPath] = backupHandler
+	handlers := connectHandlers(d, tickets, withAuth)
 
 	assets, err := webui.Assets()
 	if err != nil {
@@ -383,6 +379,40 @@ func buildServer(s settings, d deps, logger *slog.Logger) (*adminhttp.Server, er
 	return adminhttp.New(adminhttp.Config{
 		Addr: s.addr, Assets: assets, RPC: handlers, Routes: routes, Logger: logger,
 	})
+}
+
+// connectHandlers は Connect のサービスを組み立てる。
+//
+// 認証は呼ぶ側から受け取ったものを全てに同じように渡す。ここで
+// サービスごとに付け外しできるようにすると、包み忘れが静かに生まれる。
+func connectHandlers(
+	d deps,
+	tickets *download.Tickets,
+	withAuth connect.HandlerOption,
+) map[string]http.Handler {
+	handlers := map[string]http.Handler{}
+
+	serverPath, serverHandler := mcadminv1connect.NewServerServiceHandler(
+		rpc.NewServerHandler(d.status, d.lifecycle, d.settings, d.ops, publicConfigKeys), withAuth)
+	handlers[serverPath] = serverHandler
+
+	opPath, opHandler := mcadminv1connect.NewOperationServiceHandler(
+		rpc.NewOperationHandler(d.ops), withAuth)
+	handlers[opPath] = opHandler
+
+	worldPath, worldHandler := mcadminv1connect.NewWorldServiceHandler(
+		rpc.NewWorldHandler(d.worlds), withAuth)
+	handlers[worldPath] = worldHandler
+
+	backupPath, backupHandler := mcadminv1connect.NewBackupServiceHandler(
+		rpc.NewBackupHandler(d.backups, tickets), withAuth)
+	handlers[backupPath] = backupHandler
+
+	systemPath, systemHandler := mcadminv1connect.NewSystemServiceHandler(
+		rpc.NewSystemHandler(d.metrics), withAuth)
+	handlers[systemPath] = systemHandler
+
+	return handlers
 }
 
 // healthChecker は reconcile.Health の実装。

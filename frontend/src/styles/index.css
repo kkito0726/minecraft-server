@@ -498,6 +498,18 @@
     animation: xp-sweep 1.4s steps(14) infinite;
   }
 
+  /* 使用率の帯。既定（緑）は .xp-fill のまま使い、逼迫した時だけ塗り替える。
+     4GB の Pi は MC だけで実 RSS 約 2.7GB を使うので、メモリは常に
+     それなりに埋まっている。閾値を低くすると常時警告になって意味を失う。 */
+  .usage-warn {
+    background: linear-gradient(180deg, var(--color-warn-ink), var(--color-warn));
+    box-shadow: 0 0 12px var(--color-warn);
+  }
+  .usage-danger {
+    background: linear-gradient(180deg, var(--color-danger-ink), var(--color-danger));
+    box-shadow: 0 0 12px var(--color-danger);
+  }
+
   /* ---------- 表 ---------- */
 
   .hud-table {

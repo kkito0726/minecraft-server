@@ -1,0 +1,74 @@
+// ホスト（Pi 本体）の資源の使用状況。
+syntax = "proto3";
+
+package mcadmin.v1;
+
+option go_package = "github.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1";
+
+service SystemService {
+  // GetMetrics はホストの CPU・メモリ・ストレージの使用状況を返す。
+  //
+  // コンテナではなくホストを見る。ストレージはコンテナと共有であり、
+  // 空き容量はそのままサーバーの生死に関わるため、境界はホストに置く。
+  //
+  // 読めない項目があっても RPC は失敗させない。項目ごとの available を
+  // 偽にして理由を添える。失敗させると、資源の状況を見るための画面が
+  // まさに資源が苦しいときに開けなくなる（GetGameSettings と同じ方針）。
+  rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {}
+}
+
+message GetMetricsRequest {}
+
+message GetMetricsResponse {
+  CpuUsage cpu = 1;
+  MemoryUsage memory = 2;
+  StorageUsage storage = 3;
+}
+
+// CpuUsage は /proc/stat の 2 点間の差分から求めた使用率。
+//
+// /proc/stat が持つのは起動からの累積値なので、1 点だけでは
+// 「電源を入れてからの平均」にしかならない。差分が要る。
+message CpuUsage {
+  // 偽なら以下の値は未設定。最初の 1 回は差分が取れないためここに入る。
+  bool available = 1;
+  // 0.0〜100.0。全論理コアをまとめた値。
+  double used_percent = 2;
+  // 差分を取った区間の長さ（秒）。どれだけの期間の平均かを画面に出す。
+  double window_seconds = 3;
+  // 論理コア数。
+  int32 cores = 4;
+  // ロードアベレージ（1 / 5 / 15 分）。
+  double load1 = 5;
+  double load5 = 6;
+  double load15 = 7;
+  // available が偽のときの理由。
+  string unavailable_reason = 8;
+}
+
+message MemoryUsage {
+  bool available = 1;
+  int64 total_bytes = 2;
+  // MemAvailable。MemFree ではない。キャッシュのうち回収できる分を
+  // 含む「実際に使える量」で、free コマンドの available と同じ。
+  int64 available_bytes = 3;
+  int64 used_bytes = 4;
+  double used_percent = 5;
+  // スワップ。Pi では無効にしている前提なので、通常は 0。
+  int64 swap_total_bytes = 6;
+  int64 swap_used_bytes = 7;
+  string unavailable_reason = 8;
+}
+
+message StorageUsage {
+  bool available = 1;
+  // 計測したパス（プロジェクトディレクトリ）。data/ と backups/ が載る。
+  string path = 2;
+  int64 total_bytes = 3;
+  // Bavail。Bfree ではない。df が「使用可能」に出すのと同じ、
+  // 予約ブロックを除いた一般ユーザーが使える量。
+  int64 available_bytes = 4;
+  int64 used_bytes = 5;
+  double used_percent = 6;
+  string unavailable_reason = 7;
+}
