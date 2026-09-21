@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -42,7 +43,21 @@ type Info struct {
 	LastPlayed time.Time
 	// Data.Bukkit.Version。Paper のビルド情報。
 	ServerBrand string
+
+	// Hardcore はワールドに焼かれたハードコアの印。HasHardcore が偽なら
+	// 読めていない。「無い」と「偽」を区別するのは、読めなかったときに
+	// .env を FALSE で上書きして、ハードコアのワールドを普通にしないため。
+	Hardcore    bool
+	HasHardcore bool
+	// Difficulty は "peaceful" / "easy" / "normal" / "hard" に揃えた難易度。
+	Difficulty    string
+	HasDifficulty bool
 }
+
+// 置き場所は版で違う。26.x では Data.difficulty_settings の中にあり、
+// 難易度は文字列になった。それより前は Data 直下にあり、難易度はバイト。
+// 両方を読み、新しい形式があればそちらを正とする。
+var legacyDifficulties = []string{"peaceful", "easy", "normal", "hard"}
 
 // Reader は level.dat を読む。差し替えられるようにインターフェースにしてある。
 type Reader interface {
@@ -173,10 +188,67 @@ func parseData(r *reader, info *Info) error {
 			return false, nil
 		case tag == tagString && name == "Bukkit.Version":
 			return true, assignString(r, &info.ServerBrand)
+		case tag == tagCompound && name == "difficulty_settings":
+			return true, parseDifficultySettings(r, info)
+		case tag == tagByte && name == "hardcore":
+			return true, parseLegacyHardcore(r, info)
+		case tag == tagByte && name == "Difficulty":
+			return true, parseLegacyDifficulty(r, info)
 		default:
 			return false, nil
 		}
 	})
+}
+
+// parseDifficultySettings は 26.x の Data.difficulty_settings を読む。
+// 古い形式より優先するので、先に読んでいても上書きする。
+func parseDifficultySettings(r *reader, info *Info) error {
+	return r.visitCompound(func(tag byte, name string) (bool, error) {
+		switch {
+		case tag == tagByte && name == "hardcore":
+			b, err := r.byteValue()
+			if err != nil {
+				return true, err
+			}
+			info.Hardcore, info.HasHardcore = b != 0, true
+			return true, nil
+		case tag == tagString && name == "difficulty":
+			var d string
+			if err := assignString(r, &d); err != nil {
+				return true, err
+			}
+			info.Difficulty, info.HasDifficulty = strings.ToLower(d), true
+			return true, nil
+		default:
+			return false, nil
+		}
+	})
+}
+
+// parseLegacyHardcore は古い形式の Data.hardcore を読む。
+// 新しい形式が既に読めていれば、そちらを残す。
+func parseLegacyHardcore(r *reader, info *Info) error {
+	b, err := r.byteValue()
+	if err != nil {
+		return err
+	}
+	if !info.HasHardcore {
+		info.Hardcore, info.HasHardcore = b != 0, true
+	}
+	return nil
+}
+
+// parseLegacyDifficulty は古い形式の Data.Difficulty（0〜3）を読む。
+func parseLegacyDifficulty(r *reader, info *Info) error {
+	b, err := r.byteValue()
+	if err != nil {
+		return err
+	}
+	if info.HasDifficulty || int(b) >= len(legacyDifficulties) {
+		return nil
+	}
+	info.Difficulty, info.HasDifficulty = legacyDifficulties[b], true
+	return nil
 }
 
 // parseVersion は Data.Version から Name と Snapshot を拾う。

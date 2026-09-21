@@ -9,11 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
+	"github.com/kkito0726/minecraft-server/backend/internal/domain/settings"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 )
 
@@ -136,7 +138,7 @@ func (u *UseCase) runSwitch(
 	if err := r.Step(); err != nil {
 		return err
 	}
-	if err := u.setLevel(ctx, target); err != nil {
+	if err := u.setLevel(ctx, r, target); err != nil {
 		return err
 	}
 	r.Attr("world_name", target.String())
@@ -193,13 +195,67 @@ func (u *UseCase) saveIfRunning(ctx context.Context, r operations.Reporter) {
 // あわせて MC_SEED を空に戻す。新規ワールドの生成待ちは最大 900 秒に及び、
 // その間にプロセスが停止するとシードが残る。残ったまま次のワールドを
 // 作ると、意図せず同じ地形になる。
-func (u *UseCase) setLevel(ctx context.Context, name world.Name) error {
+//
+// さらに、切り替え先の level.dat に合わせて MC_HARDCORE を書く。
+// MC_HARDCORE はサーバー全体の値なので、合わせないとハードコアのワールドから
+// 普通のワールドへ移ったときに、普通のワールドがハードコアで動いてしまう。
+func (u *UseCase) setLevel(ctx context.Context, r operations.Reporter, name world.Name) error {
 	snapshot, err := u.cfg.Config.Load(ctx)
 	if err != nil {
 		return err
 	}
 	updated := snapshot.With(keyLevel, name.String()).With(keySeed, "")
+
+	level := u.cfg.Levels.ReadSettings(ctx, name)
+	updated, note := followWorld(snapshot, updated, level)
+	if note != "" {
+		r.Logf(operation.LevelInfo, "%s", note)
+	}
 	return u.cfg.Config.Save(ctx, updated)
+}
+
+// followWorld は切り替え先のワールドが持っている設定に .env を合わせる。
+//
+// 読めなかったときは何もしない。「偽」と決めつけて FALSE を書くと、
+// 読めなかっただけのハードコアのワールドを普通にしてしまう。
+//
+// 難易度は、ハードコアに入るときはハードに、抜けるときはそのワールドの
+// 難易度に戻す。それ以外の切り替えでは触らない。難易度はサーバー全体の
+// 設定として /settings で決めるもので、切り替えのたびに変わると驚かせる。
+func followWorld(
+	current, next port.ConfigSnapshot,
+	level port.LevelSettings,
+) (port.ConfigSnapshot, string) {
+	if !level.HasHardcore {
+		return next, ""
+	}
+	next = next.With(keyHardcore, boolValue(level.Hardcore))
+
+	if level.Hardcore {
+		next = next.With(keyDifficulty, string(settings.DifficultyHard))
+		return next, "ハードコアのワールドなので、ハードコアを有効にして難易度をハードにします"
+	}
+
+	if !isTrue(current, keyHardcore) {
+		return next, ""
+	}
+	if level.HasDifficulty {
+		next = next.With(keyDifficulty, string(level.Difficulty))
+		return next, fmt.Sprintf(
+			"ハードコアを解除し、難易度をこのワールドの %s に戻します", level.Difficulty)
+	}
+	return next, "ハードコアを解除します（難易度はそのままです）"
+}
+
+// isTrue は .env の値が真かを返す。compose と同じく大文字小文字を問わない。
+func isTrue(snapshot port.ConfigSnapshot, key string) bool {
+	v, _ := snapshot.Get(key)
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "true", "1", "yes":
+		return true
+	default:
+		return false
+	}
 }
 
 // currentLevel は .env の MC_LEVEL を読む。

@@ -98,6 +98,9 @@ func (f *fakeLevels) ReadWorld(context.Context, world.Name) shared.WorldVersion 
 }
 
 func (f *fakeLevels) Read(context.Context, io.Reader) shared.WorldVersion { return f.version }
+func (f *fakeLevels) ReadSettings(context.Context, world.Name) port.LevelSettings {
+	return port.LevelSettings{}
+}
 
 func newStatusUseCase(t *testing.T, rt *fakeRuntime, console *fakeConsole) *serverctl.StatusUseCase {
 	t.Helper()

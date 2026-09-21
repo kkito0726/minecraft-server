@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/server"
+	"github.com/kkito0726/minecraft-server/backend/internal/domain/settings"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/shared"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 )
@@ -113,6 +114,21 @@ type LevelReader interface {
 	ReadWorld(ctx context.Context, name world.Name) shared.WorldVersion
 	// Read は任意の入力から読む。アーカイブ内の level.dat に使う。
 	Read(ctx context.Context, r io.Reader) shared.WorldVersion
+	// ReadSettings は data/<名前>/level.dat に焼かれた設定を読む。
+	// 読めなかった項目は Has* が偽になる。エラーは返さない。
+	ReadSettings(ctx context.Context, name world.Name) LevelSettings
+}
+
+// LevelSettings はワールドの level.dat に焼かれた設定。
+//
+// .env の MC_HARDCORE はサーバー全体の値だが、ハードコアかどうかは本来
+// ワールドが持っている。切り替えのたびにここから .env を合わせることで、
+// 設定がワールドに付いてくるようにする。新しい保存先は作らない。
+type LevelSettings struct {
+	Hardcore      bool
+	HasHardcore   bool
+	Difficulty    settings.Difficulty
+	HasDifficulty bool
 }
 
 // Clock は現在時刻。テストで固定するために抽象化する。

@@ -17,6 +17,8 @@ export type TestServer = {
 export type StartOptions = {
   readyDelaySeconds?: number
   worlds?: string[]
+  /** level.dat にハードコアの印を立てるワールド。 */
+  hardcoreWorlds?: string[]
 }
 
 /**

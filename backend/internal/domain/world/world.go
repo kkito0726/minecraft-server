@@ -14,6 +14,8 @@ type World struct {
 	lastPlayed  time.Time
 	version     shared.WorldVersion
 	sessionLock bool
+	// hardcore は level.dat に焼かれたハードコアの印。読めなければ偽。
+	hardcore bool
 }
 
 // NewWorld はワールドを作る。
@@ -53,6 +55,21 @@ func (w World) Version() shared.WorldVersion { return w.version }
 // HasSessionLock は session.lock が残っているかを返す。
 // 停止時に消えないため、これ自体は異常ではない。
 func (w World) HasSessionLock() bool { return w.sessionLock }
+
+// IsHardcore は level.dat に焼かれたハードコアの印を返す。
+//
+// .env の MC_HARDCORE とは別物。こちらはワールド自身が持っている値で、
+// 切り替えたときに .env をこれに合わせる。
+func (w World) IsHardcore() bool { return w.hardcore }
+
+// WithHardcore はハードコアの印を付けた複製を返す。
+//
+// 一覧の組み立て（ディレクトリを読む層）と level.dat の設定を読む層が
+// 別なので、後から足せるようにしてある。元の値は変えない。
+func (w World) WithHardcore(hardcore bool) World {
+	w.hardcore = hardcore
+	return w
+}
 
 // CanDelete は削除してよいかを返す。
 //

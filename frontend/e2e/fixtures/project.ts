@@ -1,6 +1,7 @@
-import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { gunzipSync, gzipSync } from 'node:zlib'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -26,6 +27,25 @@ export type ProjectOptions = {
   readyDelaySeconds?: number
   /** 最初から置いておくワールド。先頭が MC_LEVEL になる。 */
   worlds?: string[]
+  /** level.dat にハードコアの印を立てるワールド。 */
+  hardcoreWorlds?: string[]
+}
+
+/**
+ * 実物の level.dat のハードコアの印を立てたもの。
+ *
+ * NBT を組み立て直すのではなく、実物の 1 バイトだけを書き換える。
+ * 26.x では Data.difficulty_settings.hardcore（TAG_Byte）にあり、
+ * 名前の直後の 1 バイトが値。構造は本物のまま通したい。
+ */
+function hardcoreLevelDat(): Buffer {
+  const raw = gunzipSync(readFileSync(LEVEL_DAT))
+  const at = raw.indexOf('hardcore')
+  if (at < 0) {
+    throw new Error('level.dat に hardcore が見つからない')
+  }
+  raw[at + 'hardcore'.length] = 1
+  return gzipSync(raw)
 }
 
 /**
@@ -44,9 +64,15 @@ export function createProject(opts: ProjectOptions) {
   writeFileSync(join(dir, 'data/bukkit.yml'), 'settings:\n  allow-end: true\n')
   writeFileSync(join(dir, 'data/spigot.yml'), 'world-settings:\n  default:\n    view-distance: 6\n')
 
+  const hardcore = new Set(opts.hardcoreWorlds ?? [])
   for (const name of worlds) {
     mkdirSync(join(dir, 'data', name), { recursive: true })
-    copyFileSync(LEVEL_DAT, join(dir, 'data', name, 'level.dat'))
+    const target = join(dir, 'data', name, 'level.dat')
+    if (hardcore.has(name)) {
+      writeFileSync(target, hardcoreLevelDat())
+    } else {
+      copyFileSync(LEVEL_DAT, target)
+    }
     writeFileSync(join(dir, 'data', name, 'session.lock'), '')
   }
 
@@ -64,6 +90,14 @@ export function createProject(opts: ProjectOptions) {
       '# E2E が生成したもの。日本語のコメントを残せるかも同時に確かめる。',
       'MC_VERSION=26.2',
       `MC_LEVEL=${worlds[0]}`,
+      // ハードコアのワールドを置くときだけ書く。設定画面の試験は、これらの
+      // キーが無い状態から行が追記されることも確かめているので、既定では置かない。
+      ...(hardcore.size > 0
+        ? [
+            `MC_HARDCORE=${hardcore.has(worlds[0] ?? '') ? 'TRUE' : 'FALSE'}`,
+            `MC_DIFFICULTY=${hardcore.has(worlds[0] ?? '') ? 'hard' : 'normal'}`,
+          ]
+        : []),
       'MC_SEED=',
       'MC_MOTD="§aE2E のサーバー"',
       `ADMIN_TOKEN=${TOKEN}`,

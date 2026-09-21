@@ -224,3 +224,127 @@ func zlibCompress(t *testing.T, b []byte) []byte {
 	}
 	return buf.Bytes()
 }
+
+// --- ハードコアと難易度 ---
+
+// nbtName は TAG の名前（長さ 2 バイト + 本体）。
+func nbtName(s string) []byte { return append([]byte{0x00, byte(len(s))}, s...) }
+
+func nbtByte(name string, v byte) []byte {
+	return append(append([]byte{0x01}, nbtName(name)...), v)
+}
+
+func nbtString(name, v string) []byte {
+	out := append([]byte{0x08}, nbtName(name)...)
+	return append(append(out, 0x00, byte(len(v))), v...)
+}
+
+func nbtCompound(name string, body ...[]byte) []byte {
+	out := append([]byte{0x0a}, nbtName(name)...)
+	for _, b := range body {
+		out = append(out, b...)
+	}
+	return append(out, 0x00)
+}
+
+// levelDat は Data だけを持つルートを作る。
+func levelDat(data ...[]byte) []byte {
+	return nbtCompound("", nbtCompound("Data", data...))
+}
+
+// 26.x の実物では、ハードコアと難易度は Data.difficulty_settings の中にあり、
+// 難易度は文字列になっている。
+func TestReadRealLevelDatSettings(t *testing.T) {
+	t.Parallel()
+
+	info, err := leveldat.ReadFile(filepath.Join("testdata", "level.dat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.HasHardcore || info.Hardcore {
+		t.Errorf("ハードコアが has=%v value=%v。読めて偽のはず", info.HasHardcore, info.Hardcore)
+	}
+	if !info.HasDifficulty || info.Difficulty != "normal" {
+		t.Errorf("難易度が has=%v value=%q", info.HasDifficulty, info.Difficulty)
+	}
+}
+
+// それより前の版では Data 直下にあり、難易度は 0〜3 のバイト。
+func TestReadLegacySettings(t *testing.T) {
+	t.Parallel()
+
+	info, err := leveldat.Read(bytes.NewReader(levelDat(
+		nbtByte("hardcore", 1),
+		nbtByte("Difficulty", 3),
+	)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.HasHardcore || !info.Hardcore {
+		t.Errorf("ハードコアが has=%v value=%v", info.HasHardcore, info.Hardcore)
+	}
+	if info.Difficulty != "hard" {
+		t.Errorf("難易度が %q", info.Difficulty)
+	}
+}
+
+// 両方あれば新しい形式を正とする。版を上げたワールドには古い欄が
+// 残っていることがあり、そちらは更新されない。
+func TestReadNewFormatWinsOverLegacy(t *testing.T) {
+	t.Parallel()
+
+	for name, data := range map[string][][]byte{
+		"古い欄が先": {
+			nbtByte("hardcore", 0),
+			nbtByte("Difficulty", 0),
+			nbtCompound("difficulty_settings", nbtByte("hardcore", 1), nbtString("difficulty", "easy")),
+		},
+		"新しい欄が先": {
+			nbtCompound("difficulty_settings", nbtByte("hardcore", 1), nbtString("difficulty", "easy")),
+			nbtByte("hardcore", 0),
+			nbtByte("Difficulty", 0),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			info, err := leveldat.Read(bytes.NewReader(levelDat(data...)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !info.Hardcore {
+				t.Error("新しい形式のハードコアが負けている")
+			}
+			if info.Difficulty != "easy" {
+				t.Errorf("難易度が %q", info.Difficulty)
+			}
+		})
+	}
+}
+
+// 欄が無ければ「分からない」。偽と区別できないと、読めなかっただけの
+// ハードコアのワールドを普通のワールドとして扱ってしまう。
+func TestReadWithoutSettings(t *testing.T) {
+	t.Parallel()
+
+	info, err := leveldat.Read(bytes.NewReader(levelDat(nbtString("LevelName", "x"))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.HasHardcore || info.HasDifficulty {
+		t.Errorf("無い欄が読めたことになっている: %+v", info)
+	}
+}
+
+// 範囲外の古い難易度は読まない。
+func TestReadLegacyDifficultyOutOfRange(t *testing.T) {
+	t.Parallel()
+
+	info, err := leveldat.Read(bytes.NewReader(levelDat(nbtByte("Difficulty", 9))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.HasDifficulty {
+		t.Errorf("範囲外の難易度 %q を読んでいる", info.Difficulty)
+	}
+}

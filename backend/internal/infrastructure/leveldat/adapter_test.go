@@ -3,9 +3,12 @@ package leveldat_test
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/kkito0726/minecraft-server/backend/internal/domain/settings"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/leveldat"
 )
@@ -108,5 +111,40 @@ func TestAdapterTreatsZeroDataVersionAsUnreadable(t *testing.T) {
 
 	if got.Readable() {
 		t.Error("DataVersion が無いのに読めた扱いになっている")
+	}
+}
+
+// 読めなければ何も分からないとして返す。呼ぶ側はそれを見て .env に触らない。
+func TestAdapterReadSettingsMissing(t *testing.T) {
+	t.Parallel()
+
+	got := leveldat.NewAdapter("testdata").ReadSettings(context.Background(), name(t, "nonexistent"))
+	if got.HasHardcore || got.HasDifficulty {
+		t.Errorf("存在しないワールドの設定が読めたことになっている: %+v", got)
+	}
+}
+
+// 実物の level.dat を data/<名前>/level.dat に置いて読む。
+func TestAdapterReadSettings(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	src, err := os.ReadFile(filepath.Join("testdata", "level.dat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dataDir, "world"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataDir, "world", "level.dat"), src, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got := leveldat.NewAdapter(dataDir).ReadSettings(context.Background(), name(t, "world"))
+	if !got.HasHardcore || got.Hardcore {
+		t.Errorf("ハードコアが %+v", got)
+	}
+	if !got.HasDifficulty || got.Difficulty != settings.DifficultyNormal {
+		t.Errorf("難易度が %+v", got)
 	}
 }

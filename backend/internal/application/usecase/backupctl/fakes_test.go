@@ -444,6 +444,9 @@ type fakeLevels struct {
 
 func (f *fakeLevels) ReadWorld(context.Context, world.Name) shared.WorldVersion { return f.version }
 func (f *fakeLevels) Read(context.Context, io.Reader) shared.WorldVersion       { return f.version }
+func (f *fakeLevels) ReadSettings(context.Context, world.Name) port.LevelSettings {
+	return port.LevelSettings{}
+}
 
 // fakeLock は排他の偽物。save-off の記録がいつ切り替わったかを覚える。
 //

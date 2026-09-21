@@ -170,6 +170,27 @@ describe('切替', () => {
   })
 })
 
+describe('ハードコアの印', () => {
+  // 切り替えるとサーバーもハードコアになる。押す前に分かるようにする。
+  it('ハードコアのワールドにだけ印が付く', async () => {
+    listWorlds.mockResolvedValue(
+      worlds({
+        worlds: [
+          { name: 'world', active: true, sizeBytes: 1n },
+          { name: 'hardmode', active: false, sizeBytes: 1n, hardcore: true },
+        ],
+      }),
+    )
+    renderPage()
+
+    const hardRow = await screen.findByRole('row', { name: /hardmode/ })
+    expect(within(hardRow).getByText('ハードコア')).toBeInTheDocument()
+
+    const normalRow = screen.getByRole('row', { name: /^world/ })
+    expect(within(normalRow).queryByText('ハードコア')).not.toBeInTheDocument()
+  })
+})
+
 describe('新規作成', () => {
   it('名前の規則を満たすまで実行できない', async () => {
     listWorlds.mockResolvedValue(worlds())

@@ -41,8 +41,11 @@ type World struct {
 	Version    *WorldVersion          `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`
 	// session.lock が残っているか。停止時に消えないため、これ自体は異常ではない。
 	HasSessionLock bool `protobuf:"varint,6,opt,name=has_session_lock,json=hasSessionLock,proto3" json:"has_session_lock,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// level.dat に焼かれたハードコアの印。切り替えるとサーバーもハードコアになる。
+	// 読めなければ偽。
+	Hardcore      bool `protobuf:"varint,7,opt,name=hardcore,proto3" json:"hardcore,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *World) Reset() {
@@ -113,6 +116,13 @@ func (x *World) GetVersion() *WorldVersion {
 func (x *World) GetHasSessionLock() bool {
 	if x != nil {
 		return x.HasSessionLock
+	}
+	return false
+}
+
+func (x *World) GetHardcore() bool {
+	if x != nil {
+		return x.Hardcore
 	}
 	return false
 }
@@ -906,7 +916,7 @@ var File_mcadmin_v1_world_proto protoreflect.FileDescriptor
 const file_mcadmin_v1_world_proto_rawDesc = "" +
 	"\n" +
 	"\x16mcadmin/v1/world.proto\x12\n" +
-	"mcadmin.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17mcadmin/v1/common.proto\x1a\x1amcadmin/v1/operation.proto\x1a\x17mcadmin/v1/server.proto\"\xed\x01\n" +
+	"mcadmin.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17mcadmin/v1/common.proto\x1a\x1amcadmin/v1/operation.proto\x1a\x17mcadmin/v1/server.proto\"\x89\x02\n" +
 	"\x05World\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x1d\n" +
@@ -915,7 +925,8 @@ const file_mcadmin_v1_world_proto_rawDesc = "" +
 	"\vlast_played\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"lastPlayed\x122\n" +
 	"\aversion\x18\x05 \x01(\v2\x18.mcadmin.v1.WorldVersionR\aversion\x12(\n" +
-	"\x10has_session_lock\x18\x06 \x01(\bR\x0ehasSessionLock\"\xcc\x01\n" +
+	"\x10has_session_lock\x18\x06 \x01(\bR\x0ehasSessionLock\x12\x1a\n" +
+	"\bhardcore\x18\a \x01(\bR\bhardcore\"\xcc\x01\n" +
 	"\n" +
 	"Quarantine\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12%\n" +

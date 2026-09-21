@@ -270,7 +270,15 @@ func (f *fakeWorlds) has(name string) bool {
 }
 
 // fakeLevels は level.dat の読み取りの偽物。
-type fakeLevels struct{ version shared.WorldVersion }
+type fakeLevels struct {
+	version shared.WorldVersion
+	// settings はワールド名ごとの level.dat の設定。無ければ「読めない」。
+	settings map[string]port.LevelSettings
+}
+
+func (f *fakeLevels) ReadSettings(_ context.Context, name world.Name) port.LevelSettings {
+	return f.settings[name.String()]
+}
 
 func (f *fakeLevels) ReadWorld(context.Context, world.Name) shared.WorldVersion { return f.version }
 func (f *fakeLevels) Read(context.Context, io.Reader) shared.WorldVersion       { return f.version }

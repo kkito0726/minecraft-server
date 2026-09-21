@@ -58,6 +58,8 @@ function WorldRow({ world, disabled, onSwitch, onClone, onRename, onDelete }: Wo
           />
           <span className="font-semibold text-fg">{world.name}</span>
           {world.active && <Badge tone="ok">稼働中</Badge>}
+          {/* level.dat に焼かれた印。切り替えるとサーバーもハードコアになる。 */}
+          {world.hardcore && <Badge tone="danger">ハードコア</Badge>}
         </div>
       </td>
       <td>{formatWorldVersion(world.version)}</td>
