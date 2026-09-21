@@ -33,15 +33,38 @@
 
 ### 1. バイナリを用意する
 
-Pi 5（arm64）向けはクロスビルドできる。ホストに Go と Node が要るのはここだけで、
-Pi 側には何も入れなくてよい。
+タグ（`v*`）を打つと GitHub Actions が Release を作り、`linux/arm64` と
+`linux/amd64` のバイナリを添える。Pi の上で落とすのが既定の経路で、
+**Pi 側に Go も Node も要らない。**
 
 ```bash
-make build-arm64          # mcadmind-arm64 ができる
-scp mcadmind-arm64 pi@<Tailscale のホスト名>:~/minecraft-server/
+cd ~/minecraft-server
+./deploy/download.sh      # uname を見て資産を選び、SHA256SUMS で検証して置く
 ```
 
+版を固定したいときは `--tag v1.0.0`。切り戻しも同じ形でできる。
+
+`download.sh` は `uname -s` / `uname -m` から `mcadmind-<os>-<arch>` を選ぶ。
+配っているのは Linux の arm64 と amd64 だけで、macOS 向けは無い
+（開発機で動かすだけなら次の `make build` がある）。32bit の Raspberry Pi OS は
+arm64 のバイナリを掴ませず、理由を出して止まる。
+
+URL を直に叩くなら、検証まで含めてこうなる（`<arch>` は `arm64` か `amd64`）。
+
+```bash
+curl -fsSLO https://github.com/kkito0726/minecraft-server/releases/latest/download/mcadmind-linux-<arch>
+curl -fsSLO https://github.com/kkito0726/minecraft-server/releases/latest/download/SHA256SUMS
+sha256sum --ignore-missing -c SHA256SUMS
+```
+
+`curl` で落ちてくるファイルは 644 だが、`install.sh` が `install -m 0755` する
+ので直さなくてよい。
+
 同じ機械でビルドして同じ機械で動かすなら `make build` でよい。
+
+タグを打つ前の変更を実機で試したい場合や、Pi が GitHub へ出られない場合は、
+手元でクロスビルドして `scp` で送る手順が
+[build-from-source.md](build-from-source.md) にある。
 
 ### 2. トークンを決める
 
@@ -340,8 +363,9 @@ MOTD には `§` の色コードを使えるが、`"`・`$`・`` ` ``・`\` と�
 `openssl rand -hex 32` の出力を `.env` に書く。
 
 **画面が白い**
-フロントエンドが埋め込まれていない。`make build`（または `make build-arm64`）で
-作り直したバイナリを置き直す。
+フロントエンドが埋め込まれていない。`./deploy/download.sh` で落とし直す。
+Release のバイナリは埋め込みを CI で検証しているので、これで直らないなら
+手元でビルドしたものが入っている（`make build` / `make build-arm64` で作り直す）。
 
 **`docker` が見つからない**
 systemd 配下では PATH が最小限になる。`.env` の `ADMIN_DOCKER_BIN` に

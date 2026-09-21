@@ -243,13 +243,17 @@ make build                              # 開発機で動かすなら
 ./mcadmind -project-dir .
 ```
 
-Pi 5 へ置く場合はクロスビルドして systemd に登録します。**Pi 側に Go も Node も要りません。**
+Pi 5 へ置く場合は、タグを打つと GitHub Actions が Release に載せるバイナリを
+Pi の上で落として systemd に登録します。**Pi 側に Go も Node も要りません。**
 
 ```bash
-make build-arm64
-scp mcadmind-arm64 pi@<Tailscale のホスト名>:~/minecraft-server/
+cd ~/minecraft-server
+./deploy/download.sh                    # この機械に合う版を選んで検証して置く
 sudo deploy/install.sh --project-dir ~/minecraft-server
 ```
+
+更新も同じ 2 つのコマンドです。詳しくは [docs/admin-console.md](docs/admin-console.md)、
+手元でビルドして `scp` で送る手順は [docs/build-from-source.md](docs/build-from-source.md) にあります。
 
 ブラウザで `http://<Tailscale のホスト名>:8787` を開き、初回だけトークンを入力します。
 
@@ -344,5 +348,6 @@ docker run --rm --network host itzg/mc-monitor status --host host.docker.interna
 **管理コンソールが開けない / 起動直後に落ちる**
 `journalctl -u mcadmind -e` を確認します。`ADMIN_TOKEN` が未設定か 32 文字未満なのが
 最も多い原因です。画面が白い場合はフロントエンドが埋め込まれていないので、
-`make build-arm64` で作り直したバイナリを置き直してください。
+`./deploy/download.sh` で落とし直してください（Release のバイナリは埋め込みを
+CI で検証しています）。手元でビルドしたものなら `make build-arm64` で作り直します。
 詳しくは [docs/admin-console.md](docs/admin-console.md) の「困ったとき」へ。

@@ -61,17 +61,35 @@ curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8787/   # 手元か�
 
 最後の `curl` が 200 を返すのに URL で開けないなら、原因は serve 側にある。
 
-**バイナリを作り直したら置き直す。** `make build` はフロントエンドを
-Go のバイナリへ埋め込む。埋め込みが古いと、画面だけが古いまま動く。
+**新しい版を出したら置き直す。** フロントエンドは Go のバイナリへ
+埋め込んである。埋め込みが古いと、画面だけが古いまま動く。
+
+開発機でタグを打つと、GitHub Actions が Release にバイナリを載せる。
+Pi 側はそれを落として置き直すだけ。
 
 ```bash
-make build-arm64                                  # Pi 向け
-scp mcadmind-arm64 pi@<host>:~/minecraft-server/
-sudo deploy/install.sh --project-dir ~/minecraft-server   # 置き直し
+cd ~/minecraft-server
+git pull                                          # compose.yaml と deploy/ の変更を拾う
+./deploy/download.sh                              # 既定は最新の安定版（--tag で固定）
+sudo deploy/install.sh --project-dir ~/minecraft-server
+mcadmind -version                                 # 入れ替わったか確かめる
 ```
 
 `install.sh` は動いているサービスを止めてから置き換える
 （動いているバイナリを上書きすると `text file busy` になる）。
+**画面で操作が走っていないことを確かめてから実行する。**
+バックアップや復元の途中で止めると、その操作は中断される。
+
+切り戻しは版を指定して同じことをする。
+
+```bash
+./deploy/download.sh --tag v1.0.0
+sudo deploy/install.sh --project-dir ~/minecraft-server
+```
+
+手元でビルドしたものを送る場合は
+[build-from-source.md](build-from-source.md) を見る。`--binary` を省くと
+前に落とした方が入るという落とし穴がある。
 
 ---
 
@@ -138,8 +156,9 @@ openssl rand -hex 32    # 出力を .env の ADMIN_TOKEN に書く
 
 ### 画面が白い
 
-フロントエンドが埋め込まれていない。`make build`（または
-`make build-arm64`）で作り直したバイナリを置き直す。
+フロントエンドが埋め込まれていない。`./deploy/download.sh` で落とし直す。
+Release のバイナリは埋め込みを CI で検証しているので、これで直らないなら
+手元でビルドしたものが入っている（`make build` / `make build-arm64` で作り直す）。
 
 ### 想定外のエラーが出た
 
