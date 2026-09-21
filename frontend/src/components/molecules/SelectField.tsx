@@ -18,7 +18,7 @@ export type SelectFieldProps = {
 }
 
 const SELECT_CLASS = [
-  'w-full border px-2.5 py-2 text-sm text-fg',
+  'w-full border px-2.5 py-2 text-base text-fg sm:text-sm',
   'shadow-[inset_0_2px_0_0_oklch(0_0_0/0.45)] transition-[border-color,background-color] duration-150',
   'focus-visible:border-emerald focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-diamond',
   'disabled:cursor-not-allowed disabled:opacity-50',

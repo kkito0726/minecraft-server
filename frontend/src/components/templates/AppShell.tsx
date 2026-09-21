@@ -7,7 +7,8 @@ import type { ReactNode } from 'react'
  * ナビゲーションの中身も進捗バナーも、呼び出し側が差し込む。
  *
  * 広い画面では左に縦のナビゲーションを固定し、狭い画面では
- * 上に横並びで出す。切り替えは CSS だけで行い、ナビゲーションの
+ * 上に横並びで出す。スマホの幅ではリンクを等分したタブにして、
+ * 横スクロールせずに全部が見えるようにする。切り替えは CSS だけで行い、ナビゲーションの
  * リンクは画面幅にかかわらず常に描画する。
  */
 export type AppShellProps = {
@@ -32,7 +33,7 @@ export function AppShell({ brand, nav, status, banner, footer, children }: AppSh
     <div className="flex min-h-full flex-col lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
       <aside className="flex flex-col border-b border-line bg-panel/80 backdrop-blur lg:sticky lg:top-0 lg:h-dvh lg:self-start lg:border-r lg:border-b-0">
         <div className="px-4 pt-4 pb-3 lg:px-5 lg:pt-7 lg:pb-8">{brand}</div>
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible lg:pb-0">
+        <nav className="grid auto-cols-[minmax(0,1fr)] grid-flow-col gap-1 px-2 pb-2 sm:flex sm:overflow-x-auto sm:px-3 sm:pb-3 lg:flex-col lg:overflow-visible lg:pb-0">
           {nav}
         </nav>
         {footer && <div className="mt-auto hidden px-5 py-6 lg:block">{footer}</div>}

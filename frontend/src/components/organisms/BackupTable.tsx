@@ -89,11 +89,17 @@ function BackupRow({
       <td>
         <code className="code-chip">{backup.id}</code>
       </td>
-      <td>{formatWorldVersion(backup.version)}</td>
-      <td className="text-fg">{backup.archiveLevel || '不明'}</td>
-      <td className="whitespace-nowrap">{formatBytes(backup.sizeBytes)}</td>
-      <td className="whitespace-nowrap">{formatDateTime(backup.createdAt?.seconds) || '—'}</td>
-      <td>
+      <td data-label="バージョン">{formatWorldVersion(backup.version)}</td>
+      <td data-label="ワールド" className="text-fg">
+        {backup.archiveLevel || '不明'}
+      </td>
+      <td data-label="大きさ" className="sm:whitespace-nowrap">
+        {formatBytes(backup.sizeBytes)}
+      </td>
+      <td data-label="取得日時" className="sm:whitespace-nowrap">
+        {formatDateTime(backup.createdAt?.seconds) || '—'}
+      </td>
+      <td data-cell="actions">
         <RowActions
           backup={backup}
           disabled={disabled}
@@ -118,7 +124,7 @@ function RowActions({
   onAskDelete,
 }: BackupRowProps) {
   return (
-    <div className="flex gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
       <Button size="sm" disabled={disabled} onClick={() => onRestore(backup.id)}>
         復元
       </Button>

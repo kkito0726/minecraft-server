@@ -62,11 +62,15 @@ function WorldRow({ world, disabled, onSwitch, onClone, onRename, onDelete }: Wo
           {world.hardcore && <Badge tone="danger">ハードコア</Badge>}
         </div>
       </td>
-      <td>{formatWorldVersion(world.version)}</td>
-      <td className="whitespace-nowrap">{formatBytes(world.sizeBytes)}</td>
-      <td className="whitespace-nowrap">{formatDateTime(world.lastPlayed?.seconds) || '—'}</td>
-      <td>
-        <div className="flex gap-1.5">
+      <td data-label="バージョン">{formatWorldVersion(world.version)}</td>
+      <td data-label="大きさ" className="sm:whitespace-nowrap">
+        {formatBytes(world.sizeBytes)}
+      </td>
+      <td data-label="最終プレイ" className="sm:whitespace-nowrap">
+        {formatDateTime(world.lastPlayed?.seconds) || '—'}
+      </td>
+      <td data-cell="actions">
+        <div className="flex flex-wrap gap-1.5">
           {!world.active && (
             <Button size="sm" disabled={disabled} onClick={() => onSwitch(world.name)}>
               切替

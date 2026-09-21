@@ -103,6 +103,14 @@
   }
 
   /*
+    どこかがはみ出しても、ページ全体が横にずれないようにする最後の砦。
+    clip はスクロール領域を作らないので、ヘッダーの sticky は効いたまま。
+  */
+  #root {
+    overflow-x: clip;
+  }
+
+  /*
     地の模様は html に敷く。body に敷くと、画面より長い内容のときに
     body の外側だけ模様が途切れる。
   */
@@ -555,6 +563,68 @@
     box-shadow: inset 3px 0 0 var(--color-emerald);
   }
 
+  /*
+    狭い画面では 1 行を 1 枚のカードに組み直す。列を横に並べたままだと
+    枠の中で横スクロールになり、ファイル名が 1 文字ずつ折り返す。
+    見出しの行は読み上げ用に残し、各セルの data-label を項目名として出す。
+    先頭のセル（名前）と操作のセルは全幅、残りは 2 列に並べる。
+  */
+  @media (width < 40rem) {
+    .hud-table,
+    .hud-table tbody {
+      display: block;
+    }
+    .hud-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .hud-table tbody tr {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.6rem 1rem;
+      padding: 0.85rem 0.9rem;
+      border-top: 1px solid var(--color-line);
+    }
+    .hud-table tbody tr:last-child {
+      border-bottom: 1px solid var(--color-line);
+    }
+    .hud-table tbody tr[data-active] {
+      box-shadow: inset 3px 0 0 var(--color-emerald);
+    }
+    .hud-table tbody tr[data-active] td:first-child {
+      box-shadow: none;
+    }
+    .hud-table tbody td {
+      display: block;
+      min-width: 0;
+      padding: 0;
+      border-bottom: 0;
+      overflow-wrap: anywhere;
+    }
+    .hud-table tbody td:first-child,
+    .hud-table tbody td[data-cell='actions'] {
+      grid-column: 1 / -1;
+    }
+    .hud-table tbody td[data-cell='actions'] {
+      padding-top: 0.25rem;
+    }
+    .hud-table tbody td[data-label]::before {
+      content: attr(data-label);
+      /* 見出しの行が読み上げるので、ここは読ませない */
+      content: attr(data-label) / '';
+      display: block;
+      margin-bottom: 0.15rem;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: var(--color-faint);
+    }
+  }
+
   /* ---------- 状態の表示 ---------- */
 
   .stat-grid {
@@ -697,6 +767,22 @@
     }
     .nav-code {
       display: none;
+    }
+  }
+
+  /*
+    スマホの幅ではタブのように等分して、アイコンの下に名前を置く。
+    横に並べたままだと端のリンクが画面の外に隠れ、スクロールしないと見えない。
+    「バックアップ」が 320px の画面でも 1 行に収まるよう、文字は画面幅に合わせて縮める。
+  */
+  @media (width < 40rem) {
+    .nav-item {
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.3rem;
+      padding: 0.5rem 0.125rem;
+      font-size: min(0.6875rem, 2.75vw);
+      letter-spacing: 0;
     }
   }
 
