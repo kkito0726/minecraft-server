@@ -11,10 +11,12 @@ import type { Transport } from '@connectrpc/connect'
 import { BackupService } from '../gen/mcadmin/v1/backup_pb'
 import { OperationService } from '../gen/mcadmin/v1/operation_pb'
 import { ServerService } from '../gen/mcadmin/v1/server_pb'
+import { SystemService } from '../gen/mcadmin/v1/system_pb'
 import { WorldService } from '../gen/mcadmin/v1/world_pb'
 import { backupImpl } from './backupService'
 import { operationImpl } from './operationService'
 import { serverImpl } from './serverService'
+import { systemImpl } from './systemService'
 import { worldImpl } from './worldService'
 
 export function createDemoTransport(): Transport {
@@ -23,5 +25,6 @@ export function createDemoTransport(): Transport {
     router.service(WorldService, worldImpl)
     router.service(BackupService, backupImpl)
     router.service(OperationService, operationImpl)
+    router.service(SystemService, systemImpl)
   })
 }
