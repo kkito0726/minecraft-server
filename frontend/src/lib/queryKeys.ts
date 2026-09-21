@@ -14,6 +14,8 @@ export const queryKeys = {
   preflight: ['preflight'] as const,
   /** .env のゲーム設定。 */
   gameSettings: ['gameSettings'] as const,
+  /** ホストの資源の使用状況。操作の前後ではなく時間で変わるので、無効化の対象には入れない。 */
+  systemMetrics: ['systemMetrics'] as const,
 }
 
 /**

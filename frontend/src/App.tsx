@@ -19,6 +19,7 @@ import { BackupsPage } from './pages/BackupsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { WorldsPage } from './pages/WorldsPage'
 import { ServerPage } from './pages/ServerPage'
+import { SystemPage } from './pages/SystemPage'
 
 type NavEntry = {
   to: string
@@ -30,9 +31,10 @@ type NavEntry = {
 
 const NAV: readonly NavEntry[] = [
   { to: '/', label: 'サーバー', code: 'SRV', icon: 'server' },
+  { to: '/settings', label: '設定', code: 'CFG', icon: 'settings' },
   { to: '/worlds', label: 'ワールド', code: 'WLD', icon: 'world' },
   { to: '/backups', label: 'バックアップ', code: 'BAK', icon: 'backup' },
-  { to: '/settings', label: '設定', code: 'CFG', icon: 'settings' },
+  { to: '/system', label: 'リソース', code: 'RES', icon: 'gauge' },
 ]
 
 /**
@@ -71,6 +73,7 @@ export function App() {
                 <Route path="/worlds" element={<WorldsPage />} />
                 <Route path="/backups" element={<BackupsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/system" element={<SystemPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppShell>

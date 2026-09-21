@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 名札（BrandMark）と同じ等角ブロック。svg を先に置き、読めない
+         ブラウザ（Safari の一部）のために ico も残す。どちらも public/ に
+         あるので、base が付くデモのビルドでも Vite が書き換える。 -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <meta name="theme-color" content="#08070d" />
     <title>Minecraft サーバー管理コンソール</title>
   </head>
   <body>

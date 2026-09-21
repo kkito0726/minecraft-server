@@ -4,11 +4,27 @@
  * 濃淡は 3 段（a: 塗り / b: 中間 / c: 暗部）、'.' は透明。
  * 色は描く側の currentColor に従うので、ここは形と濃淡だけを決める。
  */
-export type PixelIconName = 'block' | 'server' | 'world' | 'backup' | 'settings'
+export type PixelIconName = 'block' | 'server' | 'world' | 'backup' | 'settings' | 'gauge'
 
 export const SPRITE_SIZE = 12
 
 export const SPRITES: Record<PixelIconName, readonly string[]> = {
+  // 3 本の棒グラフ。左から順に高くして「計器」だと分かる形にする。
+  gauge: [
+    '............',
+    '........aaa.',
+    '........abb.',
+    '........abb.',
+    '....aaa.abb.',
+    '....abb.abb.',
+    '....abb.abb.',
+    'aaa.abb.abb.',
+    'abb.abb.abb.',
+    'abb.abb.abb.',
+    'abb.abb.abb.',
+    'cccccccccccc',
+  ],
+
   // 等角のブロック。上面・左面・右面の 3 面で立体に見せる。
   block: [
     '.....aa.....',
