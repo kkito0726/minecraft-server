@@ -7,5 +7,5 @@ export {
   worldNameError,
   worldNameSchema,
 } from './schema'
-export { usePurgeQuarantine, useWorldCommand, useWorlds } from './useWorlds'
+export { usePurgeQuarantine, useVersions, useWorldCommand, useWorlds } from './useWorlds'
 export type { WorldCommand } from './useWorlds'

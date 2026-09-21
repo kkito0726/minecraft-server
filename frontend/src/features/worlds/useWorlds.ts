@@ -2,10 +2,25 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 
 import type { Difficulty, GameMode } from '../../gen/mcadmin/v1/server_pb'
-import type { ListWorldsResponse } from '../../gen/mcadmin/v1/world_pb'
+import type { ListVersionsResponse, ListWorldsResponse } from '../../gen/mcadmin/v1/world_pb'
 import { queryKeys } from '../../lib/queryKeys'
 import { useOperation } from '../operations'
 import { worldClient } from './client'
+
+/**
+ * ワールドを作れる版の一覧。作成のダイアログを開いたときだけ読む。
+ *
+ * 一覧はバックエンドが Paper から取る。取れなくても失敗にはならず、
+ * catalogAvailable が偽で現在の版だけが返る。
+ */
+export function useVersions(): UseQueryResult<ListVersionsResponse> {
+  return useQuery({
+    queryKey: queryKeys.versions,
+    queryFn: () => worldClient.listVersions({}),
+    // Paper の一覧は数週間に一度しか変わらない。開くたびに問い合わせない。
+    staleTime: 10 * 60 * 1000,
+  })
+}
 
 export function useWorlds(): UseQueryResult<ListWorldsResponse> {
   return useQuery({
@@ -25,6 +40,7 @@ export type WorldCommand =
       mode: GameMode
       difficulty: Difficulty
       hardcore: boolean
+      version: string
     }
   | { kind: 'clone'; source: string; destination: string }
   | { kind: 'rename'; from: string; to: string }
@@ -41,6 +57,7 @@ async function run(command: WorldCommand) {
         mode: command.mode,
         difficulty: command.difficulty,
         hardcore: command.hardcore,
+        version: command.version,
       })
     case 'clone':
       return worldClient.cloneWorld({

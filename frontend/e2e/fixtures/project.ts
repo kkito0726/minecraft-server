@@ -29,22 +29,42 @@ export type ProjectOptions = {
   worlds?: string[]
   /** level.dat にハードコアの印を立てるワールド。 */
   hardcoreWorlds?: string[]
+  /**
+   * level.dat の版（Data.Version.Name）を書き換えるワールド。
+   * 実物の "26.2" と同じ 4 文字に限る（NBT の長さを変えずに済ませるため）。
+   */
+  worldVersions?: Record<string, string>
 }
 
 /**
- * 実物の level.dat のハードコアの印を立てたもの。
+ * 実物の level.dat を、必要なところだけ書き換えて返す。
  *
- * NBT を組み立て直すのではなく、実物の 1 バイトだけを書き換える。
- * 26.x では Data.difficulty_settings.hardcore（TAG_Byte）にあり、
- * 名前の直後の 1 バイトが値。構造は本物のまま通したい。
+ * NBT を組み立て直さず、実物のバイト列のまま通す。構造は本物のままで、
+ * 値だけを変えたい。
+ * - ハードコア: 26.x では Data.difficulty_settings.hardcore（TAG_Byte）。
+ *   名前の直後の 1 バイトが値
+ * - 版: Data.Version.Name（TAG_String）。"Name" と長さ 2 バイトの直後
  */
-function hardcoreLevelDat(): Buffer {
+function levelDatFor(opts: { hardcore: boolean; version?: string | undefined }): Buffer {
   const raw = gunzipSync(readFileSync(LEVEL_DAT))
-  const at = raw.indexOf('hardcore')
-  if (at < 0) {
-    throw new Error('level.dat に hardcore が見つからない')
+
+  if (opts.hardcore) {
+    const at = raw.indexOf('hardcore')
+    if (at < 0) {
+      throw new Error('level.dat に hardcore が見つからない')
+    }
+    raw[at + 'hardcore'.length] = 1
   }
-  raw[at + 'hardcore'.length] = 1
+
+  if (opts.version) {
+    const marker = Buffer.concat([Buffer.from('Name'), Buffer.from([0x00, 0x04])])
+    const at = raw.indexOf(marker)
+    if (at < 0 || opts.version.length !== 4) {
+      throw new Error('Version.Name を書き換えられない（4 文字の版に限る）')
+    }
+    raw.write(opts.version, at + marker.length, 'ascii')
+  }
+
   return gzipSync(raw)
 }
 
@@ -65,11 +85,12 @@ export function createProject(opts: ProjectOptions) {
   writeFileSync(join(dir, 'data/spigot.yml'), 'world-settings:\n  default:\n    view-distance: 6\n')
 
   const hardcore = new Set(opts.hardcoreWorlds ?? [])
+  const versions = opts.worldVersions ?? {}
   for (const name of worlds) {
     mkdirSync(join(dir, 'data', name), { recursive: true })
     const target = join(dir, 'data', name, 'level.dat')
-    if (hardcore.has(name)) {
-      writeFileSync(target, hardcoreLevelDat())
+    if (hardcore.has(name) || versions[name]) {
+      writeFileSync(target, levelDatFor({ hardcore: hardcore.has(name), version: versions[name] }))
     } else {
       copyFileSync(LEVEL_DAT, target)
     }
@@ -105,6 +126,9 @@ export function createProject(opts: ProjectOptions) {
       // LookPath に相対パスを渡すと解決できないことがあるので絶対パスにする
       `ADMIN_DOCKER_BIN=${FAKE_DOCKER}`,
       'ADMIN_BACKUP_DIR=backups',
+      // 版の一覧は繋がらない先にしておく。試験の結果を外の Paper の API の
+      // 状態（や CI のネットワーク）に左右させない。「一覧が取れない」経路に固定する。
+      'ADMIN_VERSION_CATALOG_URL=http://127.0.0.1:9/unreachable',
       '',
     ].join('\n'),
   )

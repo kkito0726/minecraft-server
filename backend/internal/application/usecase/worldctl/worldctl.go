@@ -52,6 +52,9 @@ type Config struct {
 	Config     port.ServerConfig
 	Levels     port.LevelReader
 	Operations *operations.Manager
+	// Catalog は作れる版の一覧。nil なら「一覧が分からない」として扱い、
+	// 作成では現在の版だけを許す。
+	Catalog port.VersionCatalog
 }
 
 // UseCase はワールドの操作。
@@ -94,6 +97,13 @@ func (u *UseCase) Switch(ctx context.Context, name string) (operations.Handle, e
 	exists, err := u.cfg.Worlds.Exists(ctx, target)
 	if err != nil {
 		return operations.Handle{}, err
+	}
+
+	// 切り替え先の版で起動できるかは、止める前に確かめる。
+	if level := u.cfg.Levels.ReadSettings(ctx, target); level.HasVersion {
+		if err := u.checkSwitchVersion(ctx, level.Version); err != nil {
+			return operations.Handle{}, err
+		}
 	}
 
 	return u.cfg.Operations.Start(ctx, operation.KindWorldSwitch, switchSteps(),
@@ -211,7 +221,34 @@ func (u *UseCase) setLevel(ctx context.Context, r operations.Reporter, name worl
 	if note != "" {
 		r.Logf(operation.LevelInfo, "%s", note)
 	}
+	updated, note = followVersion(snapshot, updated, level)
+	if note != "" {
+		r.Logf(operation.LevelWarn, "%s", note)
+	}
 	return u.cfg.Config.Save(ctx, updated)
+}
+
+// followVersion はサーバーの版を、切り替え先のワールドが最後に開かれた版に
+// 合わせる。
+//
+// 合わせないと、古いワールドは今の版で開かれて勝手に上がり（元に戻せない）、
+// 新しいワールドは古い版では開けずにサーバーが起動しない。
+//
+// 読めないとき（level.dat が無い、スナップショットで開いた）は触らない。
+func followVersion(
+	current, next port.ConfigSnapshot,
+	level port.LevelSettings,
+) (port.ConfigSnapshot, string) {
+	if !level.HasVersion {
+		return next, ""
+	}
+	before, _ := current.Get(keyVersion)
+	if strings.TrimSpace(before) == level.Version {
+		return next, ""
+	}
+	return next.With(keyVersion, level.Version), fmt.Sprintf(
+		"サーバーの版を %s から %s に切り替えます。遊ぶ人はクライアントを %s にしてください",
+		strings.TrimSpace(before), level.Version, level.Version)
 }
 
 // followWorld は切り替え先のワールドが持っている設定に .env を合わせる。

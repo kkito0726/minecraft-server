@@ -17,6 +17,7 @@ import (
 
 type harness struct {
 	levels  *fakeLevels
+	catalog *fakeCatalog
 	uc      *worldctl.UseCase
 	ops     *operations.Manager
 	rec     *recorder
@@ -53,17 +54,19 @@ func newHarness(t *testing.T, running bool, names ...string) *harness {
 		version:  shared.UnreadableWorldVersion(),
 		settings: map[string]port.LevelSettings{},
 	}
+	catalog := &fakeCatalog{versions: []string{"26.3", "26.2", "26.1.2", "1.21.4"}}
 	uc, err := worldctl.New(worldctl.Config{
 		Runtime: runtime, Console: console, Worlds: worlds, Config: config,
-		Levels: levels, Operations: mgr,
+		Levels: levels, Operations: mgr, Catalog: catalog,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return &harness{
-		levels: levels,
-		uc:     uc, ops: mgr, rec: rec, worlds: worlds,
+		levels:  levels,
+		catalog: catalog,
+		uc:      uc, ops: mgr, rec: rec, worlds: worlds,
 		config: config, runtime: runtime, con: console, lock: lock,
 	}
 }

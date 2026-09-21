@@ -8,6 +8,8 @@
 export const queryKeys = {
   status: ['status'] as const,
   worlds: ['worlds'] as const,
+  /** ワールドを作れる版の一覧（Paper）。 */
+  versions: ['versions'] as const,
   backups: ['backups'] as const,
   retention: ['retention'] as const,
   /** 復元の事前確認。バックアップの id を後ろに足して使う。 */

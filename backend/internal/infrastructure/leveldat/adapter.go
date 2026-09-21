@@ -43,6 +43,10 @@ func (a *Adapter) ReadSettings(_ context.Context, name world.Name) port.LevelSet
 		return port.LevelSettings{}
 	}
 	out := port.LevelSettings{Hardcore: info.Hardcore, HasHardcore: info.HasHardcore}
+	// スナップショットの名前は MC_VERSION に書いても Paper が起動しない。
+	if info.VersionName != "" && !info.Snapshot {
+		out.Version, out.HasVersion = info.VersionName, true
+	}
 	if info.HasDifficulty {
 		if d, err := settings.ParseDifficulty(info.Difficulty); err == nil {
 			out.Difficulty, out.HasDifficulty = d, true

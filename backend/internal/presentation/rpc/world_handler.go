@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"strings"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -60,6 +61,23 @@ func (h *WorldHandler) SwitchWorld(
 	}), nil
 }
 
+// ListVersions はワールドを作れる版の一覧を返す。
+func (h *WorldHandler) ListVersions(
+	ctx context.Context,
+	_ *connect.Request[mcadminv1.ListVersionsRequest],
+) (*connect.Response[mcadminv1.ListVersionsResponse], error) {
+	l, err := h.worlds.ListVersions(ctx)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&mcadminv1.ListVersionsResponse{
+		Versions:          l.Versions,
+		Current:           l.Current,
+		CatalogAvailable:  l.Available,
+		UnavailableReason: l.UnavailableReason,
+	}), nil
+}
+
 // CreateWorld は新しいワールドを作る。
 func (h *WorldHandler) CreateWorld(
 	ctx context.Context,
@@ -72,6 +90,7 @@ func (h *WorldHandler) CreateWorld(
 		Name:     req.Msg.GetName(),
 		Seed:     req.Msg.GetSeed(),
 		Hardcore: req.Msg.GetHardcore(),
+		Version:  strings.TrimSpace(req.Msg.GetVersion()),
 	}
 	if m := req.Msg.GetMode(); m != mcadminv1.GameMode_GAME_MODE_UNSPECIFIED {
 		mode, err := gameModeFromProto(m)

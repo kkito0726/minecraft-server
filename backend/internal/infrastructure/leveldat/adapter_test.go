@@ -147,4 +147,8 @@ func TestAdapterReadSettings(t *testing.T) {
 	if !got.HasDifficulty || got.Difficulty != settings.DifficultyNormal {
 		t.Errorf("難易度が %+v", got)
 	}
+	// 切り替え時に MC_VERSION をこれに合わせる。
+	if !got.HasVersion || got.Version != "26.2" {
+		t.Errorf("版が %+v", got)
+	}
 }

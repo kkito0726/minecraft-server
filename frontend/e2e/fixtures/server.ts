@@ -19,6 +19,8 @@ export type StartOptions = {
   worlds?: string[]
   /** level.dat にハードコアの印を立てるワールド。 */
   hardcoreWorlds?: string[]
+  /** level.dat の版を書き換えるワールド。 */
+  worldVersions?: Record<string, string>
 }
 
 /**

@@ -20,6 +20,11 @@ service WorldService {
   // SwitchWorld は .env の MC_LEVEL を書き換えてコンテナを再作成する。
   // docker compose restart では .env の変更が反映されない（REQ-117）。
   rpc SwitchWorld(SwitchWorldRequest) returns (SwitchWorldResponse) {}
+  // ListVersions はワールドを作れる版の一覧を返す（Paper が配布している安定版）。
+  //
+  // 一覧はバックエンドが Paper の API から取る。取れないとき（Pi がオフライン
+  // など）も失敗にはせず、catalog_available を偽にして現在の版だけを返す。
+  rpc ListVersions(ListVersionsRequest) returns (ListVersionsResponse) {}
   rpc CreateWorld(CreateWorldRequest) returns (CreateWorldResponse) {}
   rpc CloneWorld(CloneWorldRequest) returns (CloneWorldResponse) {}
   rpc RenameWorld(RenameWorldRequest) returns (RenameWorldResponse) {}
@@ -93,6 +98,24 @@ message CreateWorldRequest {
   // MC_HARDCORE=FALSE を書く。前に作ったハードコアのワールドの設定を、
   // 次に作ったワールドが黙って引き継ぐのを防ぐため。
   bool hardcore = 5;
+  // 生成に使うサーバーの版（MC_VERSION）。空なら .env の現在の値。
+  //
+  // ListVersions の一覧にある版だけを受け付ける。一覧が取れないときは
+  // 現在の版だけを受け付ける。Paper に無い版を書くとサーバーが起動しない。
+  string version = 6;
+}
+
+message ListVersionsRequest {}
+
+message ListVersionsResponse {
+  // 新しい順。プレリリース（-rc / -pre）は含めない。
+  repeated string versions = 1;
+  // .env の MC_VERSION。
+  string current = 2;
+  // Paper の一覧を取れたか。偽なら versions は current だけ。
+  bool catalog_available = 3;
+  // catalog_available が偽のときの理由。
+  string unavailable_reason = 4;
 }
 
 message CreateWorldResponse {

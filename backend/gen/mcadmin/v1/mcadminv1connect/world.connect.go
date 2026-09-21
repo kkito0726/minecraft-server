@@ -44,6 +44,9 @@ const (
 	// WorldServiceSwitchWorldProcedure is the fully-qualified name of the WorldService's SwitchWorld
 	// RPC.
 	WorldServiceSwitchWorldProcedure = "/mcadmin.v1.WorldService/SwitchWorld"
+	// WorldServiceListVersionsProcedure is the fully-qualified name of the WorldService's ListVersions
+	// RPC.
+	WorldServiceListVersionsProcedure = "/mcadmin.v1.WorldService/ListVersions"
 	// WorldServiceCreateWorldProcedure is the fully-qualified name of the WorldService's CreateWorld
 	// RPC.
 	WorldServiceCreateWorldProcedure = "/mcadmin.v1.WorldService/CreateWorld"
@@ -66,6 +69,11 @@ type WorldServiceClient interface {
 	// SwitchWorld は .env の MC_LEVEL を書き換えてコンテナを再作成する。
 	// docker compose restart では .env の変更が反映されない（REQ-117）。
 	SwitchWorld(context.Context, *connect.Request[v1.SwitchWorldRequest]) (*connect.Response[v1.SwitchWorldResponse], error)
+	// ListVersions はワールドを作れる版の一覧を返す（Paper が配布している安定版）。
+	//
+	// 一覧はバックエンドが Paper の API から取る。取れないとき（Pi がオフライン
+	// など）も失敗にはせず、catalog_available を偽にして現在の版だけを返す。
+	ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error)
 	CreateWorld(context.Context, *connect.Request[v1.CreateWorldRequest]) (*connect.Response[v1.CreateWorldResponse], error)
 	CloneWorld(context.Context, *connect.Request[v1.CloneWorldRequest]) (*connect.Response[v1.CloneWorldResponse], error)
 	RenameWorld(context.Context, *connect.Request[v1.RenameWorldRequest]) (*connect.Response[v1.RenameWorldResponse], error)
@@ -96,6 +104,12 @@ func NewWorldServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+WorldServiceSwitchWorldProcedure,
 			connect.WithSchema(worldServiceMethods.ByName("SwitchWorld")),
+			connect.WithClientOptions(opts...),
+		),
+		listVersions: connect.NewClient[v1.ListVersionsRequest, v1.ListVersionsResponse](
+			httpClient,
+			baseURL+WorldServiceListVersionsProcedure,
+			connect.WithSchema(worldServiceMethods.ByName("ListVersions")),
 			connect.WithClientOptions(opts...),
 		),
 		createWorld: connect.NewClient[v1.CreateWorldRequest, v1.CreateWorldResponse](
@@ -135,6 +149,7 @@ func NewWorldServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 type worldServiceClient struct {
 	listWorlds      *connect.Client[v1.ListWorldsRequest, v1.ListWorldsResponse]
 	switchWorld     *connect.Client[v1.SwitchWorldRequest, v1.SwitchWorldResponse]
+	listVersions    *connect.Client[v1.ListVersionsRequest, v1.ListVersionsResponse]
 	createWorld     *connect.Client[v1.CreateWorldRequest, v1.CreateWorldResponse]
 	cloneWorld      *connect.Client[v1.CloneWorldRequest, v1.CloneWorldResponse]
 	renameWorld     *connect.Client[v1.RenameWorldRequest, v1.RenameWorldResponse]
@@ -150,6 +165,11 @@ func (c *worldServiceClient) ListWorlds(ctx context.Context, req *connect.Reques
 // SwitchWorld calls mcadmin.v1.WorldService.SwitchWorld.
 func (c *worldServiceClient) SwitchWorld(ctx context.Context, req *connect.Request[v1.SwitchWorldRequest]) (*connect.Response[v1.SwitchWorldResponse], error) {
 	return c.switchWorld.CallUnary(ctx, req)
+}
+
+// ListVersions calls mcadmin.v1.WorldService.ListVersions.
+func (c *worldServiceClient) ListVersions(ctx context.Context, req *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error) {
+	return c.listVersions.CallUnary(ctx, req)
 }
 
 // CreateWorld calls mcadmin.v1.WorldService.CreateWorld.
@@ -183,6 +203,11 @@ type WorldServiceHandler interface {
 	// SwitchWorld は .env の MC_LEVEL を書き換えてコンテナを再作成する。
 	// docker compose restart では .env の変更が反映されない（REQ-117）。
 	SwitchWorld(context.Context, *connect.Request[v1.SwitchWorldRequest]) (*connect.Response[v1.SwitchWorldResponse], error)
+	// ListVersions はワールドを作れる版の一覧を返す（Paper が配布している安定版）。
+	//
+	// 一覧はバックエンドが Paper の API から取る。取れないとき（Pi がオフライン
+	// など）も失敗にはせず、catalog_available を偽にして現在の版だけを返す。
+	ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error)
 	CreateWorld(context.Context, *connect.Request[v1.CreateWorldRequest]) (*connect.Response[v1.CreateWorldResponse], error)
 	CloneWorld(context.Context, *connect.Request[v1.CloneWorldRequest]) (*connect.Response[v1.CloneWorldResponse], error)
 	RenameWorld(context.Context, *connect.Request[v1.RenameWorldRequest]) (*connect.Response[v1.RenameWorldResponse], error)
@@ -209,6 +234,12 @@ func NewWorldServiceHandler(svc WorldServiceHandler, opts ...connect.HandlerOpti
 		WorldServiceSwitchWorldProcedure,
 		svc.SwitchWorld,
 		connect.WithSchema(worldServiceMethods.ByName("SwitchWorld")),
+		connect.WithHandlerOptions(opts...),
+	)
+	worldServiceListVersionsHandler := connect.NewUnaryHandler(
+		WorldServiceListVersionsProcedure,
+		svc.ListVersions,
+		connect.WithSchema(worldServiceMethods.ByName("ListVersions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	worldServiceCreateWorldHandler := connect.NewUnaryHandler(
@@ -247,6 +278,8 @@ func NewWorldServiceHandler(svc WorldServiceHandler, opts ...connect.HandlerOpti
 			worldServiceListWorldsHandler.ServeHTTP(w, r)
 		case WorldServiceSwitchWorldProcedure:
 			worldServiceSwitchWorldHandler.ServeHTTP(w, r)
+		case WorldServiceListVersionsProcedure:
+			worldServiceListVersionsHandler.ServeHTTP(w, r)
 		case WorldServiceCreateWorldProcedure:
 			worldServiceCreateWorldHandler.ServeHTTP(w, r)
 		case WorldServiceCloneWorldProcedure:
@@ -272,6 +305,10 @@ func (UnimplementedWorldServiceHandler) ListWorlds(context.Context, *connect.Req
 
 func (UnimplementedWorldServiceHandler) SwitchWorld(context.Context, *connect.Request[v1.SwitchWorldRequest]) (*connect.Response[v1.SwitchWorldResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mcadmin.v1.WorldService.SwitchWorld is not implemented"))
+}
+
+func (UnimplementedWorldServiceHandler) ListVersions(context.Context, *connect.Request[v1.ListVersionsRequest]) (*connect.Response[v1.ListVersionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mcadmin.v1.WorldService.ListVersions is not implemented"))
 }
 
 func (UnimplementedWorldServiceHandler) CreateWorld(context.Context, *connect.Request[v1.CreateWorldRequest]) (*connect.Response[v1.CreateWorldResponse], error) {

@@ -28,6 +28,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/backupfs"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/persistence/lockfile"
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/system"
+	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/versions"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/download"
 	adminhttp "github.com/kkito0726/minecraft-server/backend/internal/presentation/http"
 	"github.com/kkito0726/minecraft-server/backend/internal/presentation/http/auth"
@@ -43,6 +44,9 @@ const (
 	keyAdminDockerBin = "ADMIN_DOCKER_BIN"
 	keyAdminBackupDir = "ADMIN_BACKUP_DIR"
 	keyAdminProject   = "ADMIN_COMPOSE_PROJECT"
+	// keyAdminCatalog は版の一覧の取得先。空なら Paper の公式。
+	// ミラーや試験用の偽物を指すために残してある。
+	keyAdminCatalog = "ADMIN_VERSION_CATALOG_URL"
 )
 
 // 既定値。
@@ -126,6 +130,7 @@ type infra struct {
 	runtime *compose.Runner
 	console *rcon.Client
 	levels  *leveldat.Adapter
+	catalog *versions.Paper
 	worlds  *worldfs.Repository
 	lock    *lockfile.Lock
 	backups *backupfs.Store
@@ -163,6 +168,7 @@ func buildInfra(opts options, s settings) (infra, error) {
 		worlds:  worldRepo,
 		lock:    lockfile.NewLock(filepath.Join(dataDir, lockFileName)),
 		backups: backupStore,
+		catalog: versions.NewPaper(s.catalogURL, nil),
 	}, nil
 }
 
@@ -211,6 +217,7 @@ func buildUseCases(
 	worlds, err := worldctl.New(worldctl.Config{
 		Runtime: in.runtime, Console: in.console, Worlds: in.worlds,
 		Config: config, Levels: in.levels, Operations: ops,
+		Catalog: in.catalog,
 	})
 	if err != nil {
 		return deps{}, err
@@ -292,6 +299,8 @@ type settings struct {
 	// **プロジェクトディレクトリごとに変わる。** 固定にすると、別の
 	// ディレクトリへ向けたつもりの mcadmind が同じコンテナを操作する。
 	composeProject string
+	// catalogURL は版の一覧の取得先。空なら Paper の公式。
+	catalogURL string
 }
 
 func loadSettings(ctx context.Context, projectDir string, config *dotenv.Adapter) (settings, error) {
@@ -323,11 +332,13 @@ func loadSettings(ctx context.Context, projectDir string, config *dotenv.Adapter
 	}
 
 	project, _ := snapshot.Get(keyAdminProject)
+	catalogURL, _ := snapshot.Get(keyAdminCatalog)
 
 	return settings{
 		token: token, addr: addr, dockerBin: resolved,
 		backupDir:      backupDirFrom(snapshot, projectDir),
 		composeProject: composeProjectFrom(projectDir, project),
+		catalogURL:     catalogURL,
 	}, nil
 }
 

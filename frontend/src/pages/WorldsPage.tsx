@@ -12,7 +12,7 @@ import { Button, Spinner } from '../components/atoms'
 import { PanelHeader } from '../components/molecules'
 import { useGameSettings } from '../features/settings'
 import { useOperation } from '../features/operations'
-import { usePurgeQuarantine, useWorldCommand, useWorlds } from '../features/worlds'
+import { usePurgeQuarantine, useVersions, useWorldCommand, useWorlds } from '../features/worlds'
 import { describeError } from '../lib/errors'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
@@ -165,7 +165,12 @@ function CreateDialog({
   onCancel: () => void
   onSubmit: (input: WorldCreateInput) => void
 }) {
-  const { data, isPending, error } = useGameSettings()
+  const settings = useGameSettings()
+  const versions = useVersions()
+
+  const isPending = settings.isPending || versions.isPending
+  const error = settings.error ?? versions.error
+  const data = settings.data
 
   if (isPending) {
     return (
@@ -175,7 +180,7 @@ function CreateDialog({
       </div>
     )
   }
-  if (error || !data.settings) {
+  if (error || !data?.settings || !versions.data) {
     return (
       <p role="alert" className="hud-inset text-sm text-danger-ink">
         {error ? describeError(error) : 'ゲーム設定を受け取れませんでした。'}
@@ -187,6 +192,12 @@ function CreateDialog({
     <WorldCreateDialog
       currentMode={data.settings.mode}
       currentDifficulty={data.settings.difficulty}
+      versions={{
+        versions: versions.data.versions,
+        current: versions.data.current,
+        available: versions.data.catalogAvailable,
+        unavailableReason: versions.data.unavailableReason,
+      }}
       disabled={disabled}
       onCancel={onCancel}
       onSubmit={onSubmit}

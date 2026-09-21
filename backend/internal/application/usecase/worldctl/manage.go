@@ -70,6 +70,8 @@ type CreateOptions struct {
 	Mode       settings.GameMode
 	Difficulty settings.Difficulty
 	Hardcore   bool
+	// Version は生成に使う版（MC_VERSION）。空なら現在の版のまま。
+	Version string
 }
 
 func (u *UseCase) Create(ctx context.Context, opts CreateOptions) (operations.Handle, error) {
@@ -78,6 +80,9 @@ func (u *UseCase) Create(ctx context.Context, opts CreateOptions) (operations.Ha
 		return operations.Handle{}, err
 	}
 	if err := u.validateCreateOptions(opts); err != nil {
+		return operations.Handle{}, err
+	}
+	if err := u.validateCreateVersion(ctx, opts.Version); err != nil {
 		return operations.Handle{}, err
 	}
 	if err := u.requireAbsent(ctx, target); err != nil {
@@ -148,6 +153,10 @@ func (u *UseCase) runCreate(
 	if opts.Mode != "" {
 		r.Logf(operation.LevelInfo, "ゲームモード %s で生成します", opts.Mode)
 	}
+	if opts.Version != "" {
+		r.Logf(operation.LevelInfo, "版 %s で生成します。遊ぶ人はクライアントを %s にしてください",
+			opts.Version, opts.Version)
+	}
 	if opts.Hardcore {
 		// 後から外せない設定なので、ログにも必ず残す。
 		r.Logf(operation.LevelWarn, "ハードコアで生成します（後から外せません）")
@@ -177,6 +186,9 @@ func (u *UseCase) writeCreateSettings(
 		With(keyHardcore, boolValue(opts.Hardcore))
 	if opts.Mode != "" {
 		updated = updated.With(keyMode, string(opts.Mode))
+	}
+	if opts.Version != "" {
+		updated = updated.With(keyVersion, opts.Version)
 	}
 
 	// ハードコアでは Minecraft が難易度をハードに固定する。.env に別の値を
