@@ -9,6 +9,7 @@
 | [backup-restore.md](backup-restore.md) | ワールドのバックアップ取得と復元、ファイル名の規約、退避の後始末、バージョンとの関係、保管場所、持ち出しと取り込み |
 | [runbook.md](runbook.md) | 日々の起動・停止・確認と障害対応、結合テスト環境の使い方 |
 | [admin-console.md](admin-console.md) | 管理コンソール（mcadmind）の置き方と使い方。画面の操作と手作業の対応、困ったとき |
+| [build-from-source.md](build-from-source.md) | 手元でクロスビルドして scp で送る手順。Release から落とす既定の経路との対比と、使い分け |
 | [demo.md](demo.md) | 公開デモ（GitHub Pages）。バックエンド無しで画面を触れるようにした仕組みと、本番に混ざらない保証 |
 | [security-review.md](security-review.md) | 管理コンソールのセキュリティ調査。いま効いている防御と、インターネット公開時に足りないもの |
 | [cli-design.md](cli-design.md) | CLI 化（cobra）の設計。常駐と CLI の分け方、並行実行時の排他と落とし穴 |

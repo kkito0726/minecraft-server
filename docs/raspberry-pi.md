@@ -189,10 +189,16 @@ systemd で常駐させる。置き方と使い方は [admin-console.md](admin-c
 代わりに Go の静的バイナリを Pi へ置く。`CGO_ENABLED=0` なので依存が無く、
 Pi 側に Go も Node も要らない。
 
+バイナリはタグを打つと GitHub Actions が Release に載せるので、Pi の上で落とす。
+
 ```bash
-make build-arm64                     # 開発機で
-scp mcadmind-arm64 pi@<host>:~/minecraft-server/
+cd ~/minecraft-server
+./deploy/download.sh                 # linux/arm64 を選んで検証して置く
 ```
+
+開発機でクロスビルドして `scp` で送る手順は
+[build-from-source.md](build-from-source.md) に残してある。
+タグを打つ前の変更を実機で試すときはそちらを使う。
 
 ### docker グループが要る
 
