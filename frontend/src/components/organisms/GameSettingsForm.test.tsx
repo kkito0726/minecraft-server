@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -31,6 +31,15 @@ function renderForm(props: Partial<Parameters<typeof GameSettingsForm>[0]> = {})
   return { onSave }
 }
 
+/**
+ * 難易度の選択肢。
+ *
+ * 「ハードコア」がモードの選択肢に並ぶため、画面全体から /ハード/ で
+ * 引くと 2 つ当たる。難易度の組に絞って引く。
+ */
+const difficultyRadio = (name: RegExp) =>
+  within(screen.getByRole('group', { name: '難易度' })).getByRole('radio', { name })
+
 const saveOnly = () => screen.getByRole('button', { name: '保存だけする' })
 const applyNow = () => screen.getByRole('button', { name: '保存して今すぐ反映' })
 
@@ -55,7 +64,7 @@ describe('GameSettingsForm', () => {
   it('保存だけなら反映しない', async () => {
     const { onSave } = renderForm()
 
-    await userEvent.click(screen.getByRole('radio', { name: /ハード/ }))
+    await userEvent.click(difficultyRadio(/ハード/))
     await userEvent.click(saveOnly())
 
     expect(onSave).toHaveBeenCalledWith({ ...current, difficulty: Difficulty.HARD }, false)

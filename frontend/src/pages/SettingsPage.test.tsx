@@ -1,6 +1,6 @@
 import { create } from '@bufbuild/protobuf'
 import { Code, ConnectError } from '@connectrpc/connect'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -75,7 +75,7 @@ describe('SettingsPage', () => {
     updateGameSettings.mockResolvedValue(create(UpdateGameSettingsResponseSchema, { settings: current }))
     arrange()
 
-    await userEvent.click(await screen.findByRole('radio', { name: /ハード/ }))
+    await userEvent.click(within(await screen.findByRole('group', { name: '難易度' })).getByRole('radio', { name: /ハード/ }))
     await userEvent.click(screen.getByRole('button', { name: '保存だけする' }))
 
     expect(updateGameSettings).toHaveBeenCalledWith({
@@ -125,7 +125,7 @@ describe('SettingsPage', () => {
     )
     arrange()
 
-    await userEvent.click(await screen.findByRole('radio', { name: /ハード/ }))
+    await userEvent.click(within(await screen.findByRole('group', { name: '難易度' })).getByRole('radio', { name: /ハード/ }))
     await userEvent.click(screen.getByRole('button', { name: '保存だけする' }))
 
     expect(await screen.findByText(/外部から変更されました/)).toBeInTheDocument()

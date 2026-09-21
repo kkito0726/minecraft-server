@@ -13,7 +13,11 @@ test.describe('ゲーム設定', () => {
     await signIn(page)
     await page.getByRole('link', { name: '設定' }).click()
 
-    await page.getByRole('radio', { name: /ハード/ }).check()
+    // 「ハードコア」がモードの選択肢に並ぶので、難易度の組に絞る。
+    await page
+      .getByRole('group', { name: '難易度' })
+      .getByRole('radio', { name: /ハード/ })
+      .check()
     await page.getByLabel('描画距離').fill('9')
     await page.getByLabel('シミュレーション距離').fill('6')
     await page.getByRole('button', { name: '保存だけする' }).click()

@@ -171,7 +171,12 @@ func (u *UseCase) writeCreateSettings(
 	if opts.Mode != "" {
 		updated = updated.With(keyMode, string(opts.Mode))
 	}
-	if opts.Difficulty != "" {
+
+	// ハードコアでは Minecraft が難易度をハードに固定する。.env に別の値を
+	// 残すと、画面の表示と実際の挙動が食い違う。指定を無視して hard を書く。
+	if opts.Hardcore {
+		updated = updated.With(keyDifficulty, string(settings.DifficultyHard))
+	} else if opts.Difficulty != "" {
 		updated = updated.With(keyDifficulty, string(opts.Difficulty))
 	}
 	return u.cfg.Config.Save(ctx, updated)

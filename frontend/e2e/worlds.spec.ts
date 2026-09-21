@@ -100,15 +100,17 @@ test('新しいワールドを作るとシードごと設定に書かれる', as
  * 決めて .env へ書く。ハードコアは後から外せないため、名前の完全一致を
  * 打たせてから送る。
  */
-test('モードとハードコアを選ぶと .env に書かれる', async ({ page, server }) => {
+test('ハードコアを選ぶと難易度が固定され、.env に書かれる', async ({ page, server }) => {
   await signIn(page)
   await page.getByRole('link', { name: 'ワールド' }).click()
 
   await page.getByRole('button', { name: '新規作成' }).click()
   await page.getByLabel('ワールド名').fill('hardmode')
-  await page.getByRole('radio', { name: /クリエイティブ/ }).check()
-  await page.getByRole('radio', { name: /ピースフル/ }).check()
-  await page.getByLabel('ハードコアにする').check()
+  await page.getByRole('radio', { name: /ハードコア/ }).check()
+
+  // ハードコアでは難易度を選べない。Minecraft がハードに固定するため。
+  const difficulty = page.getByRole('group', { name: '難易度' })
+  await expect(difficulty.getByRole('radio', { name: /ピースフル/ })).toBeDisabled()
 
   // 確認を打つまでは送れない。
   await expect(page.getByRole('button', { name: '作成する' })).toBeDisabled()
@@ -118,9 +120,31 @@ test('モードとハードコアを選ぶと .env に書かれる', async ({ pa
   await waitForOperation(page)
 
   expect(envValue(server.dir, 'MC_LEVEL')).toBe('hardmode')
+  // ハードコアはサバイバルに hardcore が付いたもの。
+  expect(envValue(server.dir, 'MC_MODE')).toBe('survival')
+  expect(envValue(server.dir, 'MC_DIFFICULTY')).toBe('hard')
+  expect(envValue(server.dir, 'MC_HARDCORE')).toBe('TRUE')
+})
+
+/** ハードコアを選ばなければ、モードと難易度はそのまま書かれる。 */
+test('モードと難易度を選ぶと .env に書かれる', async ({ page, server }) => {
+  await signIn(page)
+  await page.getByRole('link', { name: 'ワールド' }).click()
+
+  await page.getByRole('button', { name: '新規作成' }).click()
+  await page.getByLabel('ワールド名').fill('sandbox')
+  await page.getByRole('radio', { name: /クリエイティブ/ }).check()
+  await page
+    .getByRole('group', { name: '難易度' })
+    .getByRole('radio', { name: /ピースフル/ })
+    .check()
+
+  await page.getByRole('button', { name: '作成する' }).click()
+  await waitForOperation(page)
+
   expect(envValue(server.dir, 'MC_MODE')).toBe('creative')
   expect(envValue(server.dir, 'MC_DIFFICULTY')).toBe('peaceful')
-  expect(envValue(server.dir, 'MC_HARDCORE')).toBe('TRUE')
+  expect(envValue(server.dir, 'MC_HARDCORE')).toBe('FALSE')
 })
 
 /** 名前の規則はフロントとバックで同一（NFR-304）。送る前に止まる。 */

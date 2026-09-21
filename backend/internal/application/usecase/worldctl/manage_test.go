@@ -408,6 +408,29 @@ func TestCreateAlwaysWritesHardcore(t *testing.T) {
 	}
 }
 
+// ハードコアでは Minecraft が難易度をハードに固定する。
+// .env に別の値を残すと、画面の表示と実際の挙動が食い違う。
+func TestCreateForcesHardDifficultyWhenHardcore(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, "world")
+
+	handle, err := h.uc.Create(context.Background(), worldctl.CreateOptions{
+		Name:       "hardmode",
+		Mode:       settings.GameModeSurvival,
+		Difficulty: settings.DifficultyPeaceful,
+		Hardcore:   true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.wait(t, handle.ID())
+
+	if got := h.config.get("MC_DIFFICULTY"); got != "hard" {
+		t.Errorf("MC_DIFFICULTY が %q。ハードに固定されるはず", got)
+	}
+}
+
 // モードを指定しなければ .env の現在の値に触らない。
 func TestCreateKeepsModeWhenUnspecified(t *testing.T) {
 	t.Parallel()

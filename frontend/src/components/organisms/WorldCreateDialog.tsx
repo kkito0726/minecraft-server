@@ -1,10 +1,16 @@
 import { useState } from 'react'
 
-import { DIFFICULTY_OPTIONS, GAME_MODE_OPTIONS } from '../../features/settings'
+import {
+  DIFFICULTY_OPTIONS,
+  HARDCORE_DIFFICULTY,
+  MODE_CHOICES,
+  modeChoiceValue,
+  parseModeChoice,
+} from '../../features/settings'
 import { isValidWorldName, worldNameError } from '../../features/worlds'
 import { Difficulty, GameMode } from '../../gen/mcadmin/v1/server_pb'
 import { Button } from '../atoms'
-import { CheckboxField, ChoiceGroup, ConfirmInput, FormField } from '../molecules'
+import { ChoiceGroup, ConfirmInput, FormField } from '../molecules'
 import { isConfirmed } from '../molecules/confirmation'
 
 /**
@@ -113,20 +119,16 @@ function Fields({
         onSeed={f.setSeed}
       />
       <ModeAndDifficulty
-        mode={f.mode}
+        choice={f.choice}
         difficulty={f.difficulty}
+        hardcore={f.hardcore}
         disabled={disabled}
-        onMode={f.setMode}
+        onChoice={f.setChoice}
         onDifficulty={f.setDifficulty}
       />
-      <HardcoreField
-        checked={f.hardcore}
-        disabled={disabled}
-        name={f.name}
-        typed={f.typed}
-        onToggle={f.toggleHardcore}
-        onTyped={f.setTyped}
-      />
+      {f.hardcore && (
+        <HardcoreWarning name={f.name} typed={f.typed} disabled={disabled} onTyped={f.setTyped} />
+      )}
     </>
   )
 }
@@ -140,32 +142,40 @@ function Fields({
 function useCreateForm(currentMode: GameMode, currentDifficulty: Difficulty) {
   const [name, setName] = useState('')
   const [seed, setSeed] = useState('')
-  const [mode, setMode] = useState(currentMode)
+  const [choice, setChoice] = useState(modeChoiceValue(currentMode, false))
   const [difficulty, setDifficulty] = useState(currentDifficulty)
-  const [hardcore, setHardcore] = useState(false)
   const [typed, setTyped] = useState('')
 
+  const { mode, hardcore } = parseModeChoice(choice)
   // ハードコアは後から外せない。削除と同じく、名前の完全一致を要求する。
   const confirmed = !hardcore || isConfirmed(name, typed)
 
   return {
     name,
     seed,
-    mode,
-    difficulty,
+    choice,
+    // ハードコアでは難易度はハードに固定される。選ばせずに、その値を見せる。
+    difficulty: hardcore ? HARDCORE_DIFFICULTY : difficulty,
     hardcore,
     typed,
     ready: isValidWorldName(name) && confirmed,
     setName,
     setSeed,
-    setMode,
     setDifficulty,
     setTyped,
-    toggleHardcore: (next: boolean) => {
-      setHardcore(next)
+    setChoice: (next: string) => {
+      setChoice(next)
+      // 確認は選び直すたびに捨てる。外したあとに残っていると、
+      // 入れ直した瞬間に確認済みの状態から始まってしまう。
       setTyped('')
     },
-    values: (): WorldCreateInput => ({ name, seed, mode, difficulty, hardcore }),
+    values: (): WorldCreateInput => ({
+      name,
+      seed,
+      mode,
+      difficulty: hardcore ? HARDCORE_DIFFICULTY : difficulty,
+      hardcore,
+    }),
   }
 }
 
@@ -207,100 +217,93 @@ function NameAndSeed({
 }
 
 /**
- * ゲームモードと難易度。
+ * モードと難易度。
  *
- * サーバー全体の設定であることを必ず添える。ここで選んだ値は .env に
- * 書かれ、別のワールドに切り替えても戻らない。
+ * ハードコアはモードの選択肢のひとつにしてある。別のチェック欄にすると
+ * 「クリエイティブ + ハードコア」のような意味の無い組み合わせを選べてしまう。
+ *
+ * ハードコアを選ぶと難易度は選べない。Minecraft がハードに固定するため、
+ * ここで選ばせると画面と実際の挙動が食い違う。
  */
 function ModeAndDifficulty({
-  mode,
+  choice,
   difficulty,
+  hardcore,
   disabled,
-  onMode,
+  onChoice,
   onDifficulty,
 }: {
-  mode: GameMode
+  choice: string
   difficulty: Difficulty
+  hardcore: boolean
   disabled: boolean | undefined
-  onMode: (v: GameMode) => void
+  onChoice: (v: string) => void
   onDifficulty: (v: Difficulty) => void
 }) {
   return (
     <>
       <ChoiceGroup
         name="create-mode"
-        legend="ゲームモード"
-        value={String(mode)}
+        legend="モード"
+        value={choice}
         disabled={disabled}
-        onChange={(v) => onMode(Number(v) as GameMode)}
-        choices={GAME_MODE_OPTIONS.map((o) => ({
-          value: String(o.value),
-          label: o.label,
-          hint: o.hint,
-        }))}
+        onChange={onChoice}
+        choices={MODE_CHOICES}
       />
-      <ChoiceGroup
-        name="create-difficulty"
-        legend="難易度"
-        value={String(difficulty)}
-        disabled={disabled}
-        onChange={(v) => onDifficulty(Number(v) as Difficulty)}
-        choices={DIFFICULTY_OPTIONS.map((o) => ({
-          value: String(o.value),
-          label: o.label,
-          hint: o.hint,
-        }))}
-      />
+      <div className="flex flex-col gap-2">
+        <ChoiceGroup
+          name="create-difficulty"
+          legend="難易度"
+          value={String(difficulty)}
+          disabled={disabled || hardcore}
+          onChange={(v) => onDifficulty(Number(v) as Difficulty)}
+          choices={DIFFICULTY_OPTIONS.map((o) => ({
+            value: String(o.value),
+            label: o.label,
+            hint: o.hint,
+          }))}
+        />
+        {hardcore && (
+          <p className="text-xs text-faint">ハードコアでは難易度はハードに固定されます。</p>
+        )}
+      </div>
       <p className="text-xs text-faint">
-        ゲームモードと難易度はサーバー全体の設定です。ここで選んだ値は .env
+        モードと難易度はサーバー全体の設定です。ここで選んだ値は .env
         に書かれ、別のワールドに切り替えても戻りません。
       </p>
     </>
   )
 }
 
-type HardcoreFieldProps = {
-  checked: boolean
-  disabled: boolean | undefined
+type HardcoreWarningProps = {
   name: string
   typed: string
-  onToggle: (checked: boolean) => void
+  disabled: boolean | undefined
   onTyped: (value: string) => void
 }
 
 /**
- * ハードコアの選択。
+ * ハードコアを選んだときの警告と確認。
  *
  * 生成されたワールドの level.dat に焼かれるため、後から外せない。
  * 押し間違いがそのまま取り返しのつかない設定になるので、削除と同じく
- * 名前の完全一致を要求する（チェックを入れたときだけ出す）。
+ * 名前の完全一致を要求する。
  */
-function HardcoreField({ checked, disabled, name, typed, onToggle, onTyped }: HardcoreFieldProps) {
+function HardcoreWarning({ name, typed, disabled, onTyped }: HardcoreWarningProps) {
   return (
-    <div className="flex flex-col gap-2.5">
-      <CheckboxField
-        id="world-hardcore"
-        label="ハードコアにする"
-        checked={checked}
-        disabled={disabled}
-        onChange={onToggle}
+    <div className="notice notice-danger flex flex-col gap-2.5">
+      <p className="text-sm leading-relaxed">
+        <strong className="font-semibold text-fg">ハードコアは後から外せません。</strong>
+        死亡すると復帰できず、難易度はハードに固定されます。この設定は生成時に
+        ワールドへ書き込まれるため、作成後に変更する手段はありません。
+      </p>
+      <ConfirmInput
+        id="hardcore-confirm"
+        expected={name}
+        value={typed}
+        onChange={onTyped}
+        disabled={disabled || name === ''}
       />
-      {checked && (
-        <>
-          <p className="text-sm leading-relaxed text-danger-ink">
-            死亡すると復帰できません。難易度はハードに固定され、
-            <strong className="font-semibold text-fg">この設定は後から外せません</strong>
-            （生成時にワールドへ書き込まれます）。
-          </p>
-          <ConfirmInput
-            id="hardcore-confirm"
-            expected={name}
-            value={typed}
-            onChange={onTyped}
-            disabled={disabled || name === ''}
-          />
-        </>
-      )}
     </div>
   )
 }
