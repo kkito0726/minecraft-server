@@ -190,3 +190,50 @@ test.describe('ハードコアのワールドとの行き来', () => {
     expect(envValue(server.dir, 'MC_DIFFICULTY')).toBe('hard')
   })
 })
+
+/**
+ * サーバーの版は、切り替え先のワールドが最後に開かれた版に合わせる。
+ * 合わせないと、古いワールドは今の版で開かれて勝手に上がり（元に戻せない）、
+ * 新しいワールドは古い版では開けずにサーバーが起動しない。
+ *
+ * E2E では版の一覧を取れない状態に固定してある（外の API に左右させない）。
+ * 一覧が取れないときも切り替えは通す、という振る舞いもあわせて確かめる。
+ */
+test.describe('版の違うワールドとの行き来', () => {
+  test.use({ worlds: ['world', 'newer'], worldVersions: { newer: '26.3' } })
+
+  test('切り替え先の level.dat の版に MC_VERSION が合う', async ({ page, server }) => {
+    await signIn(page)
+    await page.getByRole('link', { name: 'ワールド' }).click()
+
+    const newerRow = page.getByRole('row', { name: /^newer / })
+    await expect(newerRow.getByText('26.3')).toBeVisible()
+
+    await newerRow.getByRole('button', { name: '切替' }).click()
+    await waitForOperation(page)
+    expect(envValue(server.dir, 'MC_VERSION')).toBe('26.3')
+
+    await page.getByRole('row', { name: /^world / }).getByRole('button', { name: '切替' }).click()
+    await waitForOperation(page)
+    expect(envValue(server.dir, 'MC_VERSION')).toBe('26.2')
+  })
+})
+
+/** 版の一覧が取れないとき（オフライン）も、現在の版でなら作れる。 */
+test('版の一覧が取れなくても現在の版で作成できる', async ({ page, server }) => {
+  await signIn(page)
+  await page.getByRole('link', { name: 'ワールド' }).click()
+
+  await page.getByRole('button', { name: '新規作成' }).click()
+  const version = page.getByLabel('版')
+  await expect(version).toBeDisabled()
+  await expect(version).toHaveValue('26.2')
+  await expect(page.getByText(/版の一覧を取得できないため/)).toBeVisible()
+
+  await page.getByLabel('ワールド名').fill('offline')
+  await page.getByRole('button', { name: '作成する' }).click()
+  await waitForOperation(page)
+
+  expect(envValue(server.dir, 'MC_LEVEL')).toBe('offline')
+  expect(envValue(server.dir, 'MC_VERSION')).toBe('26.2')
+})

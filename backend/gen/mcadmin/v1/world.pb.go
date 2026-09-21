@@ -410,7 +410,12 @@ type CreateWorldRequest struct {
 	// hardcore だけは未指定を表せないので、常に明示として扱う。偽なら
 	// MC_HARDCORE=FALSE を書く。前に作ったハードコアのワールドの設定を、
 	// 次に作ったワールドが黙って引き継ぐのを防ぐため。
-	Hardcore      bool `protobuf:"varint,5,opt,name=hardcore,proto3" json:"hardcore,omitempty"`
+	Hardcore bool `protobuf:"varint,5,opt,name=hardcore,proto3" json:"hardcore,omitempty"`
+	// 生成に使うサーバーの版（MC_VERSION）。空なら .env の現在の値。
+	//
+	// ListVersions の一覧にある版だけを受け付ける。一覧が取れないときは
+	// 現在の版だけを受け付ける。Paper に無い版を書くとサーバーが起動しない。
+	Version       string `protobuf:"bytes,6,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -480,6 +485,121 @@ func (x *CreateWorldRequest) GetHardcore() bool {
 	return false
 }
 
+func (x *CreateWorldRequest) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+type ListVersionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListVersionsRequest) Reset() {
+	*x = ListVersionsRequest{}
+	mi := &file_mcadmin_v1_world_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListVersionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListVersionsRequest) ProtoMessage() {}
+
+func (x *ListVersionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mcadmin_v1_world_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListVersionsRequest.ProtoReflect.Descriptor instead.
+func (*ListVersionsRequest) Descriptor() ([]byte, []int) {
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{7}
+}
+
+type ListVersionsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 新しい順。プレリリース（-rc / -pre）は含めない。
+	Versions []string `protobuf:"bytes,1,rep,name=versions,proto3" json:"versions,omitempty"`
+	// .env の MC_VERSION。
+	Current string `protobuf:"bytes,2,opt,name=current,proto3" json:"current,omitempty"`
+	// Paper の一覧を取れたか。偽なら versions は current だけ。
+	CatalogAvailable bool `protobuf:"varint,3,opt,name=catalog_available,json=catalogAvailable,proto3" json:"catalog_available,omitempty"`
+	// catalog_available が偽のときの理由。
+	UnavailableReason string `protobuf:"bytes,4,opt,name=unavailable_reason,json=unavailableReason,proto3" json:"unavailable_reason,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ListVersionsResponse) Reset() {
+	*x = ListVersionsResponse{}
+	mi := &file_mcadmin_v1_world_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListVersionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListVersionsResponse) ProtoMessage() {}
+
+func (x *ListVersionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mcadmin_v1_world_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListVersionsResponse.ProtoReflect.Descriptor instead.
+func (*ListVersionsResponse) Descriptor() ([]byte, []int) {
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListVersionsResponse) GetVersions() []string {
+	if x != nil {
+		return x.Versions
+	}
+	return nil
+}
+
+func (x *ListVersionsResponse) GetCurrent() string {
+	if x != nil {
+		return x.Current
+	}
+	return ""
+}
+
+func (x *ListVersionsResponse) GetCatalogAvailable() bool {
+	if x != nil {
+		return x.CatalogAvailable
+	}
+	return false
+}
+
+func (x *ListVersionsResponse) GetUnavailableReason() string {
+	if x != nil {
+		return x.UnavailableReason
+	}
+	return ""
+}
+
 type CreateWorldResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Operation     *Operation             `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
@@ -489,7 +609,7 @@ type CreateWorldResponse struct {
 
 func (x *CreateWorldResponse) Reset() {
 	*x = CreateWorldResponse{}
-	mi := &file_mcadmin_v1_world_proto_msgTypes[7]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -501,7 +621,7 @@ func (x *CreateWorldResponse) String() string {
 func (*CreateWorldResponse) ProtoMessage() {}
 
 func (x *CreateWorldResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_world_proto_msgTypes[7]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -514,7 +634,7 @@ func (x *CreateWorldResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWorldResponse.ProtoReflect.Descriptor instead.
 func (*CreateWorldResponse) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{7}
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CreateWorldResponse) GetOperation() *Operation {
@@ -534,7 +654,7 @@ type CloneWorldRequest struct {
 
 func (x *CloneWorldRequest) Reset() {
 	*x = CloneWorldRequest{}
-	mi := &file_mcadmin_v1_world_proto_msgTypes[8]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -546,7 +666,7 @@ func (x *CloneWorldRequest) String() string {
 func (*CloneWorldRequest) ProtoMessage() {}
 
 func (x *CloneWorldRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_world_proto_msgTypes[8]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -559,7 +679,7 @@ func (x *CloneWorldRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloneWorldRequest.ProtoReflect.Descriptor instead.
 func (*CloneWorldRequest) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{8}
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CloneWorldRequest) GetSource() string {
@@ -585,7 +705,7 @@ type CloneWorldResponse struct {
 
 func (x *CloneWorldResponse) Reset() {
 	*x = CloneWorldResponse{}
-	mi := &file_mcadmin_v1_world_proto_msgTypes[9]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -597,7 +717,7 @@ func (x *CloneWorldResponse) String() string {
 func (*CloneWorldResponse) ProtoMessage() {}
 
 func (x *CloneWorldResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_world_proto_msgTypes[9]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -610,7 +730,7 @@ func (x *CloneWorldResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloneWorldResponse.ProtoReflect.Descriptor instead.
 func (*CloneWorldResponse) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{9}
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CloneWorldResponse) GetOperation() *Operation {
@@ -630,7 +750,7 @@ type RenameWorldRequest struct {
 
 func (x *RenameWorldRequest) Reset() {
 	*x = RenameWorldRequest{}
-	mi := &file_mcadmin_v1_world_proto_msgTypes[10]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -642,7 +762,7 @@ func (x *RenameWorldRequest) String() string {
 func (*RenameWorldRequest) ProtoMessage() {}
 
 func (x *RenameWorldRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_world_proto_msgTypes[10]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -655,7 +775,7 @@ func (x *RenameWorldRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameWorldRequest.ProtoReflect.Descriptor instead.
 func (*RenameWorldRequest) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{10}
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RenameWorldRequest) GetFrom() string {
@@ -681,7 +801,7 @@ type RenameWorldResponse struct {
 
 func (x *RenameWorldResponse) Reset() {
 	*x = RenameWorldResponse{}
-	mi := &file_mcadmin_v1_world_proto_msgTypes[11]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -693,7 +813,7 @@ func (x *RenameWorldResponse) String() string {
 func (*RenameWorldResponse) ProtoMessage() {}
 
 func (x *RenameWorldResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_world_proto_msgTypes[11]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -706,7 +826,7 @@ func (x *RenameWorldResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameWorldResponse.ProtoReflect.Descriptor instead.
 func (*RenameWorldResponse) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{11}
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RenameWorldResponse) GetOperation() *Operation {
@@ -729,7 +849,7 @@ type DeleteWorldRequest struct {
 
 func (x *DeleteWorldRequest) Reset() {
 	*x = DeleteWorldRequest{}
-	mi := &file_mcadmin_v1_world_proto_msgTypes[12]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -741,7 +861,7 @@ func (x *DeleteWorldRequest) String() string {
 func (*DeleteWorldRequest) ProtoMessage() {}
 
 func (x *DeleteWorldRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_world_proto_msgTypes[12]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -754,7 +874,7 @@ func (x *DeleteWorldRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorldRequest.ProtoReflect.Descriptor instead.
 func (*DeleteWorldRequest) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{12}
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DeleteWorldRequest) GetName() string {
@@ -787,7 +907,7 @@ type DeleteWorldResponse struct {
 
 func (x *DeleteWorldResponse) Reset() {
 	*x = DeleteWorldResponse{}
-	mi := &file_mcadmin_v1_world_proto_msgTypes[13]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -799,7 +919,7 @@ func (x *DeleteWorldResponse) String() string {
 func (*DeleteWorldResponse) ProtoMessage() {}
 
 func (x *DeleteWorldResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_world_proto_msgTypes[13]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -812,7 +932,7 @@ func (x *DeleteWorldResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorldResponse.ProtoReflect.Descriptor instead.
 func (*DeleteWorldResponse) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{13}
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DeleteWorldResponse) GetOperation() *Operation {
@@ -832,7 +952,7 @@ type PurgeQuarantineRequest struct {
 
 func (x *PurgeQuarantineRequest) Reset() {
 	*x = PurgeQuarantineRequest{}
-	mi := &file_mcadmin_v1_world_proto_msgTypes[14]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -844,7 +964,7 @@ func (x *PurgeQuarantineRequest) String() string {
 func (*PurgeQuarantineRequest) ProtoMessage() {}
 
 func (x *PurgeQuarantineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_world_proto_msgTypes[14]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -857,7 +977,7 @@ func (x *PurgeQuarantineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeQuarantineRequest.ProtoReflect.Descriptor instead.
 func (*PurgeQuarantineRequest) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{14}
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PurgeQuarantineRequest) GetName() string {
@@ -876,7 +996,7 @@ type PurgeQuarantineResponse struct {
 
 func (x *PurgeQuarantineResponse) Reset() {
 	*x = PurgeQuarantineResponse{}
-	mi := &file_mcadmin_v1_world_proto_msgTypes[15]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -888,7 +1008,7 @@ func (x *PurgeQuarantineResponse) String() string {
 func (*PurgeQuarantineResponse) ProtoMessage() {}
 
 func (x *PurgeQuarantineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcadmin_v1_world_proto_msgTypes[15]
+	mi := &file_mcadmin_v1_world_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -901,7 +1021,7 @@ func (x *PurgeQuarantineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeQuarantineResponse.ProtoReflect.Descriptor instead.
 func (*PurgeQuarantineResponse) Descriptor() ([]byte, []int) {
-	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{15}
+	return file_mcadmin_v1_world_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PurgeQuarantineResponse) GetFreedBytes() int64 {
@@ -943,7 +1063,7 @@ const file_mcadmin_v1_world_proto_rawDesc = "" +
 	"\x12SwitchWorldRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"J\n" +
 	"\x13SwitchWorldResponse\x123\n" +
-	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"\xba\x01\n" +
+	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"\xd4\x01\n" +
 	"\x12CreateWorldRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04seed\x18\x02 \x01(\tR\x04seed\x12(\n" +
@@ -951,7 +1071,14 @@ const file_mcadmin_v1_world_proto_rawDesc = "" +
 	"\n" +
 	"difficulty\x18\x04 \x01(\x0e2\x16.mcadmin.v1.DifficultyR\n" +
 	"difficulty\x12\x1a\n" +
-	"\bhardcore\x18\x05 \x01(\bR\bhardcore\"J\n" +
+	"\bhardcore\x18\x05 \x01(\bR\bhardcore\x12\x18\n" +
+	"\aversion\x18\x06 \x01(\tR\aversion\"\x15\n" +
+	"\x13ListVersionsRequest\"\xa8\x01\n" +
+	"\x14ListVersionsResponse\x12\x1a\n" +
+	"\bversions\x18\x01 \x03(\tR\bversions\x12\x18\n" +
+	"\acurrent\x18\x02 \x01(\tR\acurrent\x12+\n" +
+	"\x11catalog_available\x18\x03 \x01(\bR\x10catalogAvailable\x12-\n" +
+	"\x12unavailable_reason\x18\x04 \x01(\tR\x11unavailableReason\"J\n" +
 	"\x13CreateWorldResponse\x123\n" +
 	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"M\n" +
 	"\x11CloneWorldRequest\x12\x16\n" +
@@ -974,11 +1101,12 @@ const file_mcadmin_v1_world_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\":\n" +
 	"\x17PurgeQuarantineResponse\x12\x1f\n" +
 	"\vfreed_bytes\x18\x01 \x01(\x03R\n" +
-	"freedBytes2\xd2\x04\n" +
+	"freedBytes2\xa7\x05\n" +
 	"\fWorldService\x12M\n" +
 	"\n" +
 	"ListWorlds\x12\x1d.mcadmin.v1.ListWorldsRequest\x1a\x1e.mcadmin.v1.ListWorldsResponse\"\x00\x12P\n" +
-	"\vSwitchWorld\x12\x1e.mcadmin.v1.SwitchWorldRequest\x1a\x1f.mcadmin.v1.SwitchWorldResponse\"\x00\x12P\n" +
+	"\vSwitchWorld\x12\x1e.mcadmin.v1.SwitchWorldRequest\x1a\x1f.mcadmin.v1.SwitchWorldResponse\"\x00\x12S\n" +
+	"\fListVersions\x12\x1f.mcadmin.v1.ListVersionsRequest\x1a .mcadmin.v1.ListVersionsResponse\"\x00\x12P\n" +
 	"\vCreateWorld\x12\x1e.mcadmin.v1.CreateWorldRequest\x1a\x1f.mcadmin.v1.CreateWorldResponse\"\x00\x12M\n" +
 	"\n" +
 	"CloneWorld\x12\x1d.mcadmin.v1.CloneWorldRequest\x1a\x1e.mcadmin.v1.CloneWorldResponse\"\x00\x12P\n" +
@@ -998,7 +1126,7 @@ func file_mcadmin_v1_world_proto_rawDescGZIP() []byte {
 	return file_mcadmin_v1_world_proto_rawDescData
 }
 
-var file_mcadmin_v1_world_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_mcadmin_v1_world_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_mcadmin_v1_world_proto_goTypes = []any{
 	(*World)(nil),                   // 0: mcadmin.v1.World
 	(*Quarantine)(nil),              // 1: mcadmin.v1.Quarantine
@@ -1007,50 +1135,54 @@ var file_mcadmin_v1_world_proto_goTypes = []any{
 	(*SwitchWorldRequest)(nil),      // 4: mcadmin.v1.SwitchWorldRequest
 	(*SwitchWorldResponse)(nil),     // 5: mcadmin.v1.SwitchWorldResponse
 	(*CreateWorldRequest)(nil),      // 6: mcadmin.v1.CreateWorldRequest
-	(*CreateWorldResponse)(nil),     // 7: mcadmin.v1.CreateWorldResponse
-	(*CloneWorldRequest)(nil),       // 8: mcadmin.v1.CloneWorldRequest
-	(*CloneWorldResponse)(nil),      // 9: mcadmin.v1.CloneWorldResponse
-	(*RenameWorldRequest)(nil),      // 10: mcadmin.v1.RenameWorldRequest
-	(*RenameWorldResponse)(nil),     // 11: mcadmin.v1.RenameWorldResponse
-	(*DeleteWorldRequest)(nil),      // 12: mcadmin.v1.DeleteWorldRequest
-	(*DeleteWorldResponse)(nil),     // 13: mcadmin.v1.DeleteWorldResponse
-	(*PurgeQuarantineRequest)(nil),  // 14: mcadmin.v1.PurgeQuarantineRequest
-	(*PurgeQuarantineResponse)(nil), // 15: mcadmin.v1.PurgeQuarantineResponse
-	(*timestamppb.Timestamp)(nil),   // 16: google.protobuf.Timestamp
-	(*WorldVersion)(nil),            // 17: mcadmin.v1.WorldVersion
-	(*Operation)(nil),               // 18: mcadmin.v1.Operation
-	(GameMode)(0),                   // 19: mcadmin.v1.GameMode
-	(Difficulty)(0),                 // 20: mcadmin.v1.Difficulty
+	(*ListVersionsRequest)(nil),     // 7: mcadmin.v1.ListVersionsRequest
+	(*ListVersionsResponse)(nil),    // 8: mcadmin.v1.ListVersionsResponse
+	(*CreateWorldResponse)(nil),     // 9: mcadmin.v1.CreateWorldResponse
+	(*CloneWorldRequest)(nil),       // 10: mcadmin.v1.CloneWorldRequest
+	(*CloneWorldResponse)(nil),      // 11: mcadmin.v1.CloneWorldResponse
+	(*RenameWorldRequest)(nil),      // 12: mcadmin.v1.RenameWorldRequest
+	(*RenameWorldResponse)(nil),     // 13: mcadmin.v1.RenameWorldResponse
+	(*DeleteWorldRequest)(nil),      // 14: mcadmin.v1.DeleteWorldRequest
+	(*DeleteWorldResponse)(nil),     // 15: mcadmin.v1.DeleteWorldResponse
+	(*PurgeQuarantineRequest)(nil),  // 16: mcadmin.v1.PurgeQuarantineRequest
+	(*PurgeQuarantineResponse)(nil), // 17: mcadmin.v1.PurgeQuarantineResponse
+	(*timestamppb.Timestamp)(nil),   // 18: google.protobuf.Timestamp
+	(*WorldVersion)(nil),            // 19: mcadmin.v1.WorldVersion
+	(*Operation)(nil),               // 20: mcadmin.v1.Operation
+	(GameMode)(0),                   // 21: mcadmin.v1.GameMode
+	(Difficulty)(0),                 // 22: mcadmin.v1.Difficulty
 }
 var file_mcadmin_v1_world_proto_depIdxs = []int32{
-	16, // 0: mcadmin.v1.World.last_played:type_name -> google.protobuf.Timestamp
-	17, // 1: mcadmin.v1.World.version:type_name -> mcadmin.v1.WorldVersion
-	16, // 2: mcadmin.v1.Quarantine.quarantined_at:type_name -> google.protobuf.Timestamp
+	18, // 0: mcadmin.v1.World.last_played:type_name -> google.protobuf.Timestamp
+	19, // 1: mcadmin.v1.World.version:type_name -> mcadmin.v1.WorldVersion
+	18, // 2: mcadmin.v1.Quarantine.quarantined_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: mcadmin.v1.ListWorldsResponse.worlds:type_name -> mcadmin.v1.World
 	1,  // 4: mcadmin.v1.ListWorldsResponse.quarantines:type_name -> mcadmin.v1.Quarantine
-	18, // 5: mcadmin.v1.SwitchWorldResponse.operation:type_name -> mcadmin.v1.Operation
-	19, // 6: mcadmin.v1.CreateWorldRequest.mode:type_name -> mcadmin.v1.GameMode
-	20, // 7: mcadmin.v1.CreateWorldRequest.difficulty:type_name -> mcadmin.v1.Difficulty
-	18, // 8: mcadmin.v1.CreateWorldResponse.operation:type_name -> mcadmin.v1.Operation
-	18, // 9: mcadmin.v1.CloneWorldResponse.operation:type_name -> mcadmin.v1.Operation
-	18, // 10: mcadmin.v1.RenameWorldResponse.operation:type_name -> mcadmin.v1.Operation
-	18, // 11: mcadmin.v1.DeleteWorldResponse.operation:type_name -> mcadmin.v1.Operation
+	20, // 5: mcadmin.v1.SwitchWorldResponse.operation:type_name -> mcadmin.v1.Operation
+	21, // 6: mcadmin.v1.CreateWorldRequest.mode:type_name -> mcadmin.v1.GameMode
+	22, // 7: mcadmin.v1.CreateWorldRequest.difficulty:type_name -> mcadmin.v1.Difficulty
+	20, // 8: mcadmin.v1.CreateWorldResponse.operation:type_name -> mcadmin.v1.Operation
+	20, // 9: mcadmin.v1.CloneWorldResponse.operation:type_name -> mcadmin.v1.Operation
+	20, // 10: mcadmin.v1.RenameWorldResponse.operation:type_name -> mcadmin.v1.Operation
+	20, // 11: mcadmin.v1.DeleteWorldResponse.operation:type_name -> mcadmin.v1.Operation
 	2,  // 12: mcadmin.v1.WorldService.ListWorlds:input_type -> mcadmin.v1.ListWorldsRequest
 	4,  // 13: mcadmin.v1.WorldService.SwitchWorld:input_type -> mcadmin.v1.SwitchWorldRequest
-	6,  // 14: mcadmin.v1.WorldService.CreateWorld:input_type -> mcadmin.v1.CreateWorldRequest
-	8,  // 15: mcadmin.v1.WorldService.CloneWorld:input_type -> mcadmin.v1.CloneWorldRequest
-	10, // 16: mcadmin.v1.WorldService.RenameWorld:input_type -> mcadmin.v1.RenameWorldRequest
-	12, // 17: mcadmin.v1.WorldService.DeleteWorld:input_type -> mcadmin.v1.DeleteWorldRequest
-	14, // 18: mcadmin.v1.WorldService.PurgeQuarantine:input_type -> mcadmin.v1.PurgeQuarantineRequest
-	3,  // 19: mcadmin.v1.WorldService.ListWorlds:output_type -> mcadmin.v1.ListWorldsResponse
-	5,  // 20: mcadmin.v1.WorldService.SwitchWorld:output_type -> mcadmin.v1.SwitchWorldResponse
-	7,  // 21: mcadmin.v1.WorldService.CreateWorld:output_type -> mcadmin.v1.CreateWorldResponse
-	9,  // 22: mcadmin.v1.WorldService.CloneWorld:output_type -> mcadmin.v1.CloneWorldResponse
-	11, // 23: mcadmin.v1.WorldService.RenameWorld:output_type -> mcadmin.v1.RenameWorldResponse
-	13, // 24: mcadmin.v1.WorldService.DeleteWorld:output_type -> mcadmin.v1.DeleteWorldResponse
-	15, // 25: mcadmin.v1.WorldService.PurgeQuarantine:output_type -> mcadmin.v1.PurgeQuarantineResponse
-	19, // [19:26] is the sub-list for method output_type
-	12, // [12:19] is the sub-list for method input_type
+	7,  // 14: mcadmin.v1.WorldService.ListVersions:input_type -> mcadmin.v1.ListVersionsRequest
+	6,  // 15: mcadmin.v1.WorldService.CreateWorld:input_type -> mcadmin.v1.CreateWorldRequest
+	10, // 16: mcadmin.v1.WorldService.CloneWorld:input_type -> mcadmin.v1.CloneWorldRequest
+	12, // 17: mcadmin.v1.WorldService.RenameWorld:input_type -> mcadmin.v1.RenameWorldRequest
+	14, // 18: mcadmin.v1.WorldService.DeleteWorld:input_type -> mcadmin.v1.DeleteWorldRequest
+	16, // 19: mcadmin.v1.WorldService.PurgeQuarantine:input_type -> mcadmin.v1.PurgeQuarantineRequest
+	3,  // 20: mcadmin.v1.WorldService.ListWorlds:output_type -> mcadmin.v1.ListWorldsResponse
+	5,  // 21: mcadmin.v1.WorldService.SwitchWorld:output_type -> mcadmin.v1.SwitchWorldResponse
+	8,  // 22: mcadmin.v1.WorldService.ListVersions:output_type -> mcadmin.v1.ListVersionsResponse
+	9,  // 23: mcadmin.v1.WorldService.CreateWorld:output_type -> mcadmin.v1.CreateWorldResponse
+	11, // 24: mcadmin.v1.WorldService.CloneWorld:output_type -> mcadmin.v1.CloneWorldResponse
+	13, // 25: mcadmin.v1.WorldService.RenameWorld:output_type -> mcadmin.v1.RenameWorldResponse
+	15, // 26: mcadmin.v1.WorldService.DeleteWorld:output_type -> mcadmin.v1.DeleteWorldResponse
+	17, // 27: mcadmin.v1.WorldService.PurgeQuarantine:output_type -> mcadmin.v1.PurgeQuarantineResponse
+	20, // [20:28] is the sub-list for method output_type
+	12, // [12:20] is the sub-list for method input_type
 	12, // [12:12] is the sub-list for extension type_name
 	12, // [12:12] is the sub-list for extension extendee
 	0,  // [0:12] is the sub-list for field type_name
@@ -1070,7 +1202,7 @@ func file_mcadmin_v1_world_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mcadmin_v1_world_proto_rawDesc), len(file_mcadmin_v1_world_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

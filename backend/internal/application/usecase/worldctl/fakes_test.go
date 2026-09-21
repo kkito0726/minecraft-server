@@ -342,3 +342,16 @@ func (f *fakeLock) saveDisabledHistory() []bool {
 type fakeHandle struct{ lock *fakeLock }
 
 func (h *fakeHandle) Release() error { return h.lock.ForceRemove() }
+
+// fakeCatalog は Paper の版の一覧の偽物。err が入っていれば取得に失敗する。
+type fakeCatalog struct {
+	versions []string
+	err      error
+}
+
+func (f *fakeCatalog) StableVersions(context.Context) ([]string, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.versions, nil
+}

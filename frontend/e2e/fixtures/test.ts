@@ -14,6 +14,8 @@ type Options = {
   worlds: string[]
   /** level.dat にハードコアの印を立てるワールド。 */
   hardcoreWorlds: string[]
+  /** level.dat の版を書き換えるワールド。 */
+  worldVersions: Record<string, string>
 }
 
 type Fixtures = {
@@ -30,9 +32,10 @@ export const test = base.extend<Options & Fixtures>({
   readyDelaySeconds: [0, { option: true }],
   worlds: [['world'], { option: true }],
   hardcoreWorlds: [[], { option: true }],
+  worldVersions: [{}, { option: true }],
 
-  server: async ({ readyDelaySeconds, worlds, hardcoreWorlds }, use) => {
-    const server = await startServer({ readyDelaySeconds, worlds, hardcoreWorlds })
+  server: async ({ readyDelaySeconds, worlds, hardcoreWorlds, worldVersions }, use) => {
+    const server = await startServer({ readyDelaySeconds, worlds, hardcoreWorlds, worldVersions })
     try {
       await use({ url: server.url, dir: server.dir })
     } finally {

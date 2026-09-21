@@ -45,7 +45,20 @@ const DIFFICULTY_NAMES: Partial<Record<Difficulty, DemoGameSettings['difficulty'
   [Difficulty.HARD]: 'hard',
 }
 
+/**
+ * デモで選べる版。実物は Paper の API から取るが、デモは外へ出ないので
+ * 2026-09 時点の一覧の一部を持っておく。
+ */
+const DEMO_VERSIONS = ['26.3', '26.2', '26.1.2', '26.1.1', '1.21.11', '1.21.4', '1.20.6', '1.20.1']
+
 export const worldImpl: Partial<ServiceImpl<typeof WorldService>> = {
+  listVersions: () => ({
+    versions: DEMO_VERSIONS,
+    current: getState().configuredVersion,
+    catalogAvailable: true,
+    unavailableReason: '',
+  }),
+
   listWorlds: () => {
     const state = getState()
     return {
@@ -67,10 +80,15 @@ export const worldImpl: Partial<ServiceImpl<typeof WorldService>> = {
           // ハードコアに入るときは難易度もハードにする。
           commit: () =>
             updateState((s) => {
-              const hardcore = s.worlds.find((w) => w.name === req.name)?.hardcore ?? false
+              const target = s.worlds.find((w) => w.name === req.name)
+              const hardcore = target?.hardcore ?? false
               return {
                 ...s,
                 activeLevel: req.name,
+                // 実物と同じく、切り替え先のワールドの版にサーバーを合わせる。
+                configuredVersion: target?.version.readable
+                  ? target.version.name
+                  : s.configuredVersion,
                 gameSettings: {
                   ...s.gameSettings,
                   hardcore,
@@ -98,6 +116,7 @@ export const worldImpl: Partial<ServiceImpl<typeof WorldService>> = {
             updateState((s) => ({
               ...s,
               activeLevel: req.name,
+              configuredVersion: req.version || s.configuredVersion,
               // 実物と同じく、生成の前に .env へ書く値をここで反映する。
               // ワールドごとには持たない。切り替えても戻らない。
               gameSettings: {
@@ -116,7 +135,7 @@ export const worldImpl: Partial<ServiceImpl<typeof WorldService>> = {
                   lastPlayed: new Date(),
                   version: {
                     readable: true,
-                    name: s.configuredVersion,
+                    name: req.version || s.configuredVersion,
                     dataVersion: 4903,
                     levelName: req.name,
                   },

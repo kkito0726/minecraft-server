@@ -12,7 +12,7 @@ import {
   GameMode,
   GetGameSettingsResponseSchema,
 } from '../gen/mcadmin/v1/server_pb'
-import { ListWorldsResponseSchema } from '../gen/mcadmin/v1/world_pb'
+import { ListVersionsResponseSchema, ListWorldsResponseSchema } from '../gen/mcadmin/v1/world_pb'
 import type { OperationSource } from '../features/operations'
 import { withProviders } from '../test/providers'
 import { WorldsPage } from './WorldsPage'
@@ -32,8 +32,11 @@ vi.mock('../features/server/client', () => ({
   serverClient: { getGameSettings },
 }))
 
+const listVersions = vi.hoisted(() => vi.fn())
+
 vi.mock('../features/worlds/client', () => ({
   worldClient: {
+    listVersions,
     listWorlds,
     switchWorld,
     createWorld,
@@ -45,6 +48,13 @@ vi.mock('../features/worlds/client', () => ({
 }))
 
 beforeEach(() => {
+  listVersions.mockResolvedValue(
+    create(ListVersionsResponseSchema, {
+      versions: ['26.3', '26.2', '1.21.4'],
+      current: '26.2',
+      catalogAvailable: true,
+    }),
+  )
   getGameSettings.mockResolvedValue(
     create(GetGameSettingsResponseSchema, {
       settings: {
@@ -226,6 +236,7 @@ describe('新規作成', () => {
         mode: GameMode.SURVIVAL,
         difficulty: Difficulty.NORMAL,
         hardcore: false,
+        version: '26.2',
       }),
     )
   })
@@ -248,6 +259,7 @@ describe('新規作成', () => {
         mode: GameMode.CREATIVE,
         difficulty: Difficulty.PEACEFUL,
         hardcore: false,
+        version: '26.2',
       }),
     )
   })
@@ -277,6 +289,7 @@ describe('新規作成', () => {
         mode: GameMode.SURVIVAL,
         difficulty: Difficulty.HARD,
         hardcore: true,
+        version: '26.2',
       }),
     )
   })
@@ -295,6 +308,46 @@ describe('新規作成', () => {
     expect(difficultyRadio(/ノーマル/)).toBeDisabled()
     expect(difficultyRadio(/^ハード/)).toBeChecked()
     expect(screen.getByText('ハードコアでは難易度はハードに固定されます。')).toBeInTheDocument()
+  })
+
+  it('古い版を選んで作成でき、クライアントも合わせるよう伝える', async () => {
+    listWorlds.mockResolvedValue(worlds())
+    createWorld.mockResolvedValue({ operation: op })
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: '新規作成' }))
+    await userEvent.type(screen.getByLabelText('ワールド名'), 'legacy')
+
+    const version = screen.getByLabelText('版')
+    expect(version).toHaveValue('26.2')
+    await userEvent.selectOptions(version, '1.21.4')
+    expect(screen.getByText(/クライアントを 1\.21\.4 にしてください/)).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '作成する' }))
+    await waitFor(() =>
+      expect(createWorld).toHaveBeenCalledWith(expect.objectContaining({ name: 'legacy', version: '1.21.4' })),
+    )
+  })
+
+  // Pi がオフラインでも作成そのものは塞がない。現在の版でだけ作れる。
+  it('版の一覧が取れないときは現在の版で作る', async () => {
+    listWorlds.mockResolvedValue(worlds())
+    listVersions.mockResolvedValue(
+      create(ListVersionsResponseSchema, {
+        versions: ['26.2'],
+        current: '26.2',
+        catalogAvailable: false,
+        unavailableReason: 'Paper に繋がりません',
+      }),
+    )
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: '新規作成' }))
+
+    const version = screen.getByLabelText('版')
+    expect(version).toBeDisabled()
+    expect(version).toHaveValue('26.2')
+    expect(screen.getByText(/版の一覧を取得できないため/)).toBeInTheDocument()
   })
 
   // EDGE-102: data/ の既存ディレクトリと衝突する名前は使えない。

@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mcadmin/v1/world.proto.
  */
 export const file_mcadmin_v1_world: GenFile = /*@__PURE__*/
-  fileDesc("ChZtY2FkbWluL3YxL3dvcmxkLnByb3RvEgptY2FkbWluLnYxIsEBCgVXb3JsZBIMCgRuYW1lGAEgASgJEg4KBmFjdGl2ZRgCIAEoCBISCgpzaXplX2J5dGVzGAMgASgDEi8KC2xhc3RfcGxheWVkGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIpCgd2ZXJzaW9uGAUgASgLMhgubWNhZG1pbi52MS5Xb3JsZFZlcnNpb24SGAoQaGFzX3Nlc3Npb25fbG9jaxgGIAEoCBIQCghoYXJkY29yZRgHIAEoCCKQAQoKUXVhcmFudGluZRIMCgRuYW1lGAEgASgJEhYKDm9yaWdpbmFsX2xldmVsGAIgASgJEjIKDnF1YXJhbnRpbmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBISCgpzaXplX2J5dGVzGAQgASgDEhQKDGZyb21fcmVzdG9yZRgFIAEoCCITChFMaXN0V29ybGRzUmVxdWVzdCJ6ChJMaXN0V29ybGRzUmVzcG9uc2USIQoGd29ybGRzGAEgAygLMhEubWNhZG1pbi52MS5Xb3JsZBIrCgtxdWFyYW50aW5lcxgCIAMoCzIWLm1jYWRtaW4udjEuUXVhcmFudGluZRIUCgxhY3RpdmVfbGV2ZWwYAyABKAkiIgoSU3dpdGNoV29ybGRSZXF1ZXN0EgwKBG5hbWUYASABKAkiPwoTU3dpdGNoV29ybGRSZXNwb25zZRIoCglvcGVyYXRpb24YASABKAsyFS5tY2FkbWluLnYxLk9wZXJhdGlvbiKSAQoSQ3JlYXRlV29ybGRSZXF1ZXN0EgwKBG5hbWUYASABKAkSDAoEc2VlZBgCIAEoCRIiCgRtb2RlGAMgASgOMhQubWNhZG1pbi52MS5HYW1lTW9kZRIqCgpkaWZmaWN1bHR5GAQgASgOMhYubWNhZG1pbi52MS5EaWZmaWN1bHR5EhAKCGhhcmRjb3JlGAUgASgIIj8KE0NyZWF0ZVdvcmxkUmVzcG9uc2USKAoJb3BlcmF0aW9uGAEgASgLMhUubWNhZG1pbi52MS5PcGVyYXRpb24iOAoRQ2xvbmVXb3JsZFJlcXVlc3QSDgoGc291cmNlGAEgASgJEhMKC2Rlc3RpbmF0aW9uGAIgASgJIj4KEkNsb25lV29ybGRSZXNwb25zZRIoCglvcGVyYXRpb24YASABKAsyFS5tY2FkbWluLnYxLk9wZXJhdGlvbiIuChJSZW5hbWVXb3JsZFJlcXVlc3QSDAoEZnJvbRgBIAEoCRIKCgJ0bxgCIAEoCSI/ChNSZW5hbWVXb3JsZFJlc3BvbnNlEigKCW9wZXJhdGlvbhgBIAEoCzIVLm1jYWRtaW4udjEuT3BlcmF0aW9uIlQKEkRlbGV0ZVdvcmxkUmVxdWVzdBIMCgRuYW1lGAEgASgJEhQKDGNvbmZpcm1fbmFtZRgCIAEoCRIaChJxdWFyYW50aW5lX2luc3RlYWQYAyABKAgiPwoTRGVsZXRlV29ybGRSZXNwb25zZRIoCglvcGVyYXRpb24YASABKAsyFS5tY2FkbWluLnYxLk9wZXJhdGlvbiImChZQdXJnZVF1YXJhbnRpbmVSZXF1ZXN0EgwKBG5hbWUYASABKAkiLgoXUHVyZ2VRdWFyYW50aW5lUmVzcG9uc2USEwoLZnJlZWRfYnl0ZXMYASABKAMy0gQKDFdvcmxkU2VydmljZRJNCgpMaXN0V29ybGRzEh0ubWNhZG1pbi52MS5MaXN0V29ybGRzUmVxdWVzdBoeLm1jYWRtaW4udjEuTGlzdFdvcmxkc1Jlc3BvbnNlIgASUAoLU3dpdGNoV29ybGQSHi5tY2FkbWluLnYxLlN3aXRjaFdvcmxkUmVxdWVzdBofLm1jYWRtaW4udjEuU3dpdGNoV29ybGRSZXNwb25zZSIAElAKC0NyZWF0ZVdvcmxkEh4ubWNhZG1pbi52MS5DcmVhdGVXb3JsZFJlcXVlc3QaHy5tY2FkbWluLnYxLkNyZWF0ZVdvcmxkUmVzcG9uc2UiABJNCgpDbG9uZVdvcmxkEh0ubWNhZG1pbi52MS5DbG9uZVdvcmxkUmVxdWVzdBoeLm1jYWRtaW4udjEuQ2xvbmVXb3JsZFJlc3BvbnNlIgASUAoLUmVuYW1lV29ybGQSHi5tY2FkbWluLnYxLlJlbmFtZVdvcmxkUmVxdWVzdBofLm1jYWRtaW4udjEuUmVuYW1lV29ybGRSZXNwb25zZSIAElAKC0RlbGV0ZVdvcmxkEh4ubWNhZG1pbi52MS5EZWxldGVXb3JsZFJlcXVlc3QaHy5tY2FkbWluLnYxLkRlbGV0ZVdvcmxkUmVzcG9uc2UiABJcCg9QdXJnZVF1YXJhbnRpbmUSIi5tY2FkbWluLnYxLlB1cmdlUXVhcmFudGluZVJlcXVlc3QaIy5tY2FkbWluLnYxLlB1cmdlUXVhcmFudGluZVJlc3BvbnNlIgBCSFpGZ2l0aHViLmNvbS9ra2l0bzA3MjYvbWluZWNyYWZ0LXNlcnZlci9iYWNrZW5kL2dlbi9tY2FkbWluL3YxO21jYWRtaW52MWIGcHJvdG8z", [file_google_protobuf_timestamp, file_mcadmin_v1_common, file_mcadmin_v1_operation, file_mcadmin_v1_server]);
+  fileDesc("ChZtY2FkbWluL3YxL3dvcmxkLnByb3RvEgptY2FkbWluLnYxIsEBCgVXb3JsZBIMCgRuYW1lGAEgASgJEg4KBmFjdGl2ZRgCIAEoCBISCgpzaXplX2J5dGVzGAMgASgDEi8KC2xhc3RfcGxheWVkGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIpCgd2ZXJzaW9uGAUgASgLMhgubWNhZG1pbi52MS5Xb3JsZFZlcnNpb24SGAoQaGFzX3Nlc3Npb25fbG9jaxgGIAEoCBIQCghoYXJkY29yZRgHIAEoCCKQAQoKUXVhcmFudGluZRIMCgRuYW1lGAEgASgJEhYKDm9yaWdpbmFsX2xldmVsGAIgASgJEjIKDnF1YXJhbnRpbmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBISCgpzaXplX2J5dGVzGAQgASgDEhQKDGZyb21fcmVzdG9yZRgFIAEoCCITChFMaXN0V29ybGRzUmVxdWVzdCJ6ChJMaXN0V29ybGRzUmVzcG9uc2USIQoGd29ybGRzGAEgAygLMhEubWNhZG1pbi52MS5Xb3JsZBIrCgtxdWFyYW50aW5lcxgCIAMoCzIWLm1jYWRtaW4udjEuUXVhcmFudGluZRIUCgxhY3RpdmVfbGV2ZWwYAyABKAkiIgoSU3dpdGNoV29ybGRSZXF1ZXN0EgwKBG5hbWUYASABKAkiPwoTU3dpdGNoV29ybGRSZXNwb25zZRIoCglvcGVyYXRpb24YASABKAsyFS5tY2FkbWluLnYxLk9wZXJhdGlvbiKjAQoSQ3JlYXRlV29ybGRSZXF1ZXN0EgwKBG5hbWUYASABKAkSDAoEc2VlZBgCIAEoCRIiCgRtb2RlGAMgASgOMhQubWNhZG1pbi52MS5HYW1lTW9kZRIqCgpkaWZmaWN1bHR5GAQgASgOMhYubWNhZG1pbi52MS5EaWZmaWN1bHR5EhAKCGhhcmRjb3JlGAUgASgIEg8KB3ZlcnNpb24YBiABKAkiFQoTTGlzdFZlcnNpb25zUmVxdWVzdCJwChRMaXN0VmVyc2lvbnNSZXNwb25zZRIQCgh2ZXJzaW9ucxgBIAMoCRIPCgdjdXJyZW50GAIgASgJEhkKEWNhdGFsb2dfYXZhaWxhYmxlGAMgASgIEhoKEnVuYXZhaWxhYmxlX3JlYXNvbhgEIAEoCSI/ChNDcmVhdGVXb3JsZFJlc3BvbnNlEigKCW9wZXJhdGlvbhgBIAEoCzIVLm1jYWRtaW4udjEuT3BlcmF0aW9uIjgKEUNsb25lV29ybGRSZXF1ZXN0Eg4KBnNvdXJjZRgBIAEoCRITCgtkZXN0aW5hdGlvbhgCIAEoCSI+ChJDbG9uZVdvcmxkUmVzcG9uc2USKAoJb3BlcmF0aW9uGAEgASgLMhUubWNhZG1pbi52MS5PcGVyYXRpb24iLgoSUmVuYW1lV29ybGRSZXF1ZXN0EgwKBGZyb20YASABKAkSCgoCdG8YAiABKAkiPwoTUmVuYW1lV29ybGRSZXNwb25zZRIoCglvcGVyYXRpb24YASABKAsyFS5tY2FkbWluLnYxLk9wZXJhdGlvbiJUChJEZWxldGVXb3JsZFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIUCgxjb25maXJtX25hbWUYAiABKAkSGgoScXVhcmFudGluZV9pbnN0ZWFkGAMgASgIIj8KE0RlbGV0ZVdvcmxkUmVzcG9uc2USKAoJb3BlcmF0aW9uGAEgASgLMhUubWNhZG1pbi52MS5PcGVyYXRpb24iJgoWUHVyZ2VRdWFyYW50aW5lUmVxdWVzdBIMCgRuYW1lGAEgASgJIi4KF1B1cmdlUXVhcmFudGluZVJlc3BvbnNlEhMKC2ZyZWVkX2J5dGVzGAEgASgDMqcFCgxXb3JsZFNlcnZpY2USTQoKTGlzdFdvcmxkcxIdLm1jYWRtaW4udjEuTGlzdFdvcmxkc1JlcXVlc3QaHi5tY2FkbWluLnYxLkxpc3RXb3JsZHNSZXNwb25zZSIAElAKC1N3aXRjaFdvcmxkEh4ubWNhZG1pbi52MS5Td2l0Y2hXb3JsZFJlcXVlc3QaHy5tY2FkbWluLnYxLlN3aXRjaFdvcmxkUmVzcG9uc2UiABJTCgxMaXN0VmVyc2lvbnMSHy5tY2FkbWluLnYxLkxpc3RWZXJzaW9uc1JlcXVlc3QaIC5tY2FkbWluLnYxLkxpc3RWZXJzaW9uc1Jlc3BvbnNlIgASUAoLQ3JlYXRlV29ybGQSHi5tY2FkbWluLnYxLkNyZWF0ZVdvcmxkUmVxdWVzdBofLm1jYWRtaW4udjEuQ3JlYXRlV29ybGRSZXNwb25zZSIAEk0KCkNsb25lV29ybGQSHS5tY2FkbWluLnYxLkNsb25lV29ybGRSZXF1ZXN0Gh4ubWNhZG1pbi52MS5DbG9uZVdvcmxkUmVzcG9uc2UiABJQCgtSZW5hbWVXb3JsZBIeLm1jYWRtaW4udjEuUmVuYW1lV29ybGRSZXF1ZXN0Gh8ubWNhZG1pbi52MS5SZW5hbWVXb3JsZFJlc3BvbnNlIgASUAoLRGVsZXRlV29ybGQSHi5tY2FkbWluLnYxLkRlbGV0ZVdvcmxkUmVxdWVzdBofLm1jYWRtaW4udjEuRGVsZXRlV29ybGRSZXNwb25zZSIAElwKD1B1cmdlUXVhcmFudGluZRIiLm1jYWRtaW4udjEuUHVyZ2VRdWFyYW50aW5lUmVxdWVzdBojLm1jYWRtaW4udjEuUHVyZ2VRdWFyYW50aW5lUmVzcG9uc2UiAEJIWkZnaXRodWIuY29tL2traXRvMDcyNi9taW5lY3JhZnQtc2VydmVyL2JhY2tlbmQvZ2VuL21jYWRtaW4vdjE7bWNhZG1pbnYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_mcadmin_v1_common, file_mcadmin_v1_operation, file_mcadmin_v1_server]);
 
 /**
  * World は data/ 配下のワールド 1 つ。
@@ -250,6 +250,16 @@ export type CreateWorldRequest = Message<"mcadmin.v1.CreateWorldRequest"> & {
    * @generated from field: bool hardcore = 5;
    */
   hardcore: boolean;
+
+  /**
+   * 生成に使うサーバーの版（MC_VERSION）。空なら .env の現在の値。
+   *
+   * ListVersions の一覧にある版だけを受け付ける。一覧が取れないときは
+   * 現在の版だけを受け付ける。Paper に無い版を書くとサーバーが起動しない。
+   *
+   * @generated from field: string version = 6;
+   */
+  version: string;
 };
 
 /**
@@ -258,6 +268,59 @@ export type CreateWorldRequest = Message<"mcadmin.v1.CreateWorldRequest"> & {
  */
 export const CreateWorldRequestSchema: GenMessage<CreateWorldRequest> = /*@__PURE__*/
   messageDesc(file_mcadmin_v1_world, 6);
+
+/**
+ * @generated from message mcadmin.v1.ListVersionsRequest
+ */
+export type ListVersionsRequest = Message<"mcadmin.v1.ListVersionsRequest"> & {
+};
+
+/**
+ * Describes the message mcadmin.v1.ListVersionsRequest.
+ * Use `create(ListVersionsRequestSchema)` to create a new message.
+ */
+export const ListVersionsRequestSchema: GenMessage<ListVersionsRequest> = /*@__PURE__*/
+  messageDesc(file_mcadmin_v1_world, 7);
+
+/**
+ * @generated from message mcadmin.v1.ListVersionsResponse
+ */
+export type ListVersionsResponse = Message<"mcadmin.v1.ListVersionsResponse"> & {
+  /**
+   * 新しい順。プレリリース（-rc / -pre）は含めない。
+   *
+   * @generated from field: repeated string versions = 1;
+   */
+  versions: string[];
+
+  /**
+   * .env の MC_VERSION。
+   *
+   * @generated from field: string current = 2;
+   */
+  current: string;
+
+  /**
+   * Paper の一覧を取れたか。偽なら versions は current だけ。
+   *
+   * @generated from field: bool catalog_available = 3;
+   */
+  catalogAvailable: boolean;
+
+  /**
+   * catalog_available が偽のときの理由。
+   *
+   * @generated from field: string unavailable_reason = 4;
+   */
+  unavailableReason: string;
+};
+
+/**
+ * Describes the message mcadmin.v1.ListVersionsResponse.
+ * Use `create(ListVersionsResponseSchema)` to create a new message.
+ */
+export const ListVersionsResponseSchema: GenMessage<ListVersionsResponse> = /*@__PURE__*/
+  messageDesc(file_mcadmin_v1_world, 8);
 
 /**
  * @generated from message mcadmin.v1.CreateWorldResponse
@@ -274,7 +337,7 @@ export type CreateWorldResponse = Message<"mcadmin.v1.CreateWorldResponse"> & {
  * Use `create(CreateWorldResponseSchema)` to create a new message.
  */
 export const CreateWorldResponseSchema: GenMessage<CreateWorldResponse> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_world, 7);
+  messageDesc(file_mcadmin_v1_world, 9);
 
 /**
  * @generated from message mcadmin.v1.CloneWorldRequest
@@ -296,7 +359,7 @@ export type CloneWorldRequest = Message<"mcadmin.v1.CloneWorldRequest"> & {
  * Use `create(CloneWorldRequestSchema)` to create a new message.
  */
 export const CloneWorldRequestSchema: GenMessage<CloneWorldRequest> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_world, 8);
+  messageDesc(file_mcadmin_v1_world, 10);
 
 /**
  * @generated from message mcadmin.v1.CloneWorldResponse
@@ -313,7 +376,7 @@ export type CloneWorldResponse = Message<"mcadmin.v1.CloneWorldResponse"> & {
  * Use `create(CloneWorldResponseSchema)` to create a new message.
  */
 export const CloneWorldResponseSchema: GenMessage<CloneWorldResponse> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_world, 9);
+  messageDesc(file_mcadmin_v1_world, 11);
 
 /**
  * @generated from message mcadmin.v1.RenameWorldRequest
@@ -335,7 +398,7 @@ export type RenameWorldRequest = Message<"mcadmin.v1.RenameWorldRequest"> & {
  * Use `create(RenameWorldRequestSchema)` to create a new message.
  */
 export const RenameWorldRequestSchema: GenMessage<RenameWorldRequest> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_world, 10);
+  messageDesc(file_mcadmin_v1_world, 12);
 
 /**
  * @generated from message mcadmin.v1.RenameWorldResponse
@@ -352,7 +415,7 @@ export type RenameWorldResponse = Message<"mcadmin.v1.RenameWorldResponse"> & {
  * Use `create(RenameWorldResponseSchema)` to create a new message.
  */
 export const RenameWorldResponseSchema: GenMessage<RenameWorldResponse> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_world, 11);
+  messageDesc(file_mcadmin_v1_world, 13);
 
 /**
  * @generated from message mcadmin.v1.DeleteWorldRequest
@@ -383,7 +446,7 @@ export type DeleteWorldRequest = Message<"mcadmin.v1.DeleteWorldRequest"> & {
  * Use `create(DeleteWorldRequestSchema)` to create a new message.
  */
 export const DeleteWorldRequestSchema: GenMessage<DeleteWorldRequest> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_world, 12);
+  messageDesc(file_mcadmin_v1_world, 14);
 
 /**
  * @generated from message mcadmin.v1.DeleteWorldResponse
@@ -400,7 +463,7 @@ export type DeleteWorldResponse = Message<"mcadmin.v1.DeleteWorldResponse"> & {
  * Use `create(DeleteWorldResponseSchema)` to create a new message.
  */
 export const DeleteWorldResponseSchema: GenMessage<DeleteWorldResponse> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_world, 13);
+  messageDesc(file_mcadmin_v1_world, 15);
 
 /**
  * @generated from message mcadmin.v1.PurgeQuarantineRequest
@@ -419,7 +482,7 @@ export type PurgeQuarantineRequest = Message<"mcadmin.v1.PurgeQuarantineRequest"
  * Use `create(PurgeQuarantineRequestSchema)` to create a new message.
  */
 export const PurgeQuarantineRequestSchema: GenMessage<PurgeQuarantineRequest> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_world, 14);
+  messageDesc(file_mcadmin_v1_world, 16);
 
 /**
  * @generated from message mcadmin.v1.PurgeQuarantineResponse
@@ -436,7 +499,7 @@ export type PurgeQuarantineResponse = Message<"mcadmin.v1.PurgeQuarantineRespons
  * Use `create(PurgeQuarantineResponseSchema)` to create a new message.
  */
 export const PurgeQuarantineResponseSchema: GenMessage<PurgeQuarantineResponse> = /*@__PURE__*/
-  messageDesc(file_mcadmin_v1_world, 15);
+  messageDesc(file_mcadmin_v1_world, 17);
 
 /**
  * @generated from service mcadmin.v1.WorldService
@@ -460,6 +523,19 @@ export const WorldService: GenService<{
     methodKind: "unary";
     input: typeof SwitchWorldRequestSchema;
     output: typeof SwitchWorldResponseSchema;
+  },
+  /**
+   * ListVersions はワールドを作れる版の一覧を返す（Paper が配布している安定版）。
+   *
+   * 一覧はバックエンドが Paper の API から取る。取れないとき（Pi がオフライン
+   * など）も失敗にはせず、catalog_available を偽にして現在の版だけを返す。
+   *
+   * @generated from rpc mcadmin.v1.WorldService.ListVersions
+   */
+  listVersions: {
+    methodKind: "unary";
+    input: typeof ListVersionsRequestSchema;
+    output: typeof ListVersionsResponseSchema;
   },
   /**
    * @generated from rpc mcadmin.v1.WorldService.CreateWorld

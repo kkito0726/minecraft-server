@@ -22,7 +22,11 @@ export type { TokenGateProps } from './TokenGate'
 export { UploadBackupPanel } from './UploadBackupPanel'
 export type { UploadBackupPanelProps } from './UploadBackupPanel'
 export { WorldCreateDialog } from './WorldCreateDialog'
-export type { WorldCreateInput, WorldCreateDialogProps } from './WorldCreateDialog'
+export type {
+  WorldCreateInput,
+  WorldCreateDialogProps,
+  WorldVersionOptions,
+} from './WorldCreateDialog'
 export { WorldDeleteDialog } from './WorldDeleteDialog'
 export { WorldNameDialog } from './WorldNameDialog'
 export { WorldTable } from './WorldTable'

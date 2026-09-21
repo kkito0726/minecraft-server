@@ -129,6 +129,21 @@ type LevelSettings struct {
 	HasHardcore   bool
 	Difficulty    settings.Difficulty
 	HasDifficulty bool
+	// Version はワールドを最後に開いた版（Data.Version.Name）。
+	//
+	// スナップショットで開いたワールドでは HasVersion が偽になる。Paper は
+	// スナップショットを配らないので、MC_VERSION に書いても起動しない。
+	Version    string
+	HasVersion bool
+}
+
+// VersionCatalog はワールドを作れる版の一覧を返す。
+//
+// 実体は Paper の API。Pi がオフラインのときは失敗を返す。呼ぶ側は失敗を
+// 「一覧が分からない」として扱い、現在の版だけを許す。
+type VersionCatalog interface {
+	// StableVersions は安定版を新しい順に返す。
+	StableVersions(ctx context.Context) ([]string, error)
 }
 
 // Clock は現在時刻。テストで固定するために抽象化する。

@@ -10,7 +10,7 @@ import {
 import { isValidWorldName, worldNameError } from '../../features/worlds'
 import { Difficulty, GameMode } from '../../gen/mcadmin/v1/server_pb'
 import { Button } from '../atoms'
-import { ChoiceGroup, ConfirmInput, FormField } from '../molecules'
+import { ChoiceGroup, ConfirmInput, FormField, SelectField } from '../molecules'
 import { isConfirmed } from '../molecules/confirmation'
 
 /**
@@ -30,12 +30,23 @@ export type WorldCreateInput = {
   mode: GameMode
   difficulty: Difficulty
   hardcore: boolean
+  version: string
+}
+
+/** 選べる版。ListVersions の結果をそのまま渡す。 */
+export type WorldVersionOptions = {
+  versions: string[]
+  current: string
+  /** Paper の一覧を取れたか。偽なら現在の版だけで作る。 */
+  available: boolean
+  unavailableReason: string
 }
 
 export type WorldCreateDialogProps = {
   /** いま .env に入っている値。初期選択にする。 */
   currentMode: GameMode
   currentDifficulty: Difficulty
+  versions: WorldVersionOptions
   disabled?: boolean | undefined
   onCancel: () => void
   onSubmit: (input: WorldCreateInput) => void
@@ -47,11 +58,12 @@ const DESCRIPTION =
 export function WorldCreateDialog({
   currentMode,
   currentDifficulty,
+  versions,
   disabled,
   onCancel,
   onSubmit,
 }: WorldCreateDialogProps) {
-  const f = useCreateForm(currentMode, currentDifficulty)
+  const f = useCreateForm(currentMode, currentDifficulty, versions.current)
 
   return (
     <form
@@ -66,7 +78,7 @@ export function WorldCreateDialog({
     >
       <p className="text-sm text-dim">{DESCRIPTION}</p>
 
-      <Fields form={f} disabled={disabled} />
+      <Fields form={f} versions={versions} disabled={disabled} />
 
       <Actions
         hardcore={f.hardcore}
@@ -104,9 +116,11 @@ function Actions({
 /** 入力欄をまとめる。ダイアログ本体は骨組みだけを持つ。 */
 function Fields({
   form: f,
+  versions,
   disabled,
 }: {
   form: ReturnType<typeof useCreateForm>
+  versions: WorldVersionOptions
   disabled: boolean | undefined
 }) {
   return (
@@ -117,6 +131,12 @@ function Fields({
         disabled={disabled}
         onName={f.setName}
         onSeed={f.setSeed}
+      />
+      <VersionField
+        value={f.version}
+        options={versions}
+        disabled={disabled}
+        onChange={f.setVersion}
       />
       <ModeAndDifficulty
         choice={f.choice}
@@ -139,8 +159,9 @@ function Fields({
  * ハードコアを外したら確認の入力も捨てる。残しておくと、入れ直した
  * ときに確認済みの状態から始まってしまう。
  */
-function useCreateForm(currentMode: GameMode, currentDifficulty: Difficulty) {
+function useCreateForm(currentMode: GameMode, currentDifficulty: Difficulty, currentVersion: string) {
   const [name, setName] = useState('')
+  const [version, setVersion] = useState(currentVersion)
   const [seed, setSeed] = useState('')
   const [choice, setChoice] = useState(modeChoiceValue(currentMode, false))
   const [difficulty, setDifficulty] = useState(currentDifficulty)
@@ -158,6 +179,8 @@ function useCreateForm(currentMode: GameMode, currentDifficulty: Difficulty) {
     difficulty: hardcore ? HARDCORE_DIFFICULTY : difficulty,
     hardcore,
     typed,
+    version,
+    setVersion,
     ready: isValidWorldName(name) && confirmed,
     setName,
     setSeed,
@@ -175,8 +198,55 @@ function useCreateForm(currentMode: GameMode, currentDifficulty: Difficulty) {
       mode,
       difficulty: hardcore ? HARDCORE_DIFFICULTY : difficulty,
       hardcore,
+      version,
     }),
   }
+}
+
+/**
+ * 版の選択。
+ *
+ * 一覧は Paper が配っている安定版。取れないとき（Pi がオフライン）は
+ * 現在の版だけにして理由を出す。版を選ぶとサーバーの版も切り替わるので、
+ * 遊ぶ人のクライアントも合わせる必要があることを添える。
+ */
+function VersionField({
+  value,
+  options,
+  disabled,
+  onChange,
+}: {
+  value: string
+  options: WorldVersionOptions
+  disabled: boolean | undefined
+  onChange: (v: string) => void
+}) {
+  const hint = options.available
+    ? versionHint(value, options.current)
+    : `版の一覧を取得できないため、現在の版（${options.current}）で作ります。${options.unavailableReason}`
+
+  return (
+    <SelectField
+      id="world-version"
+      label="版"
+      value={value}
+      options={options.versions}
+      onChange={onChange}
+      hint={hint}
+      disabled={disabled || !options.available}
+    />
+  )
+}
+
+function versionHint(value: string, current: string): string {
+  const base = 'Paper が配っている版から選べます。'
+  if (value === current) {
+    return `${base}いまのサーバーと同じ版です。`
+  }
+  return (
+    `${base}このワールドを使うときはサーバーが ${value} に切り替わります。` +
+    `遊ぶ人はクライアントを ${value} にしてください。`
+  )
 }
 
 function NameAndSeed({

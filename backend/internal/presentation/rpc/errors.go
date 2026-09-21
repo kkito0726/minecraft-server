@@ -9,6 +9,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/backupctl"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/settings"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
@@ -37,6 +38,10 @@ func toConnectError(err error) error {
 	case errors.Is(err, operations.ErrBusy), errors.Is(err, port.ErrLocked):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, world.ErrActiveWorld):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	// 版が起動しない・確かめられない、は利用者が選び直せる。
+	case errors.Is(err, worldctl.ErrVersionUnavailable),
+		errors.Is(err, worldctl.ErrCatalogUnavailable):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, worldfs.ErrNotFound), errors.Is(err, world.ErrNotFound),
 		errors.Is(err, backup.ErrNotFound):
