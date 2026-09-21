@@ -31,9 +31,9 @@ type NavEntry = {
 
 const NAV: readonly NavEntry[] = [
   { to: '/', label: 'サーバー', code: 'SRV', icon: 'server' },
+  { to: '/settings', label: '設定', code: 'CFG', icon: 'settings' },
   { to: '/worlds', label: 'ワールド', code: 'WLD', icon: 'world' },
   { to: '/backups', label: 'バックアップ', code: 'BAK', icon: 'backup' },
-  { to: '/settings', label: '設定', code: 'CFG', icon: 'settings' },
   { to: '/system', label: 'リソース', code: 'RES', icon: 'gauge' },
 ]
 
