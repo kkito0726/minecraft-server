@@ -3,11 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { GameSettingsValues } from '../../features/settings'
-import { Difficulty } from '../../gen/mcadmin/v1/server_pb'
+import { Difficulty, GameMode } from '../../gen/mcadmin/v1/server_pb'
 import { GameSettingsForm } from './GameSettingsForm'
 
 const current: GameSettingsValues = {
   difficulty: Difficulty.NORMAL,
+  mode: GameMode.SURVIVAL,
   motd: 'ようこそ',
   maxPlayers: 5,
   viewDistance: 7,
@@ -19,6 +20,7 @@ function renderForm(props: Partial<Parameters<typeof GameSettingsForm>[0]> = {})
   render(
     <GameSettingsForm
       settings={current}
+      hardcore={false}
       warnings={[]}
       running
       onlinePlayers={0}

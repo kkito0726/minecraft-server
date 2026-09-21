@@ -13,7 +13,9 @@ import (
 
 func validSettings() *mcadminv1.GameSettings {
 	return &mcadminv1.GameSettings{
-		Difficulty: mcadminv1.Difficulty_DIFFICULTY_HARD, Motd: "§aようこそ",
+		Difficulty: mcadminv1.Difficulty_DIFFICULTY_HARD,
+		Mode:       mcadminv1.GameMode_GAME_MODE_CREATIVE,
+		Motd:       "§aようこそ",
 		MaxPlayers: 8, ViewDistance: 9, SimulationDistance: 6,
 	}
 }

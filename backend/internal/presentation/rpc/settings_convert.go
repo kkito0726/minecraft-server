@@ -42,13 +42,50 @@ func difficultyFromProto(d mcadminv1.Difficulty) (settings.Difficulty, error) {
 	}
 }
 
+// gameModeToProto はゲームモードを転送形式にする。
+func gameModeToProto(m settings.GameMode) mcadminv1.GameMode {
+	switch m {
+	case settings.GameModeSurvival:
+		return mcadminv1.GameMode_GAME_MODE_SURVIVAL
+	case settings.GameModeCreative:
+		return mcadminv1.GameMode_GAME_MODE_CREATIVE
+	case settings.GameModeAdventure:
+		return mcadminv1.GameMode_GAME_MODE_ADVENTURE
+	case settings.GameModeSpectator:
+		return mcadminv1.GameMode_GAME_MODE_SPECTATOR
+	default:
+		return mcadminv1.GameMode_GAME_MODE_UNSPECIFIED
+	}
+}
+
+// gameModeFromProto は転送形式のゲームモードを読む。
+//
+// 難易度と同じく、未指定を survival として受け取らない。欄を送り忘れた
+// クライアントが、利用者の意図と無関係にモードを書き換えてしまう。
+func gameModeFromProto(m mcadminv1.GameMode) (settings.GameMode, error) {
+	switch m {
+	case mcadminv1.GameMode_GAME_MODE_SURVIVAL:
+		return settings.GameModeSurvival, nil
+	case mcadminv1.GameMode_GAME_MODE_CREATIVE:
+		return settings.GameModeCreative, nil
+	case mcadminv1.GameMode_GAME_MODE_ADVENTURE:
+		return settings.GameModeAdventure, nil
+	case mcadminv1.GameMode_GAME_MODE_SPECTATOR:
+		return settings.GameModeSpectator, nil
+	default:
+		return "", fmt.Errorf("%w: ゲームモードが指定されていません", settings.ErrInvalid)
+	}
+}
+
 func gameSettingsToProto(s settings.GameSettings) *mcadminv1.GameSettings {
 	return &mcadminv1.GameSettings{
 		Difficulty:         difficultyToProto(s.Difficulty()),
+		Mode:               gameModeToProto(s.Mode()),
 		Motd:               s.MOTD(),
 		MaxPlayers:         int32(s.MaxPlayers()),
 		ViewDistance:       int32(s.ViewDistance()),
 		SimulationDistance: int32(s.SimulationDistance()),
+		Hardcore:           s.Hardcore(),
 	}
 }
 
@@ -62,11 +99,18 @@ func gameSettingsFromProto(p *mcadminv1.GameSettings) (settings.GameSettings, er
 	if err != nil {
 		return settings.GameSettings{}, err
 	}
-	return settings.New(
-		difficulty,
-		p.GetMotd(),
-		int(p.GetMaxPlayers()),
-		int(p.GetViewDistance()),
-		int(p.GetSimulationDistance()),
-	)
+	mode, err := gameModeFromProto(p.GetMode())
+	if err != nil {
+		return settings.GameSettings{}, err
+	}
+	// hardcore は受け取らない。画面から変えられない値なので、送られてきても
+	// 無視する。書き込み側（write）もこのキーには触らない。
+	return settings.New(settings.Params{
+		Difficulty:         difficulty,
+		Mode:               mode,
+		MOTD:               p.GetMotd(),
+		MaxPlayers:         int(p.GetMaxPlayers()),
+		ViewDistance:       int(p.GetViewDistance()),
+		SimulationDistance: int(p.GetSimulationDistance()),
+	})
 }

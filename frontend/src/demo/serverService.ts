@@ -5,7 +5,7 @@ import type { ServiceImpl } from '@connectrpc/connect'
 
 import { parseGameSettings } from '../features/settings/settings'
 import { OperationKind } from '../gen/mcadmin/v1/common_pb'
-import { Difficulty, ServerService } from '../gen/mcadmin/v1/server_pb'
+import { Difficulty, GameMode, ServerService } from '../gen/mcadmin/v1/server_pb'
 import type { GameSettings } from '../gen/mcadmin/v1/server_pb'
 import { toGameSettings, toOperation, toStatus } from './messages'
 import { isBusy, startOperation } from './operations'
@@ -13,6 +13,13 @@ import { busyGuard, failedPrecondition, invalidArgument } from './rpcErrors'
 import { getState, updateState } from './state'
 import type { DemoGameSettings } from './state'
 import { APPLY_SETTINGS_STEPS, RESTART_STEPS, START_STEPS, STOP_STEPS } from './steps'
+
+const GAME_MODE_NAMES: Partial<Record<GameMode, DemoGameSettings['mode']>> = {
+  [GameMode.SURVIVAL]: 'survival',
+  [GameMode.CREATIVE]: 'creative',
+  [GameMode.ADVENTURE]: 'adventure',
+  [GameMode.SPECTATOR]: 'spectator',
+}
 
 const DIFFICULTY_NAMES: Partial<Record<Difficulty, DemoGameSettings['difficulty']>> = {
   [Difficulty.PEACEFUL]: 'peaceful',
@@ -30,6 +37,7 @@ const DIFFICULTY_NAMES: Partial<Record<Difficulty, DemoGameSettings['difficulty'
 function validated(input: GameSettings | undefined): DemoGameSettings {
   const result = parseGameSettings({
     difficulty: input?.difficulty ?? Difficulty.UNSPECIFIED,
+    mode: input?.mode ?? GameMode.UNSPECIFIED,
     motd: input?.motd ?? '',
     maxPlayers: String(input?.maxPlayers ?? ''),
     viewDistance: String(input?.viewDistance ?? ''),
@@ -42,7 +50,12 @@ function validated(input: GameSettings | undefined): DemoGameSettings {
   if (!difficulty) {
     throw invalidArgument('難易度が指定されていません')
   }
-  return { ...result.value, difficulty }
+  const mode = GAME_MODE_NAMES[result.value.mode]
+  if (!mode) {
+    throw invalidArgument('ゲームモードが指定されていません')
+  }
+  // ハードコアは保存で変えない。実物と同じく、いまの値をそのまま残す。
+  return { ...result.value, difficulty, mode, hardcore: getState().gameSettings.hardcore }
 }
 
 /** 画面が読んでよい設定。実物の publicConfigKeys に合わせる。 */

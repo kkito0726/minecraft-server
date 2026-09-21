@@ -71,6 +71,13 @@ services:
       TZ: "${TZ:-Asia/Tokyo}"
       MOTD: "${MC_MOTD:-A Minecraft Server on Docker}"
       DIFFICULTY: "${MC_DIFFICULTY:-normal}"
+      # 既定のゲームモード。接続してくる人に適用される。既に接続している
+      # 人のモードは変わらない（server.properties の gamemode と同じ）。
+      MODE: "${MC_MODE:-survival}"
+      # ハードコア。**新しく生成されるワールドの level.dat に焼かれる。**
+      # 生成済みのワールドに対して後から有効にしても食い違うだけなので、
+      # 管理画面ではワールドの作成時にだけ指定できるようにしてある。
+      HARDCORE: "${MC_HARDCORE:-FALSE}"
       MAX_PLAYERS: "${MC_MAX_PLAYERS:-5}"
       # 距離設定はプレイヤー1人あたりの CPU コストを最も左右する。
       # simulation は エンティティ・レッドストーンの処理範囲で view より重い。

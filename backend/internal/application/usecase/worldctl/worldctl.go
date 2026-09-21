@@ -21,6 +21,11 @@ import (
 const (
 	keyLevel = "MC_LEVEL"
 	keySeed  = "MC_SEED"
+	// 生成の瞬間にだけ意味を持つ設定。いずれもサーバー全体の値で、
+	// ワールドごとには持たない（.env が正であるという前提を崩さない）。
+	keyMode       = "MC_MODE"
+	keyDifficulty = "MC_DIFFICULTY"
+	keyHardcore   = "MC_HARDCORE"
 )
 
 // defaultLevel は MC_LEVEL が未設定のときのワールド名。

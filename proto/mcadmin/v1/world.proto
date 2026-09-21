@@ -10,6 +10,8 @@ package mcadmin.v1;
 import "google/protobuf/timestamp.proto";
 import "mcadmin/v1/common.proto";
 import "mcadmin/v1/operation.proto";
+// GameMode と Difficulty はサーバー全体の設定なので server.proto にある。
+import "mcadmin/v1/server.proto";
 
 option go_package = "github.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1;mcadminv1";
 
@@ -74,6 +76,20 @@ message CreateWorldRequest {
   string name = 1;
   // 空なら Paper に任せる。指定した場合、生成後に .env から消される（REQ-108）。
   string seed = 2;
+  // 以下は生成の前に .env へ書く設定。
+  //
+  // **いずれもサーバー全体の設定で、ワールドごとには持たない。** それでも
+  // 作成時に受け取るのは、ゲームモードとハードコアが効くのが生成の瞬間だから。
+  // 生成後に変えても、モードは新しく接続した人にしか効かず、ハードコアは
+  // level.dat に焼かれた値と食い違う。
+  //
+  // 未指定なら .env の現在の値をそのまま使う。
+  GameMode mode = 3;
+  Difficulty difficulty = 4;
+  // hardcore だけは未指定を表せないので、常に明示として扱う。偽なら
+  // MC_HARDCORE=FALSE を書く。前に作ったハードコアのワールドの設定を、
+  // 次に作ったワールドが黙って引き継ぐのを防ぐため。
+  bool hardcore = 5;
 }
 
 message CreateWorldResponse {

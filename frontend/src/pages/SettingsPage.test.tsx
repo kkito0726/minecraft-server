@@ -10,6 +10,7 @@ import { OperationSchema } from '../gen/mcadmin/v1/operation_pb'
 import {
   ContainerState,
   Difficulty,
+  GameMode,
   GetGameSettingsResponseSchema,
   GetStatusResponseSchema,
   UpdateGameSettingsResponseSchema,
@@ -42,6 +43,7 @@ const idleSource: OperationSource = {
 
 const current = {
   difficulty: Difficulty.NORMAL,
+  mode: GameMode.SURVIVAL,
   motd: 'ようこそ',
   maxPlayers: 5,
   viewDistance: 7,

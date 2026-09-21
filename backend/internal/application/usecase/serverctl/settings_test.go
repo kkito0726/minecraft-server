@@ -86,7 +86,10 @@ func envWith(values map[string]string) *settingsSnapshot {
 func mustSettings(t *testing.T) settings.GameSettings {
 	t.Helper()
 
-	s, err := settings.New(settings.DifficultyHard, "§aようこそ", 8, 9, 6)
+	s, err := settings.New(settings.Params{
+		Difficulty: settings.DifficultyHard, Mode: settings.GameModeCreative,
+		MOTD: "§aようこそ", MaxPlayers: 8, ViewDistance: 9, SimulationDistance: 6,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,6 +102,7 @@ func TestSettingsGetReadsEnv(t *testing.T) {
 	cfg := &settingsConfig{current: envWith(map[string]string{
 		"MC_DIFFICULTY": "HARD", "MC_MOTD": "§aE2E のサーバー",
 		"MC_MAX_PLAYERS": "10", "MC_VIEW_DISTANCE": "9", "MC_SIMULATION_DISTANCE": "6",
+		"MC_MODE": "CREATIVE", "MC_HARDCORE": "true",
 	})}
 	uc, _ := newSettings(t, &fakeRuntime{}, cfg)
 
@@ -110,6 +114,13 @@ func TestSettingsGetReadsEnv(t *testing.T) {
 	if s.Difficulty() != settings.DifficultyHard || s.MOTD() != "§aE2E のサーバー" ||
 		s.MaxPlayers() != 10 || s.ViewDistance() != 9 || s.SimulationDistance() != 6 {
 		t.Errorf("読み取りが違う: %+v", s)
+	}
+	// 大文字でも読む。手で書かれた .env を弾くと設定画面が開けなくなる。
+	if s.Mode() != settings.GameModeCreative {
+		t.Errorf("モードが %q", s.Mode())
+	}
+	if !s.Hardcore() {
+		t.Error("ハードコアを読めていない")
 	}
 	if len(got.Warnings) != 0 {
 		t.Errorf("警告は出ないはず: %v", got.Warnings)
@@ -197,6 +208,7 @@ func TestSettingsSaveWritesAllKeys(t *testing.T) {
 	want := map[string]string{
 		"MC_LEVEL": "world", "MC_DIFFICULTY": "hard", "MC_MOTD": "§aようこそ",
 		"MC_MAX_PLAYERS": "8", "MC_VIEW_DISTANCE": "9", "MC_SIMULATION_DISTANCE": "6",
+		"MC_MODE": "creative",
 	}
 	for k, v := range want {
 		if got, _ := cfg.saved.Get(k); got != v {
@@ -309,5 +321,48 @@ func TestNewSettingsUseCaseRequiresDependencies(t *testing.T) {
 
 	if _, err := serverctl.NewSettingsUseCase(serverctl.SettingsConfig{}); err == nil {
 		t.Error("依存が無いのに作れてしまった")
+	}
+}
+
+// ハードコアは設定の保存で書き換えない。
+//
+// 画面から変えられない値なので、読んだ結果を書き戻すと、読めなかった値を
+// 既定に倒した結果がそのまま .env に焼き付く。決めるのは作成時だけ。
+func TestSettingsSaveDoesNotTouchHardcore(t *testing.T) {
+	t.Parallel()
+
+	cfg := &settingsConfig{current: envWith(map[string]string{
+		"MC_HARDCORE": "TRUE", "MC_LEVEL": "world",
+	})}
+	uc, _ := newSettings(t, &fakeRuntime{}, cfg)
+
+	if err := uc.Save(context.Background(), mustSettings(t)); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, _ := cfg.saved.Get("MC_HARDCORE"); got != "TRUE" {
+		t.Errorf("MC_HARDCORE が %q。触らないはず", got)
+	}
+}
+
+// 読めないモードは既定に倒し、そのことを知らせる。
+func TestSettingsGetWarnsOnUnreadableMode(t *testing.T) {
+	t.Parallel()
+
+	uc, _ := newSettings(t, &fakeRuntime{}, &settingsConfig{current: envWith(map[string]string{
+		"MC_MODE": "god",
+	})})
+
+	got, err := uc.Get(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Settings.Mode() != settings.GameModeSurvival {
+		t.Errorf("既定に倒れていない: %q", got.Settings.Mode())
+	}
+	if !slices.ContainsFunc(got.Warnings, func(w string) bool {
+		return strings.Contains(w, "MC_MODE")
+	}) {
+		t.Errorf("MC_MODE の警告が無い: %v", got.Warnings)
 	}
 }

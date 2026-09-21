@@ -2,7 +2,7 @@ import { ConnectError } from '@connectrpc/connect'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BackupMode, RestoreTarget, VersionVerdict } from '../gen/mcadmin/v1/backup_pb'
-import { ContainerState, Difficulty } from '../gen/mcadmin/v1/server_pb'
+import { ContainerState, Difficulty, GameMode } from '../gen/mcadmin/v1/server_pb'
 import { backupImpl } from './backupService'
 import { resetOperations } from './operations'
 import { serverImpl } from './serverService'
@@ -218,6 +218,7 @@ describe('BackupService', () => {
 describe('ServerService のゲーム設定', () => {
   const settings = {
     difficulty: Difficulty.HARD,
+    mode: GameMode.CREATIVE,
     motd: 'デモのサーバー',
     maxPlayers: 8,
     viewDistance: 9,

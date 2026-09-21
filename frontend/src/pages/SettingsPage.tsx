@@ -54,6 +54,7 @@ export function SettingsPage() {
         <GameSettingsForm
           key={JSON.stringify(values)}
           settings={values}
+          hardcore={settings.data.settings.hardcore}
           warnings={settings.data.warnings}
           running={status.data?.containerState === ContainerState.RUNNING}
           onlinePlayers={Math.max(0, status.data?.onlinePlayers ?? 0)}

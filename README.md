@@ -58,6 +58,8 @@ openssl rand -hex 16
 | `MC_WHITELIST` | 参加を許可する Minecraft ID。設定を強く推奨 |
 | `MC_MEMORY` / `MC_MEM_LIMIT` | JVM ヒープとコンテナ上限。Pi 5 4GB なら `2G` / `3g` |
 | `MC_LEVEL` | 稼働させるワールドの名前。実体は `data/<この値>/`。既定は `world` |
+| `MC_MODE` | 既定のゲームモード（`survival` / `creative` / `adventure` / `spectator`）。サーバー全体の設定で、ワールドごとには持ちません |
+| `MC_HARDCORE` | ハードコア。`TRUE` で生成したワールドは `level.dat` に焼かれ、後から外せません。管理画面ではワールドの作成時にだけ指定できます |
 | `ADMIN_TOKEN` | 管理コンソールのトークン。`openssl rand -hex 32` で生成。**32 文字未満だと起動しない** |
 
 ## 起動・停止
@@ -264,9 +266,9 @@ Pi の上で `sudo tailscale serve --bg 8787` を実行しておくと、
 | 画面 | できること |
 |---|---|
 | `/` | 状態表示、起動・停止・再起動 |
-| `/worlds` | 一覧・新規作成・複製・改名・削除・**切り替え** |
+| `/worlds` | 一覧・新規作成（ゲームモード・難易度・ハードコアを選ぶ）・複製・改名・削除・**切り替え** |
 | `/backups` | 取得・一覧・削除・保持ポリシー・**復元**、zip の取り込みと手元の PC への持ち出し |
-| `/settings` | 難易度・MOTD・最大人数・描画距離・シミュレーション距離（保存だけ / 今すぐ反映） |
+| `/settings` | 難易度・ゲームモード・MOTD・最大人数・描画距離・シミュレーション距離（保存だけ / 今すぐ反映） |
 
 **RCON の 25575 は変わらず公開しません。** 管理コンソールも
 `docker compose exec -T mc rcon-cli` を経由します。到達の制御は Tailscale、

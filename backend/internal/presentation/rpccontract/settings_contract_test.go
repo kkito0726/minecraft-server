@@ -30,8 +30,31 @@ func TestGameSettingsExcludesDangerousFields(t *testing.T) {
 	}
 
 	// 欄を足すこと自体を、試験を直すという手間を挟んで意識させる。
-	if got := msg.Fields().Len(); got != 5 {
+	//
+	// 7 個目までの内訳: difficulty / motd / max_players / view_distance /
+	// simulation_distance / mode / hardcore。
+	// mode は gamemode に対応し、効くのは新しく接続した人だけなので、
+	// 押し間違えてもワールドは壊れない。
+	// hardcore は **読み取り専用**。ここで有効にできると、生成済みの
+	// level.dat と食い違ったまま死亡が不可逆になる。決めるのは
+	// CreateWorld だけで、UpdateGameSettings は受け取っても無視する。
+	if got := msg.Fields().Len(); got != 7 {
 		t.Errorf("GameSettings の欄が %d 個。増やすなら、画面から変えて壊れないかを先に検討すること", got)
+	}
+}
+
+// ハードコアを画面から有効にできてはいけない。
+//
+// 欄が読み取り専用であることはコンパイラには見えないので、
+// 書き込み側が無視していることを試験で固定する。
+func TestUpdateGameSettingsIgnoresHardcore(t *testing.T) {
+	t.Parallel()
+
+	// 欄そのものは表示のために残す。無くすと、いま有効かどうかを
+	// 画面が知る手段が消える。
+	if (&mcadminv1.GameSettings{}).ProtoReflect().Descriptor().
+		Fields().ByName("hardcore") == nil {
+		t.Fatal("GameSettings に hardcore がない。表示のために必要")
 	}
 }
 

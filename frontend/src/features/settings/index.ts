@@ -1,4 +1,4 @@
-export { DIFFICULTY_OPTIONS, difficultyLabel } from './labels'
+export { DIFFICULTY_OPTIONS, GAME_MODE_OPTIONS, difficultyLabel, gameModeLabel } from './labels'
 export {
   PI_RECOMMENDED,
   SETTINGS_LIMITS,

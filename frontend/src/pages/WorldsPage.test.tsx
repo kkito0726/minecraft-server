@@ -3,10 +3,15 @@ import type { MessageInitShape } from '@bufbuild/protobuf'
 import { Code, ConnectError } from '@connectrpc/connect'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { OperationKind, OperationState } from '../gen/mcadmin/v1/common_pb'
 import { OperationSchema } from '../gen/mcadmin/v1/operation_pb'
+import {
+  Difficulty,
+  GameMode,
+  GetGameSettingsResponseSchema,
+} from '../gen/mcadmin/v1/server_pb'
 import { ListWorldsResponseSchema } from '../gen/mcadmin/v1/world_pb'
 import type { OperationSource } from '../features/operations'
 import { withProviders } from '../test/providers'
@@ -20,6 +25,13 @@ const renameWorld = vi.hoisted(() => vi.fn())
 const deleteWorld = vi.hoisted(() => vi.fn())
 const purgeQuarantine = vi.hoisted(() => vi.fn())
 
+// 新規作成のダイアログは、初期選択のために .env の現在値を読む。
+const getGameSettings = vi.hoisted(() => vi.fn())
+
+vi.mock('../features/server/client', () => ({
+  serverClient: { getGameSettings },
+}))
+
 vi.mock('../features/worlds/client', () => ({
   worldClient: {
     listWorlds,
@@ -31,6 +43,21 @@ vi.mock('../features/worlds/client', () => ({
     purgeQuarantine,
   },
 }))
+
+beforeEach(() => {
+  getGameSettings.mockResolvedValue(
+    create(GetGameSettingsResponseSchema, {
+      settings: {
+        difficulty: Difficulty.NORMAL,
+        mode: GameMode.SURVIVAL,
+        motd: 'ようこそ',
+        maxPlayers: 5,
+        viewDistance: 7,
+        simulationDistance: 5,
+      },
+    }),
+  )
+})
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -167,7 +194,64 @@ describe('新規作成', () => {
     await userEvent.click(screen.getByRole('button', { name: '作成する' }))
 
     await waitFor(() =>
-      expect(createWorld).toHaveBeenCalledWith({ name: 'newworld', seed: '12345' }),
+      expect(createWorld).toHaveBeenCalledWith({
+        name: 'newworld',
+        seed: '12345',
+        // 初期選択は .env の現在値。触らなければそのまま送る。
+        mode: GameMode.SURVIVAL,
+        difficulty: Difficulty.NORMAL,
+        hardcore: false,
+      }),
+    )
+  })
+
+  it('ゲームモードと難易度を選んで作成できる', async () => {
+    listWorlds.mockResolvedValue(worlds())
+    createWorld.mockResolvedValue({ operation: op })
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: '新規作成' }))
+    await userEvent.type(screen.getByLabelText('ワールド名'), 'creative')
+    await userEvent.click(screen.getByRole('radio', { name: /クリエイティブ/ }))
+    await userEvent.click(screen.getByRole('radio', { name: /ピースフル/ }))
+    await userEvent.click(screen.getByRole('button', { name: '作成する' }))
+
+    await waitFor(() =>
+      expect(createWorld).toHaveBeenCalledWith({
+        name: 'creative',
+        seed: '',
+        mode: GameMode.CREATIVE,
+        difficulty: Difficulty.PEACEFUL,
+        hardcore: false,
+      }),
+    )
+  })
+
+  // ハードコアは level.dat に焼かれ、後から外せない。
+  // 押し間違いがそのまま取り返しのつかない設定になるので、名前を打たせる。
+  it('ハードコアは名前を打つまで実行できない', async () => {
+    listWorlds.mockResolvedValue(worlds())
+    createWorld.mockResolvedValue({ operation: op })
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: '新規作成' }))
+    await userEvent.type(screen.getByLabelText('ワールド名'), 'hardworld')
+    await userEvent.click(screen.getByLabelText('ハードコアにする'))
+
+    expect(screen.getByText(/後から外せません/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '作成する' })).toBeDisabled()
+
+    await userEvent.type(screen.getByLabelText(/確認のため/), 'hardworld')
+    await userEvent.click(screen.getByRole('button', { name: '作成する' }))
+
+    await waitFor(() =>
+      expect(createWorld).toHaveBeenCalledWith({
+        name: 'hardworld',
+        seed: '',
+        mode: GameMode.SURVIVAL,
+        difficulty: Difficulty.NORMAL,
+        hardcore: true,
+      }),
     )
   })
 

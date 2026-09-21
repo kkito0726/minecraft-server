@@ -65,7 +65,30 @@ func (h *WorldHandler) CreateWorld(
 	ctx context.Context,
 	req *connect.Request[mcadminv1.CreateWorldRequest],
 ) (*connect.Response[mcadminv1.CreateWorldResponse], error) {
-	handle, err := h.worlds.Create(ctx, req.Msg.GetName(), req.Msg.GetSeed())
+	// モードと難易度は未指定を許す。その場合は .env の現在の値のまま作る。
+	// ここで既定値に倒すと、欄を送らないクライアントが利用者の意図と
+	// 無関係にサーバーの設定を書き換えてしまう。
+	opts := worldctl.CreateOptions{
+		Name:     req.Msg.GetName(),
+		Seed:     req.Msg.GetSeed(),
+		Hardcore: req.Msg.GetHardcore(),
+	}
+	if m := req.Msg.GetMode(); m != mcadminv1.GameMode_GAME_MODE_UNSPECIFIED {
+		mode, err := gameModeFromProto(m)
+		if err != nil {
+			return nil, toConnectError(err)
+		}
+		opts.Mode = mode
+	}
+	if d := req.Msg.GetDifficulty(); d != mcadminv1.Difficulty_DIFFICULTY_UNSPECIFIED {
+		difficulty, err := difficultyFromProto(d)
+		if err != nil {
+			return nil, toConnectError(err)
+		}
+		opts.Difficulty = difficulty
+	}
+
+	handle, err := h.worlds.Create(ctx, opts)
 	if err != nil {
 		return nil, toConnectError(err)
 	}
