@@ -113,6 +113,18 @@ enum Difficulty {
   DIFFICULTY_HARD = 4;
 }
 
+// GameMode はサーバーの既定のゲームモード。
+//
+// server.properties の gamemode に書かれる。**サーバー全体の設定で、
+// ワールドごとの属性ではない。** ワールドを切り替えても付いてこない。
+enum GameMode {
+  GAME_MODE_UNSPECIFIED = 0;
+  GAME_MODE_SURVIVAL = 1;
+  GAME_MODE_CREATIVE = 2;
+  GAME_MODE_ADVENTURE = 3;
+  GAME_MODE_SPECTATOR = 4;
+}
+
 // GameSettings は管理画面から書き換えてよいゲーム設定。
 //
 // 欄を足すときは慎重に。MC_VERSION は片道のアップグレードを、MC_MEMORY は
@@ -126,6 +138,12 @@ message GameSettings {
   int32 view_distance = 4;
   // シミュレーション距離（チャンク）。3〜32、かつ描画距離以下。
   int32 simulation_distance = 5;
+  // 既定のゲームモード。接続してくる人に適用される。既に接続している人の
+  // モードは変わらない（server.properties の gamemode と同じ振る舞い）。
+  GameMode mode = 6;
+  // ハードコアが有効か。**読み取り専用。** 生成されたワールドの level.dat に
+  // 焼かれる値なので、ここでは有効にできない。CreateWorld で決める。
+  bool hardcore = 7;
 }
 
 message GetGameSettingsRequest {}

@@ -7,6 +7,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
+	"github.com/kkito0726/minecraft-server/backend/internal/domain/settings"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 )
 
@@ -46,9 +47,30 @@ func (u *UseCase) List(ctx context.Context) (Listing, error) {
 // ディレクトリは作らない。MC_LEVEL を新しい名前にして起動すれば
 // Paper が生成する。シードを指定した場合は .env に書いてから起動し、
 // 生成後は残さない。
-func (u *UseCase) Create(ctx context.Context, name, seed string) (operations.Handle, error) {
-	target, err := world.NewName(name)
+// CreateOptions は新しいワールドを作るときの指定。
+//
+// Mode と Difficulty が空なら .env の現在の値を使う。Hardcore だけは
+// 空を表せないので常に明示として扱い、偽なら FALSE を書く。前に作った
+// ハードコアのワールドの設定を、次のワールドが黙って引き継がないため。
+//
+// **いずれもサーバー全体の設定で、ワールドごとには持たない。** それでも
+// 作成時に受け取るのは、ゲームモードとハードコアが効くのが生成の瞬間だから。
+// 生成後に変えても、モードは新しく接続した人にしか効かず、ハードコアは
+// level.dat に焼かれた値と食い違う。
+type CreateOptions struct {
+	Name       string
+	Seed       string
+	Mode       settings.GameMode
+	Difficulty settings.Difficulty
+	Hardcore   bool
+}
+
+func (u *UseCase) Create(ctx context.Context, opts CreateOptions) (operations.Handle, error) {
+	target, err := world.NewName(opts.Name)
 	if err != nil {
+		return operations.Handle{}, err
+	}
+	if err := u.validateCreateOptions(opts); err != nil {
 		return operations.Handle{}, err
 	}
 	if err := u.requireAbsent(ctx, target); err != nil {
@@ -57,8 +79,25 @@ func (u *UseCase) Create(ctx context.Context, name, seed string) (operations.Han
 
 	return u.cfg.Operations.Start(ctx, operation.KindWorldCreate, createSteps(),
 		func(ctx context.Context, r operations.Reporter) error {
-			return u.runCreate(ctx, r, target, seed)
+			return u.runCreate(ctx, r, target, opts)
 		})
+}
+
+// validateCreateOptions は生成前に値を確かめる。
+//
+// 書き込みを始めてから弾くと、サーバーを止めた後で失敗することになる。
+func (u *UseCase) validateCreateOptions(opts CreateOptions) error {
+	if opts.Mode != "" {
+		if _, err := settings.ParseGameMode(string(opts.Mode)); err != nil {
+			return err
+		}
+	}
+	if opts.Difficulty != "" {
+		if _, err := settings.ParseDifficulty(string(opts.Difficulty)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func createSteps() []string {
@@ -75,7 +114,7 @@ func (u *UseCase) runCreate(
 	ctx context.Context,
 	r operations.Reporter,
 	target world.Name,
-	seed string,
+	opts CreateOptions,
 ) error {
 	if err := r.Step(); err != nil {
 		return err
@@ -92,26 +131,63 @@ func (u *UseCase) runCreate(
 	if err := r.Step(); err != nil {
 		return err
 	}
-	if err := u.setLevelWithSeed(ctx, target, seed); err != nil {
+	if err := u.writeCreateSettings(ctx, target, opts); err != nil {
 		return err
 	}
 	r.Attr("world_name", target.String())
-	if seed != "" {
-		r.Logf(operation.LevelInfo, "シード %s で生成します", seed)
+	if opts.Seed != "" {
+		r.Logf(operation.LevelInfo, "シード %s で生成します", opts.Seed)
+	}
+	if opts.Mode != "" {
+		r.Logf(operation.LevelInfo, "ゲームモード %s で生成します", opts.Mode)
+	}
+	if opts.Hardcore {
+		// 後から外せない設定なので、ログにも必ず残す。
+		r.Logf(operation.LevelWarn, "ハードコアで生成します（後から外せません）")
 	}
 
 	// 生成は既存ワールドを開くより時間がかかる。
 	return u.startAndWait(ctx, r, false)
 }
 
-// setLevelWithSeed は MC_LEVEL と MC_SEED を同時に書く。
-func (u *UseCase) setLevelWithSeed(ctx context.Context, name world.Name, seed string) error {
+// writeCreateSettings は生成に効く .env のキーをまとめて書く。
+//
+// 1 回の書き込みにするのは、途中で失敗したときに「モードだけ変わって
+// ワールドは作られていない」という半端な状態を残さないため。
+func (u *UseCase) writeCreateSettings(
+	ctx context.Context,
+	name world.Name,
+	opts CreateOptions,
+) error {
 	snapshot, err := u.cfg.Config.Load(ctx)
 	if err != nil {
 		return err
 	}
-	updated := snapshot.With(keyLevel, name.String()).With(keySeed, seed)
+
+	updated := snapshot.
+		With(keyLevel, name.String()).
+		With(keySeed, opts.Seed).
+		With(keyHardcore, boolValue(opts.Hardcore))
+	if opts.Mode != "" {
+		updated = updated.With(keyMode, string(opts.Mode))
+	}
+
+	// ハードコアでは Minecraft が難易度をハードに固定する。.env に別の値を
+	// 残すと、画面の表示と実際の挙動が食い違う。指定を無視して hard を書く。
+	if opts.Hardcore {
+		updated = updated.With(keyDifficulty, string(settings.DifficultyHard))
+	} else if opts.Difficulty != "" {
+		updated = updated.With(keyDifficulty, string(opts.Difficulty))
+	}
 	return u.cfg.Config.Save(ctx, updated)
+}
+
+// boolValue は compose が受け取る形に揃える。
+func boolValue(v bool) string {
+	if v {
+		return "TRUE"
+	}
+	return "FALSE"
 }
 
 // Clone はワールドを複製する。切り替えはしない。

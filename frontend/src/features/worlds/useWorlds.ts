@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 
+import type { Difficulty, GameMode } from '../../gen/mcadmin/v1/server_pb'
 import type { ListWorldsResponse } from '../../gen/mcadmin/v1/world_pb'
 import { queryKeys } from '../../lib/queryKeys'
 import { useOperation } from '../operations'
@@ -16,7 +17,15 @@ export function useWorlds(): UseQueryResult<ListWorldsResponse> {
 /** ワールドに対する変更。どれも操作を返すので、その場で購読へ差し込む。 */
 export type WorldCommand =
   | { kind: 'switch'; name: string }
-  | { kind: 'create'; name: string; seed: string }
+  | {
+      kind: 'create'
+      name: string
+      seed: string
+      // 生成の前に .env へ書く。効くのが生成の瞬間だけなので作成時に受け取る。
+      mode: GameMode
+      difficulty: Difficulty
+      hardcore: boolean
+    }
   | { kind: 'clone'; source: string; destination: string }
   | { kind: 'rename'; from: string; to: string }
   | { kind: 'delete'; name: string; confirmName: string }
@@ -26,7 +35,13 @@ async function run(command: WorldCommand) {
     case 'switch':
       return worldClient.switchWorld({ name: command.name })
     case 'create':
-      return worldClient.createWorld({ name: command.name, seed: command.seed })
+      return worldClient.createWorld({
+        name: command.name,
+        seed: command.seed,
+        mode: command.mode,
+        difficulty: command.difficulty,
+        hardcore: command.hardcore,
+      })
     case 'clone':
       return worldClient.cloneWorld({
         source: command.source,

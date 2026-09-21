@@ -7,7 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/worldctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
+	"github.com/kkito0726/minecraft-server/backend/internal/domain/settings"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
 )
 
@@ -317,7 +319,7 @@ func TestCreateDelegatesGenerationToServer(t *testing.T) {
 
 	h := newHarness(t, true, "world")
 
-	handle, err := h.uc.Create(context.Background(), "fresh", "12345")
+	handle, err := h.uc.Create(context.Background(), worldctl.CreateOptions{Name: "fresh", Seed: "12345"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,11 +340,137 @@ func TestCreateDelegatesGenerationToServer(t *testing.T) {
 	}
 }
 
+// 生成に効く設定は、生成の前にまとめて .env へ書く。
+//
+// ゲームモードとハードコアが効くのは生成の瞬間だけで、後から変えても
+// モードは新しく接続した人にしか効かず、ハードコアは level.dat と食い違う。
+func TestCreateWritesGenerationSettings(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, "world")
+
+	handle, err := h.uc.Create(context.Background(), worldctl.CreateOptions{
+		Name:       "creative-world",
+		Mode:       settings.GameModeCreative,
+		Difficulty: settings.DifficultyPeaceful,
+		Hardcore:   false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	snap := h.wait(t, handle.ID())
+	if snap.State != operation.StateSucceeded {
+		t.Fatalf("失敗した: %s", snap.ErrorMessage)
+	}
+
+	for key, want := range map[string]string{
+		"MC_LEVEL":      "creative-world",
+		"MC_MODE":       "creative",
+		"MC_DIFFICULTY": "peaceful",
+		"MC_HARDCORE":   "FALSE",
+	} {
+		if got := h.config.get(key); got != want {
+			t.Errorf("%s が %q。%q のはず", key, got, want)
+		}
+	}
+}
+
+// ハードコアは常に明示で書く。
+//
+// 前に作ったハードコアのワールドの設定が .env に残っている状態で、
+// 次のワールドを普通に作ったのに死亡が不可逆のまま、という事故を防ぐ。
+func TestCreateAlwaysWritesHardcore(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, "world")
+
+	first, err := h.uc.Create(context.Background(), worldctl.CreateOptions{
+		Name: "hardcore-world", Hardcore: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.wait(t, first.ID())
+	if got := h.config.get("MC_HARDCORE"); got != "TRUE" {
+		t.Fatalf("前提が崩れている: MC_HARDCORE が %q", got)
+	}
+
+	second, err := h.uc.Create(context.Background(), worldctl.CreateOptions{
+		Name: "normal-world", Hardcore: false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.wait(t, second.ID())
+
+	if got := h.config.get("MC_HARDCORE"); got != "FALSE" {
+		t.Errorf("MC_HARDCORE が %q。引き継いでいる", got)
+	}
+}
+
+// ハードコアでは Minecraft が難易度をハードに固定する。
+// .env に別の値を残すと、画面の表示と実際の挙動が食い違う。
+func TestCreateForcesHardDifficultyWhenHardcore(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, "world")
+
+	handle, err := h.uc.Create(context.Background(), worldctl.CreateOptions{
+		Name:       "hardmode",
+		Mode:       settings.GameModeSurvival,
+		Difficulty: settings.DifficultyPeaceful,
+		Hardcore:   true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.wait(t, handle.ID())
+
+	if got := h.config.get("MC_DIFFICULTY"); got != "hard" {
+		t.Errorf("MC_DIFFICULTY が %q。ハードに固定されるはず", got)
+	}
+}
+
+// モードを指定しなければ .env の現在の値に触らない。
+func TestCreateKeepsModeWhenUnspecified(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, "world")
+	h.config.values["MC_MODE"] = "adventure"
+
+	handle, err := h.uc.Create(context.Background(), worldctl.CreateOptions{Name: "fresh"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.wait(t, handle.ID())
+
+	if got := h.config.get("MC_MODE"); got != "adventure" {
+		t.Errorf("MC_MODE が %q。触らないはず", got)
+	}
+}
+
+// 値が不正なら、サーバーを止める前に断る。
+// 止めてから失敗すると、動いていたサーバーが落ちたまま残る。
+func TestCreateRejectsInvalidModeBeforeStopping(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, "world")
+
+	if _, err := h.uc.Create(context.Background(), worldctl.CreateOptions{
+		Name: "fresh", Mode: settings.GameMode("god"),
+	}); err == nil {
+		t.Fatal("不正なモードは拒否されるはず")
+	}
+	if got := h.calls(); got != "" {
+		t.Errorf("サーバーに触っている: %q", got)
+	}
+}
+
 func TestCreateRejectsExisting(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(t, true, "world")
-	if _, err := h.uc.Create(context.Background(), "world", ""); err == nil {
+	if _, err := h.uc.Create(context.Background(), worldctl.CreateOptions{Name: "world", Seed: ""}); err == nil {
 		t.Error("既存の名前は拒否されるはず")
 	}
 }
@@ -357,7 +485,7 @@ func TestSwitchClearsSeed(t *testing.T) {
 	h := newHarness(t, true, "world", "creative")
 
 	// 生成が中断してシードが残った状態を再現
-	created, err := h.uc.Create(context.Background(), "seeded", "99999")
+	created, err := h.uc.Create(context.Background(), worldctl.CreateOptions{Name: "seeded", Seed: "99999"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,7 +512,7 @@ func TestInvalidNamesRejected(t *testing.T) {
 	ctx := context.Background()
 	bad := "../etc"
 
-	if _, err := h.uc.Create(ctx, bad, ""); err == nil {
+	if _, err := h.uc.Create(ctx, worldctl.CreateOptions{Name: bad, Seed: ""}); err == nil {
 		t.Error("Create が不正な名前を受理した")
 	}
 	if _, err := h.uc.Clone(ctx, bad, "dst"); err == nil {

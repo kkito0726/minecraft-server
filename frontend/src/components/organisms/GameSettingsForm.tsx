@@ -2,15 +2,19 @@ import { useState } from 'react'
 
 import {
   DIFFICULTY_OPTIONS,
+  HARDCORE_CHOICE,
+  HARDCORE_DIFFICULTY,
+  MODE_CHOICES,
   PI_RECOMMENDED,
   SETTINGS_LIMITS,
   isChanged,
+  modeChoiceValue,
   parseGameSettings,
   piLoadNotes,
   toForm,
 } from '../../features/settings'
 import type { GameSettingsForm as FormValues, GameSettingsValues } from '../../features/settings'
-import type { Difficulty } from '../../gen/mcadmin/v1/server_pb'
+import type { Difficulty, GameMode } from '../../gen/mcadmin/v1/server_pb'
 import { Button } from '../atoms'
 import { ChoiceGroup, FormField } from '../molecules'
 
@@ -23,6 +27,13 @@ import { ChoiceGroup, FormField } from '../molecules'
  */
 export type GameSettingsFormProps = {
   settings: GameSettingsValues
+  /**
+   * ハードコアが有効か。表示だけで、ここからは変えられない。
+   *
+   * 生成されたワールドの level.dat に焼かれる値なので、後から有効にしても
+   * 食い違うだけになる。決められるのはワールドの作成時だけ。
+   */
+  hardcore: boolean
   /** .env に読めない値があったときの説明。 */
   warnings: string[]
   /** サーバーが動いているか。止まっていれば今すぐ反映の口を出さない。 */
@@ -34,6 +45,7 @@ export type GameSettingsFormProps = {
 
 export function GameSettingsForm({
   settings,
+  hardcore,
   warnings,
   running,
   onlinePlayers,
@@ -57,7 +69,12 @@ export function GameSettingsForm({
       }}
     >
       <Warnings warnings={warnings} />
-      <DifficultyField value={form.difficulty} disabled={disabled} onChange={(difficulty) => update({ difficulty })} />
+      <ModeAndDifficulty
+        form={form}
+        hardcore={hardcore}
+        disabled={disabled}
+        onChange={update}
+      />
       <TextFields form={form} disabled={disabled} onChange={update} />
       {!parsed.ok && (
         <p role="alert" className="text-sm text-danger-ink">
@@ -118,6 +135,81 @@ function useSettingsForm(
   }
 }
 
+/** モードと難易度。ハードコアのときは難易度を選ばせない。 */
+function ModeAndDifficulty({
+  form,
+  hardcore,
+  disabled,
+  onChange,
+}: {
+  form: FormValues
+  hardcore: boolean
+  disabled: boolean | undefined
+  onChange: (patch: Partial<FormValues>) => void
+}) {
+  return (
+    <>
+      <ModeField
+        value={form.mode}
+        hardcore={hardcore}
+        disabled={disabled}
+        onChange={(mode) => onChange({ mode })}
+      />
+      <DifficultyField
+        value={form.difficulty}
+        hardcore={hardcore}
+        disabled={disabled}
+        onChange={(difficulty) => onChange({ difficulty })}
+      />
+    </>
+  )
+}
+
+/**
+ * モード。
+ *
+ * ハードコアも選択肢として並べるが、ここからは選べない。生成された
+ * ワールドの level.dat に焼かれる値で、後から有効にしても食い違うだけ
+ * だからである。それでも並べるのは、いまハードコアかどうかを知る手段が
+ * これしか無いため。
+ *
+ * サーバー全体の設定であることも添える。ワールドの画面から作った
+ * 「クリエイティブのワールド」に切り替えてもモードは付いてこない。
+ */
+function ModeField({
+  value,
+  hardcore,
+  disabled,
+  onChange,
+}: {
+  value: GameMode
+  hardcore: boolean
+  disabled: boolean | undefined
+  onChange: (mode: GameMode) => void
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <ChoiceGroup
+        name="game-mode"
+        legend="モード"
+        value={modeChoiceValue(value, hardcore)}
+        disabled={disabled}
+        onChange={(v) => onChange(Number(v) as GameMode)}
+        choices={MODE_CHOICES.map((o) =>
+          o.value === HARDCORE_CHOICE
+            ? { ...o, hint: `${o.hint}。ワールドの新規作成時にのみ選べます`, disabled: true }
+            : o,
+        )}
+      />
+      <p className="text-xs text-faint">
+        サーバー全体の設定です。ワールドを切り替えても付いてきません。
+        既に接続している人のモードは変わりません。
+        {hardcore && 'ハードコアを外すには、ハードコアでないワールドを新しく作ります。'}
+      </p>
+    </div>
+  )
+}
+
 function Warnings({ warnings }: { warnings: string[] }) {
   if (warnings.length === 0) {
     return null
@@ -134,24 +226,37 @@ function Warnings({ warnings }: { warnings: string[] }) {
   )
 }
 
+/**
+ * 難易度。
+ *
+ * ハードコアのときは選ばせない。Minecraft がハードに固定するので、
+ * ここで選べると画面と実際の挙動が食い違う。
+ */
 function DifficultyField({
   value,
+  hardcore,
   disabled,
   onChange,
 }: {
   value: Difficulty
+  hardcore: boolean
   disabled: boolean | undefined
   onChange: (value: Difficulty) => void
 }) {
   return (
-    <ChoiceGroup
-      name="difficulty"
-      legend="難易度"
-      value={String(value)}
-      disabled={disabled}
-      onChange={(v) => onChange(Number(v) as Difficulty)}
-      choices={DIFFICULTY_OPTIONS.map((o) => ({ value: String(o.value), label: o.label, hint: o.hint }))}
-    />
+    <div className="flex flex-col gap-2">
+      <ChoiceGroup
+        name="difficulty"
+        legend="難易度"
+        value={String(hardcore ? HARDCORE_DIFFICULTY : value)}
+        disabled={disabled || hardcore}
+        onChange={(v) => onChange(Number(v) as Difficulty)}
+        choices={DIFFICULTY_OPTIONS.map((o) => ({ value: String(o.value), label: o.label, hint: o.hint }))}
+      />
+      {hardcore && (
+        <p className="text-xs text-faint">ハードコアのため、難易度はハードに固定されています。</p>
+      )}
+    </div>
   )
 }
 

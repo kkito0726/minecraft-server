@@ -51,6 +51,43 @@ func ParseDifficulty(s string) (Difficulty, error) {
 		"%w: 難易度 %q は peaceful / easy / normal / hard のいずれかです", ErrInvalid, s)
 }
 
+// GameMode は既定のゲームモード。
+//
+// server.properties の gamemode に書かれる。**サーバー全体の設定であり、
+// ワールドごとの属性ではない。** 切り替えても付いてこない。
+type GameMode string
+
+// ゲームモードの値。server.properties の gamemode に書かれる文字列と一致させる。
+const (
+	GameModeSurvival  GameMode = "survival"
+	GameModeCreative  GameMode = "creative"
+	GameModeAdventure GameMode = "adventure"
+	GameModeSpectator GameMode = "spectator"
+)
+
+var gameModes = []GameMode{
+	GameModeSurvival,
+	GameModeCreative,
+	GameModeAdventure,
+	GameModeSpectator,
+}
+
+// ParseGameMode はゲームモードを読む。
+//
+// 難易度と同じく大文字小文字を区別しない。手で書かれた .env に CREATIVE と
+// あっても、それを不正として弾くと設定画面そのものが開けなくなる。
+func ParseGameMode(s string) (GameMode, error) {
+	m := GameMode(strings.ToLower(strings.TrimSpace(s)))
+	for _, known := range gameModes {
+		if m == known {
+			return m, nil
+		}
+	}
+	return "", fmt.Errorf(
+		"%w: ゲームモード %q は survival / creative / adventure / spectator のいずれかです",
+		ErrInvalid, s)
+}
+
 // 値の範囲。
 //
 // 距離の範囲は server.properties が受け付ける 3〜32 に合わせる。範囲外を
@@ -75,10 +112,15 @@ const forbiddenMOTDChars = "\"$`\\"
 // 値オブジェクトであり、生成できた時点で規則を満たしていることが保証される。
 type GameSettings struct {
 	difficulty         Difficulty
+	mode               GameMode
 	motd               string
 	maxPlayers         int
 	viewDistance       int
 	simulationDistance int
+	// hardcore は画面から変えられない。生成されたワールドの level.dat に
+	// 焼かれる値で、後から有効にしても食い違うだけだからである。
+	// 表示のために読んだ値をそのまま運ぶ。決めるのはワールドの作成時。
+	hardcore bool
 }
 
 // Defaults は compose.yaml の既定値と同じ設定を返す。
@@ -88,20 +130,39 @@ type GameSettings struct {
 func Defaults() GameSettings {
 	return GameSettings{
 		difficulty:         DifficultyNormal,
+		mode:               GameModeSurvival,
 		motd:               "A Minecraft Server on Docker",
 		maxPlayers:         5,
 		viewDistance:       7,
 		simulationDistance: 5,
+		hardcore:           false,
 	}
 }
 
+// Params は New に渡す値。
+//
+// 位置引数をやめたのは欄が 7 つになったため。難易度とモードのように
+// 型で区別できない int が並ぶと、順番の取り違えをコンパイラが捕まえられない。
+type Params struct {
+	Difficulty         Difficulty
+	Mode               GameMode
+	MOTD               string
+	MaxPlayers         int
+	ViewDistance       int
+	SimulationDistance int
+	// Hardcore は検証しない。真偽どちらも有効で、画面からは変えられない。
+	Hardcore bool
+}
+
 // New はゲーム設定を検証して作る。
-func New(
-	difficulty Difficulty,
-	motd string,
-	maxPlayers, viewDistance, simulationDistance int,
-) (GameSettings, error) {
+func New(p Params) (GameSettings, error) {
+	difficulty, motd := p.Difficulty, p.MOTD
+	maxPlayers, viewDistance, simulationDistance := p.MaxPlayers, p.ViewDistance, p.SimulationDistance
+
 	if _, err := ParseDifficulty(string(difficulty)); err != nil {
+		return GameSettings{}, err
+	}
+	if _, err := ParseGameMode(string(p.Mode)); err != nil {
 		return GameSettings{}, err
 	}
 	if err := validateMOTD(motd); err != nil {
@@ -126,10 +187,12 @@ func New(
 
 	return GameSettings{
 		difficulty:         difficulty,
+		mode:               p.Mode,
 		motd:               motd,
 		maxPlayers:         maxPlayers,
 		viewDistance:       viewDistance,
 		simulationDistance: simulationDistance,
+		hardcore:           p.Hardcore,
 	}, nil
 }
 
@@ -160,6 +223,12 @@ func validateRange(label string, value, low, high int) error {
 
 // Difficulty は難易度を返す。
 func (s GameSettings) Difficulty() Difficulty { return s.difficulty }
+
+// Mode は既定のゲームモードを返す。
+func (s GameSettings) Mode() GameMode { return s.mode }
+
+// Hardcore はハードコアが有効かを返す。表示のためだけの値。
+func (s GameSettings) Hardcore() bool { return s.hardcore }
 
 // MOTD はサーバー一覧に出る説明文を返す。
 func (s GameSettings) MOTD() string { return s.motd }

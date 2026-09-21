@@ -45,10 +45,13 @@ export type DemoBackup = {
 /** .env のゲーム設定にあたるもの。保存しただけで反映していない値も持つ。 */
 export type DemoGameSettings = {
   difficulty: 'peaceful' | 'easy' | 'normal' | 'hard'
+  mode: 'survival' | 'creative' | 'adventure' | 'spectator'
   motd: string
   maxPlayers: number
   viewDistance: number
   simulationDistance: number
+  /** ワールドの作成時にだけ決まる。設定の保存では変えられない。 */
+  hardcore: boolean
 }
 
 export type DemoState = {
@@ -111,10 +114,12 @@ export function initialState(): DemoState {
     backupDir: '/home/pi/minecraft-server/backups',
     gameSettings: {
       difficulty: 'normal',
+      mode: 'survival',
       motd: 'デモ用のマインクラフトサーバー',
       maxPlayers: 5,
       viewDistance: 7,
       simulationDistance: 5,
+      hardcore: false,
     },
   }
 }

@@ -386,7 +386,21 @@ type CreateWorldRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// 空なら Paper に任せる。指定した場合、生成後に .env から消される（REQ-108）。
-	Seed          string `protobuf:"bytes,2,opt,name=seed,proto3" json:"seed,omitempty"`
+	Seed string `protobuf:"bytes,2,opt,name=seed,proto3" json:"seed,omitempty"`
+	// 以下は生成の前に .env へ書く設定。
+	//
+	// **いずれもサーバー全体の設定で、ワールドごとには持たない。** それでも
+	// 作成時に受け取るのは、ゲームモードとハードコアが効くのが生成の瞬間だから。
+	// 生成後に変えても、モードは新しく接続した人にしか効かず、ハードコアは
+	// level.dat に焼かれた値と食い違う。
+	//
+	// 未指定なら .env の現在の値をそのまま使う。
+	Mode       GameMode   `protobuf:"varint,3,opt,name=mode,proto3,enum=mcadmin.v1.GameMode" json:"mode,omitempty"`
+	Difficulty Difficulty `protobuf:"varint,4,opt,name=difficulty,proto3,enum=mcadmin.v1.Difficulty" json:"difficulty,omitempty"`
+	// hardcore だけは未指定を表せないので、常に明示として扱う。偽なら
+	// MC_HARDCORE=FALSE を書く。前に作ったハードコアのワールドの設定を、
+	// 次に作ったワールドが黙って引き継ぐのを防ぐため。
+	Hardcore      bool `protobuf:"varint,5,opt,name=hardcore,proto3" json:"hardcore,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -433,6 +447,27 @@ func (x *CreateWorldRequest) GetSeed() string {
 		return x.Seed
 	}
 	return ""
+}
+
+func (x *CreateWorldRequest) GetMode() GameMode {
+	if x != nil {
+		return x.Mode
+	}
+	return GameMode_GAME_MODE_UNSPECIFIED
+}
+
+func (x *CreateWorldRequest) GetDifficulty() Difficulty {
+	if x != nil {
+		return x.Difficulty
+	}
+	return Difficulty_DIFFICULTY_UNSPECIFIED
+}
+
+func (x *CreateWorldRequest) GetHardcore() bool {
+	if x != nil {
+		return x.Hardcore
+	}
+	return false
 }
 
 type CreateWorldResponse struct {
@@ -871,7 +906,7 @@ var File_mcadmin_v1_world_proto protoreflect.FileDescriptor
 const file_mcadmin_v1_world_proto_rawDesc = "" +
 	"\n" +
 	"\x16mcadmin/v1/world.proto\x12\n" +
-	"mcadmin.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17mcadmin/v1/common.proto\x1a\x1amcadmin/v1/operation.proto\"\xed\x01\n" +
+	"mcadmin.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17mcadmin/v1/common.proto\x1a\x1amcadmin/v1/operation.proto\x1a\x17mcadmin/v1/server.proto\"\xed\x01\n" +
 	"\x05World\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x1d\n" +
@@ -897,10 +932,15 @@ const file_mcadmin_v1_world_proto_rawDesc = "" +
 	"\x12SwitchWorldRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"J\n" +
 	"\x13SwitchWorldResponse\x123\n" +
-	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"<\n" +
+	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"\xba\x01\n" +
 	"\x12CreateWorldRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04seed\x18\x02 \x01(\tR\x04seed\"J\n" +
+	"\x04seed\x18\x02 \x01(\tR\x04seed\x12(\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x14.mcadmin.v1.GameModeR\x04mode\x126\n" +
+	"\n" +
+	"difficulty\x18\x04 \x01(\x0e2\x16.mcadmin.v1.DifficultyR\n" +
+	"difficulty\x12\x1a\n" +
+	"\bhardcore\x18\x05 \x01(\bR\bhardcore\"J\n" +
 	"\x13CreateWorldResponse\x123\n" +
 	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"M\n" +
 	"\x11CloneWorldRequest\x12\x16\n" +
@@ -968,6 +1008,8 @@ var file_mcadmin_v1_world_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),   // 16: google.protobuf.Timestamp
 	(*WorldVersion)(nil),            // 17: mcadmin.v1.WorldVersion
 	(*Operation)(nil),               // 18: mcadmin.v1.Operation
+	(GameMode)(0),                   // 19: mcadmin.v1.GameMode
+	(Difficulty)(0),                 // 20: mcadmin.v1.Difficulty
 }
 var file_mcadmin_v1_world_proto_depIdxs = []int32{
 	16, // 0: mcadmin.v1.World.last_played:type_name -> google.protobuf.Timestamp
@@ -976,29 +1018,31 @@ var file_mcadmin_v1_world_proto_depIdxs = []int32{
 	0,  // 3: mcadmin.v1.ListWorldsResponse.worlds:type_name -> mcadmin.v1.World
 	1,  // 4: mcadmin.v1.ListWorldsResponse.quarantines:type_name -> mcadmin.v1.Quarantine
 	18, // 5: mcadmin.v1.SwitchWorldResponse.operation:type_name -> mcadmin.v1.Operation
-	18, // 6: mcadmin.v1.CreateWorldResponse.operation:type_name -> mcadmin.v1.Operation
-	18, // 7: mcadmin.v1.CloneWorldResponse.operation:type_name -> mcadmin.v1.Operation
-	18, // 8: mcadmin.v1.RenameWorldResponse.operation:type_name -> mcadmin.v1.Operation
-	18, // 9: mcadmin.v1.DeleteWorldResponse.operation:type_name -> mcadmin.v1.Operation
-	2,  // 10: mcadmin.v1.WorldService.ListWorlds:input_type -> mcadmin.v1.ListWorldsRequest
-	4,  // 11: mcadmin.v1.WorldService.SwitchWorld:input_type -> mcadmin.v1.SwitchWorldRequest
-	6,  // 12: mcadmin.v1.WorldService.CreateWorld:input_type -> mcadmin.v1.CreateWorldRequest
-	8,  // 13: mcadmin.v1.WorldService.CloneWorld:input_type -> mcadmin.v1.CloneWorldRequest
-	10, // 14: mcadmin.v1.WorldService.RenameWorld:input_type -> mcadmin.v1.RenameWorldRequest
-	12, // 15: mcadmin.v1.WorldService.DeleteWorld:input_type -> mcadmin.v1.DeleteWorldRequest
-	14, // 16: mcadmin.v1.WorldService.PurgeQuarantine:input_type -> mcadmin.v1.PurgeQuarantineRequest
-	3,  // 17: mcadmin.v1.WorldService.ListWorlds:output_type -> mcadmin.v1.ListWorldsResponse
-	5,  // 18: mcadmin.v1.WorldService.SwitchWorld:output_type -> mcadmin.v1.SwitchWorldResponse
-	7,  // 19: mcadmin.v1.WorldService.CreateWorld:output_type -> mcadmin.v1.CreateWorldResponse
-	9,  // 20: mcadmin.v1.WorldService.CloneWorld:output_type -> mcadmin.v1.CloneWorldResponse
-	11, // 21: mcadmin.v1.WorldService.RenameWorld:output_type -> mcadmin.v1.RenameWorldResponse
-	13, // 22: mcadmin.v1.WorldService.DeleteWorld:output_type -> mcadmin.v1.DeleteWorldResponse
-	15, // 23: mcadmin.v1.WorldService.PurgeQuarantine:output_type -> mcadmin.v1.PurgeQuarantineResponse
-	17, // [17:24] is the sub-list for method output_type
-	10, // [10:17] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	19, // 6: mcadmin.v1.CreateWorldRequest.mode:type_name -> mcadmin.v1.GameMode
+	20, // 7: mcadmin.v1.CreateWorldRequest.difficulty:type_name -> mcadmin.v1.Difficulty
+	18, // 8: mcadmin.v1.CreateWorldResponse.operation:type_name -> mcadmin.v1.Operation
+	18, // 9: mcadmin.v1.CloneWorldResponse.operation:type_name -> mcadmin.v1.Operation
+	18, // 10: mcadmin.v1.RenameWorldResponse.operation:type_name -> mcadmin.v1.Operation
+	18, // 11: mcadmin.v1.DeleteWorldResponse.operation:type_name -> mcadmin.v1.Operation
+	2,  // 12: mcadmin.v1.WorldService.ListWorlds:input_type -> mcadmin.v1.ListWorldsRequest
+	4,  // 13: mcadmin.v1.WorldService.SwitchWorld:input_type -> mcadmin.v1.SwitchWorldRequest
+	6,  // 14: mcadmin.v1.WorldService.CreateWorld:input_type -> mcadmin.v1.CreateWorldRequest
+	8,  // 15: mcadmin.v1.WorldService.CloneWorld:input_type -> mcadmin.v1.CloneWorldRequest
+	10, // 16: mcadmin.v1.WorldService.RenameWorld:input_type -> mcadmin.v1.RenameWorldRequest
+	12, // 17: mcadmin.v1.WorldService.DeleteWorld:input_type -> mcadmin.v1.DeleteWorldRequest
+	14, // 18: mcadmin.v1.WorldService.PurgeQuarantine:input_type -> mcadmin.v1.PurgeQuarantineRequest
+	3,  // 19: mcadmin.v1.WorldService.ListWorlds:output_type -> mcadmin.v1.ListWorldsResponse
+	5,  // 20: mcadmin.v1.WorldService.SwitchWorld:output_type -> mcadmin.v1.SwitchWorldResponse
+	7,  // 21: mcadmin.v1.WorldService.CreateWorld:output_type -> mcadmin.v1.CreateWorldResponse
+	9,  // 22: mcadmin.v1.WorldService.CloneWorld:output_type -> mcadmin.v1.CloneWorldResponse
+	11, // 23: mcadmin.v1.WorldService.RenameWorld:output_type -> mcadmin.v1.RenameWorldResponse
+	13, // 24: mcadmin.v1.WorldService.DeleteWorld:output_type -> mcadmin.v1.DeleteWorldResponse
+	15, // 25: mcadmin.v1.WorldService.PurgeQuarantine:output_type -> mcadmin.v1.PurgeQuarantineResponse
+	19, // [19:26] is the sub-list for method output_type
+	12, // [12:19] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_mcadmin_v1_world_proto_init() }
@@ -1008,6 +1052,7 @@ func file_mcadmin_v1_world_proto_init() {
 	}
 	file_mcadmin_v1_common_proto_init()
 	file_mcadmin_v1_operation_proto_init()
+	file_mcadmin_v1_server_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

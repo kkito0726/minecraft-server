@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { Difficulty } from '../../gen/mcadmin/v1/server_pb'
+import { Difficulty, GameMode } from '../../gen/mcadmin/v1/server_pb'
 import type { GameSettings } from '../../gen/mcadmin/v1/server_pb'
 
 /**
@@ -33,6 +33,7 @@ export const PI_RECOMMENDED = {
 /** 入力欄の値。数値の欄は打ちかけを扱うため文字列で持つ。 */
 export type GameSettingsForm = {
   difficulty: Difficulty
+  mode: GameMode
   motd: string
   maxPlayers: string
   viewDistance: string
@@ -42,6 +43,7 @@ export type GameSettingsForm = {
 /** 検証を通った値。サーバーへ送る形。 */
 export type GameSettingsValues = {
   difficulty: Difficulty
+  mode: GameMode
   motd: string
   maxPlayers: number
   viewDistance: number
@@ -113,6 +115,9 @@ export function parseGameSettings(form: GameSettingsForm): GameSettingsResult {
   if (form.difficulty === Difficulty.UNSPECIFIED) {
     return { ok: false, message: '難易度を選んでください' }
   }
+  if (form.mode === GameMode.UNSPECIFIED) {
+    return { ok: false, message: 'ゲームモードを選んでください' }
+  }
 
   const motdError = motdProblem(form.motd)
   if (motdError) {
@@ -141,7 +146,14 @@ export function parseGameSettings(form: GameSettingsForm): GameSettingsResult {
 
   return {
     ok: true,
-    value: { difficulty: form.difficulty, motd: form.motd, maxPlayers, viewDistance, simulationDistance },
+    value: {
+      difficulty: form.difficulty,
+      mode: form.mode,
+      motd: form.motd,
+      maxPlayers,
+      viewDistance,
+      simulationDistance,
+    },
   }
 }
 
@@ -178,6 +190,7 @@ export function piLoadNotes(values: GameSettingsValues): string[] {
 export function valuesFromProto(settings: GameSettings): GameSettingsValues {
   return {
     difficulty: settings.difficulty,
+    mode: settings.mode,
     motd: settings.motd,
     maxPlayers: settings.maxPlayers,
     viewDistance: settings.viewDistance,
@@ -189,6 +202,7 @@ export function valuesFromProto(settings: GameSettings): GameSettingsValues {
 export function toForm(values: GameSettingsValues): GameSettingsForm {
   return {
     difficulty: values.difficulty,
+    mode: values.mode,
     motd: values.motd,
     maxPlayers: String(values.maxPlayers),
     viewDistance: String(values.viewDistance),

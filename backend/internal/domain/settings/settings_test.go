@@ -51,7 +51,10 @@ func TestParseDifficulty(t *testing.T) {
 func TestNewAcceptsValidSettings(t *testing.T) {
 	t.Parallel()
 
-	s, err := settings.New(settings.DifficultyHard, "§aようこそ", 10, 8, 6)
+	s, err := settings.New(settings.Params{
+		Difficulty: settings.DifficultyHard, Mode: settings.GameModeCreative,
+		MOTD: "§aようこそ", MaxPlayers: 10, ViewDistance: 8, SimulationDistance: 6,
+	})
 	if err != nil {
 		t.Fatalf("予期しないエラー: %v", err)
 	}
@@ -85,7 +88,11 @@ func TestNewRejectsOutOfRange(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := settings.New(settings.DifficultyNormal, "motd", tt.players, tt.view, tt.simulation)
+			_, err := settings.New(settings.Params{
+				Difficulty: settings.DifficultyNormal, Mode: settings.GameModeSurvival,
+				MOTD: "motd", MaxPlayers: tt.players,
+				ViewDistance: tt.view, SimulationDistance: tt.simulation,
+			})
 			if tt.wantErr && !errors.Is(err, settings.ErrInvalid) {
 				t.Fatalf("ErrInvalid を期待したが %v", err)
 			}
@@ -124,7 +131,10 @@ func TestNewValidatesMOTD(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := settings.New(settings.DifficultyNormal, tt.motd, 5, 7, 5)
+			_, err := settings.New(settings.Params{
+				Difficulty: settings.DifficultyNormal, Mode: settings.GameModeSurvival,
+				MOTD: tt.motd, MaxPlayers: 5, ViewDistance: 7, SimulationDistance: 5,
+			})
 			if tt.wantErr && !errors.Is(err, settings.ErrInvalid) {
 				t.Fatalf("ErrInvalid を期待したが %v", err)
 			}
@@ -138,7 +148,10 @@ func TestNewValidatesMOTD(t *testing.T) {
 func TestNewRejectsUnknownDifficulty(t *testing.T) {
 	t.Parallel()
 
-	_, err := settings.New(settings.Difficulty("hardcore"), "motd", 5, 7, 5)
+	_, err := settings.New(settings.Params{
+		Difficulty: settings.Difficulty("hardcore"), Mode: settings.GameModeSurvival,
+		MOTD: "motd", MaxPlayers: 5, ViewDistance: 7, SimulationDistance: 5,
+	})
 	if !errors.Is(err, settings.ErrInvalid) {
 		t.Fatalf("ErrInvalid を期待したが %v", err)
 	}
@@ -161,7 +174,49 @@ func TestDefaultsMatchCompose(t *testing.T) {
 	}
 
 	// 既定値そのものが規則を満たしていること。
-	if _, err := settings.New(d.Difficulty(), d.MOTD(), d.MaxPlayers(), d.ViewDistance(), d.SimulationDistance()); err != nil {
+	if _, err := settings.New(settings.Params{
+		Difficulty: d.Difficulty(), Mode: d.Mode(), MOTD: d.MOTD(),
+		MaxPlayers: d.MaxPlayers(), ViewDistance: d.ViewDistance(),
+		SimulationDistance: d.SimulationDistance(), Hardcore: d.Hardcore(),
+	}); err != nil {
 		t.Errorf("既定値が規則を満たしていない: %v", err)
+	}
+}
+
+func TestParseGameMode(t *testing.T) {
+	t.Parallel()
+
+	// 手で書かれた .env は大文字のことがある。弾くと設定画面が開けなくなる。
+	for _, in := range []string{"creative", "CREATIVE", " Creative "} {
+		got, err := settings.ParseGameMode(in)
+		if err != nil {
+			t.Fatalf("%q を読めない: %v", in, err)
+		}
+		if got != settings.GameModeCreative {
+			t.Errorf("%q が %q", in, got)
+		}
+	}
+
+	for _, in := range []string{"", "hardcore", "survivals"} {
+		if _, err := settings.ParseGameMode(in); !errors.Is(err, settings.ErrInvalid) {
+			t.Errorf("%q は ErrInvalid のはず: %v", in, err)
+		}
+	}
+}
+
+// ハードコアは検証しない。真偽どちらも有効で、画面からは変えられない。
+func TestHardcoreIsCarriedThrough(t *testing.T) {
+	t.Parallel()
+
+	s, err := settings.New(settings.Params{
+		Difficulty: settings.DifficultyNormal, Mode: settings.GameModeSurvival,
+		MOTD: "motd", MaxPlayers: 5, ViewDistance: 7, SimulationDistance: 5,
+		Hardcore: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Hardcore() {
+		t.Error("Hardcore が落ちている")
 	}
 }

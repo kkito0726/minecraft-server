@@ -7,12 +7,13 @@
 import type { ServiceImpl } from '@connectrpc/connect'
 
 import { OperationKind } from '../gen/mcadmin/v1/common_pb'
+import { Difficulty, GameMode } from '../gen/mcadmin/v1/server_pb'
 import { WorldService } from '../gen/mcadmin/v1/world_pb'
 import { toOperation, toQuarantine, toWorld } from './messages'
 import { startOperation } from './operations'
 import { busyGuard, invalidArgument, notFound } from './rpcErrors'
 import { getState, updateState } from './state'
-import type { DemoWorld } from './state'
+import type { DemoGameSettings, DemoWorld } from './state'
 import { CLONE_STEPS, CREATE_WORLD_STEPS, DELETE_STEPS, RENAME_STEPS, SWITCH_STEPS } from './steps'
 
 function stamp(): string {
@@ -27,6 +28,21 @@ function requireWorld(name: string): DemoWorld {
     throw notFound(`ワールドが見つかりません: ${name}`)
   }
   return world
+}
+
+/** 未指定なら触らない。実物の CreateWorld と同じ約束。 */
+const MODE_NAMES: Partial<Record<GameMode, DemoGameSettings['mode']>> = {
+  [GameMode.SURVIVAL]: 'survival',
+  [GameMode.CREATIVE]: 'creative',
+  [GameMode.ADVENTURE]: 'adventure',
+  [GameMode.SPECTATOR]: 'spectator',
+}
+
+const DIFFICULTY_NAMES: Partial<Record<Difficulty, DemoGameSettings['difficulty']>> = {
+  [Difficulty.PEACEFUL]: 'peaceful',
+  [Difficulty.EASY]: 'easy',
+  [Difficulty.NORMAL]: 'normal',
+  [Difficulty.HARD]: 'hard',
 }
 
 export const worldImpl: Partial<ServiceImpl<typeof WorldService>> = {
@@ -68,6 +84,16 @@ export const worldImpl: Partial<ServiceImpl<typeof WorldService>> = {
             updateState((s) => ({
               ...s,
               activeLevel: req.name,
+              // 実物と同じく、生成の前に .env へ書く値をここで反映する。
+              // ワールドごとには持たない。切り替えても戻らない。
+              gameSettings: {
+                ...s.gameSettings,
+                ...(MODE_NAMES[req.mode] ? { mode: MODE_NAMES[req.mode] } : {}),
+                ...(DIFFICULTY_NAMES[req.difficulty]
+                  ? { difficulty: DIFFICULTY_NAMES[req.difficulty] }
+                  : {}),
+                hardcore: req.hardcore,
+              },
               worlds: [
                 ...s.worlds,
                 {

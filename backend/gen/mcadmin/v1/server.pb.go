@@ -193,6 +193,65 @@ func (Difficulty) EnumDescriptor() ([]byte, []int) {
 	return file_mcadmin_v1_server_proto_rawDescGZIP(), []int{2}
 }
 
+// GameMode はサーバーの既定のゲームモード。
+//
+// server.properties の gamemode に書かれる。**サーバー全体の設定で、
+// ワールドごとの属性ではない。** ワールドを切り替えても付いてこない。
+type GameMode int32
+
+const (
+	GameMode_GAME_MODE_UNSPECIFIED GameMode = 0
+	GameMode_GAME_MODE_SURVIVAL    GameMode = 1
+	GameMode_GAME_MODE_CREATIVE    GameMode = 2
+	GameMode_GAME_MODE_ADVENTURE   GameMode = 3
+	GameMode_GAME_MODE_SPECTATOR   GameMode = 4
+)
+
+// Enum value maps for GameMode.
+var (
+	GameMode_name = map[int32]string{
+		0: "GAME_MODE_UNSPECIFIED",
+		1: "GAME_MODE_SURVIVAL",
+		2: "GAME_MODE_CREATIVE",
+		3: "GAME_MODE_ADVENTURE",
+		4: "GAME_MODE_SPECTATOR",
+	}
+	GameMode_value = map[string]int32{
+		"GAME_MODE_UNSPECIFIED": 0,
+		"GAME_MODE_SURVIVAL":    1,
+		"GAME_MODE_CREATIVE":    2,
+		"GAME_MODE_ADVENTURE":   3,
+		"GAME_MODE_SPECTATOR":   4,
+	}
+)
+
+func (x GameMode) Enum() *GameMode {
+	p := new(GameMode)
+	*p = x
+	return p
+}
+
+func (x GameMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GameMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_mcadmin_v1_server_proto_enumTypes[3].Descriptor()
+}
+
+func (GameMode) Type() protoreflect.EnumType {
+	return &file_mcadmin_v1_server_proto_enumTypes[3]
+}
+
+func (x GameMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GameMode.Descriptor instead.
+func (GameMode) EnumDescriptor() ([]byte, []int) {
+	return file_mcadmin_v1_server_proto_rawDescGZIP(), []int{3}
+}
+
 type GetStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -695,8 +754,14 @@ type GameSettings struct {
 	ViewDistance int32 `protobuf:"varint,4,opt,name=view_distance,json=viewDistance,proto3" json:"view_distance,omitempty"`
 	// シミュレーション距離（チャンク）。3〜32、かつ描画距離以下。
 	SimulationDistance int32 `protobuf:"varint,5,opt,name=simulation_distance,json=simulationDistance,proto3" json:"simulation_distance,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// 既定のゲームモード。接続してくる人に適用される。既に接続している人の
+	// モードは変わらない（server.properties の gamemode と同じ振る舞い）。
+	Mode GameMode `protobuf:"varint,6,opt,name=mode,proto3,enum=mcadmin.v1.GameMode" json:"mode,omitempty"`
+	// ハードコアが有効か。**読み取り専用。** 生成されたワールドの level.dat に
+	// 焼かれる値なので、ここでは有効にできない。CreateWorld で決める。
+	Hardcore      bool `protobuf:"varint,7,opt,name=hardcore,proto3" json:"hardcore,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GameSettings) Reset() {
@@ -762,6 +827,20 @@ func (x *GameSettings) GetSimulationDistance() int32 {
 		return x.SimulationDistance
 	}
 	return 0
+}
+
+func (x *GameSettings) GetMode() GameMode {
+	if x != nil {
+		return x.Mode
+	}
+	return GameMode_GAME_MODE_UNSPECIFIED
+}
+
+func (x *GameSettings) GetHardcore() bool {
+	if x != nil {
+		return x.Hardcore
+	}
+	return false
 }
 
 type GetGameSettingsRequest struct {
@@ -995,7 +1074,7 @@ const file_mcadmin_v1_server_proto_rawDesc = "" +
 	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"\x16\n" +
 	"\x14RestartServerRequest\"L\n" +
 	"\x15RestartServerResponse\x123\n" +
-	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"\xd1\x01\n" +
+	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"\x97\x02\n" +
 	"\fGameSettings\x126\n" +
 	"\n" +
 	"difficulty\x18\x01 \x01(\x0e2\x16.mcadmin.v1.DifficultyR\n" +
@@ -1004,7 +1083,9 @@ const file_mcadmin_v1_server_proto_rawDesc = "" +
 	"\vmax_players\x18\x03 \x01(\x05R\n" +
 	"maxPlayers\x12#\n" +
 	"\rview_distance\x18\x04 \x01(\x05R\fviewDistance\x12/\n" +
-	"\x13simulation_distance\x18\x05 \x01(\x05R\x12simulationDistance\"\x18\n" +
+	"\x13simulation_distance\x18\x05 \x01(\x05R\x12simulationDistance\x12(\n" +
+	"\x04mode\x18\x06 \x01(\x0e2\x14.mcadmin.v1.GameModeR\x04mode\x12\x1a\n" +
+	"\bhardcore\x18\a \x01(\bR\bhardcore\"\x18\n" +
 	"\x16GetGameSettingsRequest\"k\n" +
 	"\x17GetGameSettingsResponse\x124\n" +
 	"\bsettings\x18\x01 \x01(\v2\x18.mcadmin.v1.GameSettingsR\bsettings\x12\x1a\n" +
@@ -1031,7 +1112,13 @@ const file_mcadmin_v1_server_proto_rawDesc = "" +
 	"\x13DIFFICULTY_PEACEFUL\x10\x01\x12\x13\n" +
 	"\x0fDIFFICULTY_EASY\x10\x02\x12\x15\n" +
 	"\x11DIFFICULTY_NORMAL\x10\x03\x12\x13\n" +
-	"\x0fDIFFICULTY_HARD\x10\x042\xe5\x04\n" +
+	"\x0fDIFFICULTY_HARD\x10\x04*\x87\x01\n" +
+	"\bGameMode\x12\x19\n" +
+	"\x15GAME_MODE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12GAME_MODE_SURVIVAL\x10\x01\x12\x16\n" +
+	"\x12GAME_MODE_CREATIVE\x10\x02\x12\x17\n" +
+	"\x13GAME_MODE_ADVENTURE\x10\x03\x12\x17\n" +
+	"\x13GAME_MODE_SPECTATOR\x10\x042\xe5\x04\n" +
 	"\rServerService\x12J\n" +
 	"\tGetStatus\x12\x1c.mcadmin.v1.GetStatusRequest\x1a\x1d.mcadmin.v1.GetStatusResponse\"\x00\x12J\n" +
 	"\tGetConfig\x12\x1c.mcadmin.v1.GetConfigRequest\x1a\x1d.mcadmin.v1.GetConfigResponse\"\x00\x12P\n" +
@@ -1054,66 +1141,68 @@ func file_mcadmin_v1_server_proto_rawDescGZIP() []byte {
 	return file_mcadmin_v1_server_proto_rawDescData
 }
 
-var file_mcadmin_v1_server_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_mcadmin_v1_server_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_mcadmin_v1_server_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_mcadmin_v1_server_proto_goTypes = []any{
 	(ContainerState)(0),                // 0: mcadmin.v1.ContainerState
 	(SavingState)(0),                   // 1: mcadmin.v1.SavingState
 	(Difficulty)(0),                    // 2: mcadmin.v1.Difficulty
-	(*GetStatusRequest)(nil),           // 3: mcadmin.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),          // 4: mcadmin.v1.GetStatusResponse
-	(*GetConfigRequest)(nil),           // 5: mcadmin.v1.GetConfigRequest
-	(*GetConfigResponse)(nil),          // 6: mcadmin.v1.GetConfigResponse
-	(*StartServerRequest)(nil),         // 7: mcadmin.v1.StartServerRequest
-	(*StartServerResponse)(nil),        // 8: mcadmin.v1.StartServerResponse
-	(*StopServerRequest)(nil),          // 9: mcadmin.v1.StopServerRequest
-	(*StopServerResponse)(nil),         // 10: mcadmin.v1.StopServerResponse
-	(*RestartServerRequest)(nil),       // 11: mcadmin.v1.RestartServerRequest
-	(*RestartServerResponse)(nil),      // 12: mcadmin.v1.RestartServerResponse
-	(*GameSettings)(nil),               // 13: mcadmin.v1.GameSettings
-	(*GetGameSettingsRequest)(nil),     // 14: mcadmin.v1.GetGameSettingsRequest
-	(*GetGameSettingsResponse)(nil),    // 15: mcadmin.v1.GetGameSettingsResponse
-	(*UpdateGameSettingsRequest)(nil),  // 16: mcadmin.v1.UpdateGameSettingsRequest
-	(*UpdateGameSettingsResponse)(nil), // 17: mcadmin.v1.UpdateGameSettingsResponse
-	nil,                                // 18: mcadmin.v1.GetConfigResponse.ValuesEntry
-	(*timestamppb.Timestamp)(nil),      // 19: google.protobuf.Timestamp
-	(*WorldVersion)(nil),               // 20: mcadmin.v1.WorldVersion
-	(*Operation)(nil),                  // 21: mcadmin.v1.Operation
+	(GameMode)(0),                      // 3: mcadmin.v1.GameMode
+	(*GetStatusRequest)(nil),           // 4: mcadmin.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),          // 5: mcadmin.v1.GetStatusResponse
+	(*GetConfigRequest)(nil),           // 6: mcadmin.v1.GetConfigRequest
+	(*GetConfigResponse)(nil),          // 7: mcadmin.v1.GetConfigResponse
+	(*StartServerRequest)(nil),         // 8: mcadmin.v1.StartServerRequest
+	(*StartServerResponse)(nil),        // 9: mcadmin.v1.StartServerResponse
+	(*StopServerRequest)(nil),          // 10: mcadmin.v1.StopServerRequest
+	(*StopServerResponse)(nil),         // 11: mcadmin.v1.StopServerResponse
+	(*RestartServerRequest)(nil),       // 12: mcadmin.v1.RestartServerRequest
+	(*RestartServerResponse)(nil),      // 13: mcadmin.v1.RestartServerResponse
+	(*GameSettings)(nil),               // 14: mcadmin.v1.GameSettings
+	(*GetGameSettingsRequest)(nil),     // 15: mcadmin.v1.GetGameSettingsRequest
+	(*GetGameSettingsResponse)(nil),    // 16: mcadmin.v1.GetGameSettingsResponse
+	(*UpdateGameSettingsRequest)(nil),  // 17: mcadmin.v1.UpdateGameSettingsRequest
+	(*UpdateGameSettingsResponse)(nil), // 18: mcadmin.v1.UpdateGameSettingsResponse
+	nil,                                // 19: mcadmin.v1.GetConfigResponse.ValuesEntry
+	(*timestamppb.Timestamp)(nil),      // 20: google.protobuf.Timestamp
+	(*WorldVersion)(nil),               // 21: mcadmin.v1.WorldVersion
+	(*Operation)(nil),                  // 22: mcadmin.v1.Operation
 }
 var file_mcadmin_v1_server_proto_depIdxs = []int32{
 	0,  // 0: mcadmin.v1.GetStatusResponse.container_state:type_name -> mcadmin.v1.ContainerState
-	19, // 1: mcadmin.v1.GetStatusResponse.container_started_at:type_name -> google.protobuf.Timestamp
-	20, // 2: mcadmin.v1.GetStatusResponse.active_world_version:type_name -> mcadmin.v1.WorldVersion
+	20, // 1: mcadmin.v1.GetStatusResponse.container_started_at:type_name -> google.protobuf.Timestamp
+	21, // 2: mcadmin.v1.GetStatusResponse.active_world_version:type_name -> mcadmin.v1.WorldVersion
 	1,  // 3: mcadmin.v1.GetStatusResponse.saving_state:type_name -> mcadmin.v1.SavingState
-	21, // 4: mcadmin.v1.GetStatusResponse.active_operation:type_name -> mcadmin.v1.Operation
-	18, // 5: mcadmin.v1.GetConfigResponse.values:type_name -> mcadmin.v1.GetConfigResponse.ValuesEntry
-	21, // 6: mcadmin.v1.StartServerResponse.operation:type_name -> mcadmin.v1.Operation
-	21, // 7: mcadmin.v1.StopServerResponse.operation:type_name -> mcadmin.v1.Operation
-	21, // 8: mcadmin.v1.RestartServerResponse.operation:type_name -> mcadmin.v1.Operation
+	22, // 4: mcadmin.v1.GetStatusResponse.active_operation:type_name -> mcadmin.v1.Operation
+	19, // 5: mcadmin.v1.GetConfigResponse.values:type_name -> mcadmin.v1.GetConfigResponse.ValuesEntry
+	22, // 6: mcadmin.v1.StartServerResponse.operation:type_name -> mcadmin.v1.Operation
+	22, // 7: mcadmin.v1.StopServerResponse.operation:type_name -> mcadmin.v1.Operation
+	22, // 8: mcadmin.v1.RestartServerResponse.operation:type_name -> mcadmin.v1.Operation
 	2,  // 9: mcadmin.v1.GameSettings.difficulty:type_name -> mcadmin.v1.Difficulty
-	13, // 10: mcadmin.v1.GetGameSettingsResponse.settings:type_name -> mcadmin.v1.GameSettings
-	13, // 11: mcadmin.v1.UpdateGameSettingsRequest.settings:type_name -> mcadmin.v1.GameSettings
-	13, // 12: mcadmin.v1.UpdateGameSettingsResponse.settings:type_name -> mcadmin.v1.GameSettings
-	21, // 13: mcadmin.v1.UpdateGameSettingsResponse.operation:type_name -> mcadmin.v1.Operation
-	3,  // 14: mcadmin.v1.ServerService.GetStatus:input_type -> mcadmin.v1.GetStatusRequest
-	5,  // 15: mcadmin.v1.ServerService.GetConfig:input_type -> mcadmin.v1.GetConfigRequest
-	7,  // 16: mcadmin.v1.ServerService.StartServer:input_type -> mcadmin.v1.StartServerRequest
-	9,  // 17: mcadmin.v1.ServerService.StopServer:input_type -> mcadmin.v1.StopServerRequest
-	11, // 18: mcadmin.v1.ServerService.RestartServer:input_type -> mcadmin.v1.RestartServerRequest
-	14, // 19: mcadmin.v1.ServerService.GetGameSettings:input_type -> mcadmin.v1.GetGameSettingsRequest
-	16, // 20: mcadmin.v1.ServerService.UpdateGameSettings:input_type -> mcadmin.v1.UpdateGameSettingsRequest
-	4,  // 21: mcadmin.v1.ServerService.GetStatus:output_type -> mcadmin.v1.GetStatusResponse
-	6,  // 22: mcadmin.v1.ServerService.GetConfig:output_type -> mcadmin.v1.GetConfigResponse
-	8,  // 23: mcadmin.v1.ServerService.StartServer:output_type -> mcadmin.v1.StartServerResponse
-	10, // 24: mcadmin.v1.ServerService.StopServer:output_type -> mcadmin.v1.StopServerResponse
-	12, // 25: mcadmin.v1.ServerService.RestartServer:output_type -> mcadmin.v1.RestartServerResponse
-	15, // 26: mcadmin.v1.ServerService.GetGameSettings:output_type -> mcadmin.v1.GetGameSettingsResponse
-	17, // 27: mcadmin.v1.ServerService.UpdateGameSettings:output_type -> mcadmin.v1.UpdateGameSettingsResponse
-	21, // [21:28] is the sub-list for method output_type
-	14, // [14:21] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	3,  // 10: mcadmin.v1.GameSettings.mode:type_name -> mcadmin.v1.GameMode
+	14, // 11: mcadmin.v1.GetGameSettingsResponse.settings:type_name -> mcadmin.v1.GameSettings
+	14, // 12: mcadmin.v1.UpdateGameSettingsRequest.settings:type_name -> mcadmin.v1.GameSettings
+	14, // 13: mcadmin.v1.UpdateGameSettingsResponse.settings:type_name -> mcadmin.v1.GameSettings
+	22, // 14: mcadmin.v1.UpdateGameSettingsResponse.operation:type_name -> mcadmin.v1.Operation
+	4,  // 15: mcadmin.v1.ServerService.GetStatus:input_type -> mcadmin.v1.GetStatusRequest
+	6,  // 16: mcadmin.v1.ServerService.GetConfig:input_type -> mcadmin.v1.GetConfigRequest
+	8,  // 17: mcadmin.v1.ServerService.StartServer:input_type -> mcadmin.v1.StartServerRequest
+	10, // 18: mcadmin.v1.ServerService.StopServer:input_type -> mcadmin.v1.StopServerRequest
+	12, // 19: mcadmin.v1.ServerService.RestartServer:input_type -> mcadmin.v1.RestartServerRequest
+	15, // 20: mcadmin.v1.ServerService.GetGameSettings:input_type -> mcadmin.v1.GetGameSettingsRequest
+	17, // 21: mcadmin.v1.ServerService.UpdateGameSettings:input_type -> mcadmin.v1.UpdateGameSettingsRequest
+	5,  // 22: mcadmin.v1.ServerService.GetStatus:output_type -> mcadmin.v1.GetStatusResponse
+	7,  // 23: mcadmin.v1.ServerService.GetConfig:output_type -> mcadmin.v1.GetConfigResponse
+	9,  // 24: mcadmin.v1.ServerService.StartServer:output_type -> mcadmin.v1.StartServerResponse
+	11, // 25: mcadmin.v1.ServerService.StopServer:output_type -> mcadmin.v1.StopServerResponse
+	13, // 26: mcadmin.v1.ServerService.RestartServer:output_type -> mcadmin.v1.RestartServerResponse
+	16, // 27: mcadmin.v1.ServerService.GetGameSettings:output_type -> mcadmin.v1.GetGameSettingsResponse
+	18, // 28: mcadmin.v1.ServerService.UpdateGameSettings:output_type -> mcadmin.v1.UpdateGameSettingsResponse
+	22, // [22:29] is the sub-list for method output_type
+	15, // [15:22] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_mcadmin_v1_server_proto_init() }
@@ -1128,7 +1217,7 @@ func file_mcadmin_v1_server_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mcadmin_v1_server_proto_rawDesc), len(file_mcadmin_v1_server_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,

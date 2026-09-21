@@ -19,6 +19,8 @@ import (
 // によって起動のたびに server.properties へ書かれる。.env が常に正になる。
 const (
 	keyDifficulty         = "MC_DIFFICULTY"
+	keyMode               = "MC_MODE"
+	keyHardcore           = "MC_HARDCORE"
 	keyMOTD               = "MC_MOTD"
 	keyMaxPlayers         = "MC_MAX_PLAYERS"
 	keyViewDistance       = "MC_VIEW_DISTANCE"
@@ -152,8 +154,12 @@ func (u *SettingsUseCase) write(ctx context.Context, s settings.GameSettings) er
 	if err != nil {
 		return err
 	}
+	// ハードコアは書かない。画面から変えられない値で、決めるのはワールドの
+	// 作成時だけ。ここで書き戻すと、読めなかった値を既定に倒した結果が
+	// そのまま .env に焼き付いてしまう。
 	next := snapshot.
 		With(keyDifficulty, string(s.Difficulty())).
+		With(keyMode, string(s.Mode())).
 		With(keyMOTD, s.MOTD()).
 		With(keyMaxPlayers, strconv.Itoa(s.MaxPlayers())).
 		With(keyViewDistance, strconv.Itoa(s.ViewDistance())).
@@ -166,13 +172,22 @@ func readSettings(snapshot port.ConfigSnapshot) SettingsReading {
 	d := settings.Defaults()
 
 	difficulty, w1 := readDifficulty(snapshot, d.Difficulty())
+	mode, w5 := readMode(snapshot, d.Mode())
 	motd := readString(snapshot, keyMOTD, d.MOTD())
 	players, w2 := readInt(snapshot, keyMaxPlayers, d.MaxPlayers(), settings.MinMaxPlayers, settings.MaxMaxPlayers)
 	view, w3 := readInt(snapshot, keyViewDistance, d.ViewDistance(), settings.MinDistance, settings.MaxDistance)
 	sim, w4 := readInt(snapshot, keySimulationDistance, d.SimulationDistance(), settings.MinDistance, settings.MaxDistance)
 
-	warnings := nonEmpty(w1, w2, w3, w4)
-	s, fixes := settle(difficulty, motd, players, view, sim)
+	warnings := nonEmpty(w1, w5, w2, w3, w4)
+	s, fixes := settle(settings.Params{
+		Difficulty:         difficulty,
+		Mode:               mode,
+		MOTD:               motd,
+		MaxPlayers:         players,
+		ViewDistance:       view,
+		SimulationDistance: sim,
+		Hardcore:           readBool(snapshot, keyHardcore, d.Hardcore()),
+	})
 	return SettingsReading{Settings: s, Warnings: append(warnings, fixes...)}
 }
 
@@ -180,25 +195,29 @@ func readSettings(snapshot port.ConfigSnapshot) SettingsReading {
 //
 // MOTD が規則外なら既定に戻し、シミュレーション距離が描画距離より遠ければ
 // 描画距離に揃える。それでも作れなければ、全部を既定値にする。
-func settle(difficulty settings.Difficulty, motd string, players, view, sim int) (settings.GameSettings, []string) {
-	if s, err := settings.New(difficulty, motd, players, view, sim); err == nil {
+func settle(p settings.Params) (settings.GameSettings, []string) {
+	if s, err := settings.New(p); err == nil {
 		return s, nil
 	}
 
 	var fixes []string
 	d := settings.Defaults()
-	if _, err := settings.New(difficulty, motd, players, view, min(sim, view)); err != nil {
+
+	// MOTD だけを既定に戻して通るなら、原因は MOTD にある。
+	probe := p
+	probe.SimulationDistance = min(p.SimulationDistance, p.ViewDistance)
+	if _, err := settings.New(probe); err != nil {
 		fixes = append(fixes, fmt.Sprintf("%s を読めなかったため、既定の %q を表示しています", keyMOTD, d.MOTD()))
-		motd = d.MOTD()
+		p.MOTD = d.MOTD()
 	}
-	if sim > view {
+	if p.SimulationDistance > p.ViewDistance {
 		fixes = append(fixes, fmt.Sprintf(
 			"%s（%d）が %s（%d）より大きいため、%d として表示しています",
-			keySimulationDistance, sim, keyViewDistance, view, view))
-		sim = view
+			keySimulationDistance, p.SimulationDistance, keyViewDistance, p.ViewDistance, p.ViewDistance))
+		p.SimulationDistance = p.ViewDistance
 	}
 
-	if s, err := settings.New(difficulty, motd, players, view, sim); err == nil {
+	if s, err := settings.New(p); err == nil {
 		return s, fixes
 	}
 	return d, append(fixes, "設定を読めなかったため、既定値を表示しています")
@@ -223,6 +242,37 @@ func readDifficulty(snapshot port.ConfigSnapshot, fallback settings.Difficulty) 
 		return fallback, unreadable(keyDifficulty, raw, string(fallback))
 	}
 	return parsed, ""
+}
+
+func readMode(snapshot port.ConfigSnapshot, fallback settings.GameMode) (settings.GameMode, string) {
+	raw, ok := present(snapshot, keyMode)
+	if !ok {
+		return fallback, ""
+	}
+	parsed, err := settings.ParseGameMode(raw)
+	if err != nil {
+		return fallback, unreadable(keyMode, raw, string(fallback))
+	}
+	return parsed, ""
+}
+
+// readBool は TRUE/FALSE を読む。
+//
+// compose が受け付けるのと同じく大文字小文字を問わない。読めない値は
+// 既定に倒す。ハードコアは表示専用なので、警告までは出さない。
+func readBool(snapshot port.ConfigSnapshot, key string, fallback bool) bool {
+	raw, ok := present(snapshot, key)
+	if !ok {
+		return fallback
+	}
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "true", "1", "yes":
+		return true
+	case "false", "0", "no":
+		return false
+	default:
+		return fallback
+	}
 }
 
 func readString(snapshot port.ConfigSnapshot, key, fallback string) string {

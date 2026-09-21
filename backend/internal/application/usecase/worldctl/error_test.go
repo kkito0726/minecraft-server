@@ -47,7 +47,7 @@ func TestCreateFailurePropagates(t *testing.T) {
 	h := newHarness(t, true, "world")
 	h.runtime.upErr = errors.New("起動に失敗")
 
-	handle, err := h.uc.Create(context.Background(), "fresh", "")
+	handle, err := h.uc.Create(context.Background(), worldctl.CreateOptions{Name: "fresh", Seed: ""})
 	if err != nil {
 		t.Fatal(err)
 	}

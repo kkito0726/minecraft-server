@@ -16,6 +16,7 @@ import { OperationSchema, WatchOperationResponseSchema } from '../gen/mcadmin/v1
 import {
   ContainerState,
   Difficulty,
+  GameMode,
   GameSettingsSchema,
   GetStatusResponseSchema,
   SavingState,
@@ -128,13 +129,22 @@ const DIFFICULTIES: Record<DemoGameSettings['difficulty'], Difficulty> = {
   hard: Difficulty.HARD,
 }
 
+const GAME_MODES: Record<DemoGameSettings['mode'], GameMode> = {
+  survival: GameMode.SURVIVAL,
+  creative: GameMode.CREATIVE,
+  adventure: GameMode.ADVENTURE,
+  spectator: GameMode.SPECTATOR,
+}
+
 export function toGameSettings(settings: DemoGameSettings) {
   return create(GameSettingsSchema, {
     difficulty: DIFFICULTIES[settings.difficulty],
+    mode: GAME_MODES[settings.mode],
     motd: settings.motd,
     maxPlayers: settings.maxPlayers,
     viewDistance: settings.viewDistance,
     simulationDistance: settings.simulationDistance,
+    hardcore: settings.hardcore,
   })
 }
 

@@ -47,7 +47,9 @@ func TestGameSettingsFromProto(t *testing.T) {
 	}
 
 	s, err := gameSettingsFromProto(&mcadminv1.GameSettings{
-		Difficulty: mcadminv1.Difficulty_DIFFICULTY_EASY, Motd: "hi",
+		Difficulty: mcadminv1.Difficulty_DIFFICULTY_EASY,
+		Mode:       mcadminv1.GameMode_GAME_MODE_SURVIVAL,
+		Motd:       "hi",
 		MaxPlayers: 4, ViewDistance: 8, SimulationDistance: 6,
 	})
 	if err != nil {
@@ -61,7 +63,9 @@ func TestGameSettingsFromProto(t *testing.T) {
 
 	// 規則の検証はドメインに任せる。ここで素通りさせないこと。
 	_, err = gameSettingsFromProto(&mcadminv1.GameSettings{
-		Difficulty: mcadminv1.Difficulty_DIFFICULTY_EASY, Motd: "hi",
+		Difficulty: mcadminv1.Difficulty_DIFFICULTY_EASY,
+		Mode:       mcadminv1.GameMode_GAME_MODE_SURVIVAL,
+		Motd:       "hi",
 		MaxPlayers: 4, ViewDistance: 5, SimulationDistance: 9,
 	})
 	if !errors.Is(err, settings.ErrInvalid) {

@@ -1,12 +1,17 @@
 import { create } from '@bufbuild/protobuf'
 import type { MessageInitShape } from '@bufbuild/protobuf'
 import { Code, ConnectError } from '@connectrpc/connect'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { OperationKind, OperationState } from '../gen/mcadmin/v1/common_pb'
 import { OperationSchema } from '../gen/mcadmin/v1/operation_pb'
+import {
+  Difficulty,
+  GameMode,
+  GetGameSettingsResponseSchema,
+} from '../gen/mcadmin/v1/server_pb'
 import { ListWorldsResponseSchema } from '../gen/mcadmin/v1/world_pb'
 import type { OperationSource } from '../features/operations'
 import { withProviders } from '../test/providers'
@@ -20,6 +25,13 @@ const renameWorld = vi.hoisted(() => vi.fn())
 const deleteWorld = vi.hoisted(() => vi.fn())
 const purgeQuarantine = vi.hoisted(() => vi.fn())
 
+// 新規作成のダイアログは、初期選択のために .env の現在値を読む。
+const getGameSettings = vi.hoisted(() => vi.fn())
+
+vi.mock('../features/server/client', () => ({
+  serverClient: { getGameSettings },
+}))
+
 vi.mock('../features/worlds/client', () => ({
   worldClient: {
     listWorlds,
@@ -31,6 +43,21 @@ vi.mock('../features/worlds/client', () => ({
     purgeQuarantine,
   },
 }))
+
+beforeEach(() => {
+  getGameSettings.mockResolvedValue(
+    create(GetGameSettingsResponseSchema, {
+      settings: {
+        difficulty: Difficulty.NORMAL,
+        mode: GameMode.SURVIVAL,
+        motd: 'ようこそ',
+        maxPlayers: 5,
+        viewDistance: 7,
+        simulationDistance: 5,
+      },
+    }),
+  )
+})
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -78,6 +105,10 @@ const idleSource: OperationSource = {
     },
   }),
 }
+
+/** 「ハードコア」がモードの選択肢に並ぶので、難易度の組に絞って引く。 */
+const difficultyRadio = (name: RegExp) =>
+  within(screen.getByRole('group', { name: '難易度' })).getByRole('radio', { name })
 
 function renderPage(source: OperationSource = idleSource) {
   return render(withProviders(<WorldsPage />, source))
@@ -167,8 +198,82 @@ describe('新規作成', () => {
     await userEvent.click(screen.getByRole('button', { name: '作成する' }))
 
     await waitFor(() =>
-      expect(createWorld).toHaveBeenCalledWith({ name: 'newworld', seed: '12345' }),
+      expect(createWorld).toHaveBeenCalledWith({
+        name: 'newworld',
+        seed: '12345',
+        // 初期選択は .env の現在値。触らなければそのまま送る。
+        mode: GameMode.SURVIVAL,
+        difficulty: Difficulty.NORMAL,
+        hardcore: false,
+      }),
     )
+  })
+
+  it('ゲームモードと難易度を選んで作成できる', async () => {
+    listWorlds.mockResolvedValue(worlds())
+    createWorld.mockResolvedValue({ operation: op })
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: '新規作成' }))
+    await userEvent.type(screen.getByLabelText('ワールド名'), 'creative')
+    await userEvent.click(screen.getByRole('radio', { name: /クリエイティブ/ }))
+    await userEvent.click(difficultyRadio(/ピースフル/))
+    await userEvent.click(screen.getByRole('button', { name: '作成する' }))
+
+    await waitFor(() =>
+      expect(createWorld).toHaveBeenCalledWith({
+        name: 'creative',
+        seed: '',
+        mode: GameMode.CREATIVE,
+        difficulty: Difficulty.PEACEFUL,
+        hardcore: false,
+      }),
+    )
+  })
+
+  // ハードコアはモードの選択肢のひとつ。別のチェック欄にすると
+  // 「クリエイティブ + ハードコア」のような意味の無い組み合わせを選べてしまう。
+  it('ハードコアを選ぶと警告が出て、名前を打つまで実行できない', async () => {
+    listWorlds.mockResolvedValue(worlds())
+    createWorld.mockResolvedValue({ operation: op })
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: '新規作成' }))
+    await userEvent.type(screen.getByLabelText('ワールド名'), 'hardworld')
+    await userEvent.click(screen.getByRole('radio', { name: /ハードコア/ }))
+
+    expect(screen.getByText(/後から外せません/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '作成する' })).toBeDisabled()
+
+    await userEvent.type(screen.getByLabelText(/確認のため/), 'hardworld')
+    await userEvent.click(screen.getByRole('button', { name: '作成する' }))
+
+    // ハードコアはサバイバルに hardcore が付いたもの。難易度はハードに固定。
+    await waitFor(() =>
+      expect(createWorld).toHaveBeenCalledWith({
+        name: 'hardworld',
+        seed: '',
+        mode: GameMode.SURVIVAL,
+        difficulty: Difficulty.HARD,
+        hardcore: true,
+      }),
+    )
+  })
+
+  // ハードコアでは Minecraft が難易度をハードに固定する。
+  // 選べるままにすると、画面と実際の挙動が食い違う。
+  it('ハードコアを選ぶと難易度を選べなくなる', async () => {
+    listWorlds.mockResolvedValue(worlds())
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: '新規作成' }))
+    expect(difficultyRadio(/ノーマル/)).toBeEnabled()
+
+    await userEvent.click(screen.getByRole('radio', { name: /ハードコア/ }))
+
+    expect(difficultyRadio(/ノーマル/)).toBeDisabled()
+    expect(difficultyRadio(/^ハード/)).toBeChecked()
+    expect(screen.getByText('ハードコアでは難易度はハードに固定されます。')).toBeInTheDocument()
   })
 
   // EDGE-102: data/ の既存ディレクトリと衝突する名前は使えない。

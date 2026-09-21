@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { Difficulty } from '../../gen/mcadmin/v1/server_pb'
+import { Difficulty, GameMode } from '../../gen/mcadmin/v1/server_pb'
 import {
   PI_RECOMMENDED,
   SETTINGS_LIMITS,
@@ -18,6 +18,7 @@ import type { GameSettingsForm } from './settings'
 
 const valid: GameSettingsForm = {
   difficulty: Difficulty.HARD,
+  mode: GameMode.SURVIVAL,
   motd: '§aようこそ',
   maxPlayers: '8',
   viewDistance: '9',
@@ -54,12 +55,20 @@ describe('parseGameSettings', () => {
   it('妥当な値を数値にして返す', () => {
     expect(parseGameSettings(valid)).toEqual({
       ok: true,
-      value: { difficulty: Difficulty.HARD, motd: '§aようこそ', maxPlayers: 8, viewDistance: 9, simulationDistance: 6 },
+      value: {
+        difficulty: Difficulty.HARD,
+        mode: GameMode.SURVIVAL,
+        motd: '§aようこそ',
+        maxPlayers: 8,
+        viewDistance: 9,
+        simulationDistance: 6,
+      },
     })
   })
 
   it.each<[string, Partial<GameSettingsForm>, RegExp]>([
     ['難易度が未選択', { difficulty: Difficulty.UNSPECIFIED }, /難易度/],
+    ['モードが未選択', { mode: GameMode.UNSPECIFIED }, /ゲームモード/],
     ['打ちかけの空欄', { maxPlayers: '' }, /入力してください/],
     ['人数が 0', { maxPlayers: '0' }, /最大人数は 1〜100/],
     ['人数が上限超え', { maxPlayers: '101' }, /最大人数は 1〜100/],
@@ -119,13 +128,21 @@ describe('motdProblem', () => {
 describe('piLoadNotes', () => {
   it('目安の範囲なら何も言わない', () => {
     expect(
-      piLoadNotes({ difficulty: Difficulty.NORMAL, motd: 'm', maxPlayers: 5, viewDistance: 7, simulationDistance: 5 }),
+      piLoadNotes({
+        difficulty: Difficulty.NORMAL,
+        mode: GameMode.SURVIVAL,
+        motd: 'm',
+        maxPlayers: 5,
+        viewDistance: 7,
+        simulationDistance: 5,
+      }),
     ).toEqual([])
   })
 
   it('目安を超えた項目ごとに注意を出す', () => {
     const notes = piLoadNotes({
       difficulty: Difficulty.NORMAL,
+      mode: GameMode.SURVIVAL,
       motd: 'm',
       maxPlayers: PI_RECOMMENDED.maxPlayers + 1,
       viewDistance: PI_RECOMMENDED.viewDistance + 1,
@@ -137,7 +154,14 @@ describe('piLoadNotes', () => {
 
 describe('toForm / isChanged', () => {
   it('入力欄の形にして、変化を検出する', () => {
-    const form = toForm({ difficulty: Difficulty.EASY, motd: 'm', maxPlayers: 5, viewDistance: 7, simulationDistance: 5 })
+    const form = toForm({
+      difficulty: Difficulty.EASY,
+      mode: GameMode.SURVIVAL,
+      motd: 'm',
+      maxPlayers: 5,
+      viewDistance: 7,
+      simulationDistance: 5,
+    })
     expect(form.maxPlayers).toBe('5')
     expect(isChanged(form, form)).toBe(false)
     expect(isChanged({ ...form, viewDistance: '8' }, form)).toBe(true)
