@@ -6,7 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/backupctl"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/versionsync"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
@@ -555,5 +557,152 @@ func TestRestoreRollbackKeepsServerStoppedWhenAlreadyStopped(t *testing.T) {
 	}
 	if strings.Contains(h.calls(), "Up") {
 		t.Errorf("停止していたサーバーを起動している: %q", h.calls())
+	}
+}
+
+// --- 復元時の版の照合 ---
+
+/*
+復元したワールドが最後に開かれた版に、サーバーの版を合わせる。
+
+合わせないと、新しいワールドは古い版では開けずにサーバーが起動しない。
+シングルプレイで遊んだワールドをサーバーとして立てる経路がここを通る。
+*/
+func TestRestoreAlignsServerVersionToRestoredWorld(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.store.seed(t, archiveID, h.now())
+	h.worlds.add("world")
+	h.levels.settings = port.LevelSettings{Version: "26.3", HasVersion: true}
+
+	handle, err := h.uc.Restore(context.Background(), backupctl.RestoreRequest{
+		BackupID: archiveID, ConfirmLevelName: "world",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap := h.wait(t, handle.ID()); snap.State != operation.StateSucceeded {
+		t.Fatalf("状態が %v（%s）", snap.State, snap.ErrorMessage)
+	}
+
+	if got := h.config.get("MC_VERSION"); got != "26.3" {
+		t.Errorf("MC_VERSION が %q。26.3 のはず", got)
+	}
+}
+
+/*
+ワールド名が変わらない復元でも版は合わせる。
+
+同じ名前のワールドを新しい版のバックアップで置き換える場合がこれ。
+MC_LEVEL を書く必要がないので、ここを飛ばすと版だけ古いまま残り、
+復元は成功したのにサーバーが起動しない状態になる。
+*/
+func TestRestoreAlignsVersionEvenWhenLevelNameUnchanged(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, map[string]string{"MC_LEVEL": "world", "MC_VERSION": "26.2"})
+	h.store.seed(t, archiveID, h.now())
+	h.worlds.add("world")
+	h.levels.settings = port.LevelSettings{Version: "26.3", HasVersion: true}
+
+	handle, err := h.uc.Restore(context.Background(), backupctl.RestoreRequest{
+		BackupID: archiveID, ConfirmLevelName: "world",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap := h.wait(t, handle.ID()); snap.State != operation.StateSucceeded {
+		t.Fatalf("状態が %v（%s）", snap.State, snap.ErrorMessage)
+	}
+
+	if got := h.config.get("MC_LEVEL"); got != "world" {
+		t.Errorf("MC_LEVEL が %q。world のままのはず", got)
+	}
+	if got := h.config.get("MC_VERSION"); got != "26.3" {
+		t.Errorf("MC_VERSION が %q。26.3 のはず", got)
+	}
+}
+
+// 版が読めないワールドでは触らない。読めなかっただけで書き換えると、
+// 動いていたサーバーが起動しなくなる。
+func TestRestoreKeepsVersionWhenLevelDatUnreadable(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.store.seed(t, archiveID, h.now())
+	h.worlds.add("world")
+	// 既定の fakeLevels は HasVersion が偽。
+	h.levels.settings = port.LevelSettings{}
+
+	handle, err := h.uc.Restore(context.Background(), backupctl.RestoreRequest{
+		BackupID: archiveID, ConfirmLevelName: "world",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap := h.wait(t, handle.ID()); snap.State != operation.StateSucceeded {
+		t.Fatalf("状態が %v（%s）", snap.State, snap.ErrorMessage)
+	}
+
+	if got := h.config.get("MC_VERSION"); got != "26.2" {
+		t.Errorf("MC_VERSION が %q。26.2 のままのはず", got)
+	}
+}
+
+/*
+Paper が配っていない版のワールドは、サーバーを止める前に断る。
+
+書けば起動しないし、今の版で開けばワールドが勝手に上がって元に戻せない。
+どちらも避けるため、何も壊していない段階で止める。
+*/
+func TestRestoreRefusesVersionPaperDoesNotDistribute(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.store.seed(t, archiveID, h.now())
+	h.worlds.add("world")
+	h.catalog.versions = []string{"26.2", "26.1"}
+	// アーカイブの版は 26.9。Paper の一覧に無い。
+	h.levels.version = unavailableVersion(t)
+
+	_, err := h.uc.Restore(context.Background(), backupctl.RestoreRequest{
+		BackupID:                  archiveID,
+		ConfirmLevelName:          "world",
+		AcknowledgeVersionWarning: true,
+	})
+	if !errors.Is(err, versionsync.ErrVersionUnavailable) {
+		t.Fatalf("エラーが %v。ErrVersionUnavailable のはず", err)
+	}
+	if got := h.calls(); got != "" {
+		t.Errorf("断ったのに何かしている: %q", got)
+	}
+}
+
+/*
+一覧が取れないとき（Pi がオフライン）は通す。
+
+itzg のイメージがその版の jar を既に持っていれば起動できる。ここで
+止めると、オフラインの間は一切復元できなくなる。
+*/
+func TestRestorePassesWhenCatalogUnavailable(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.store.seed(t, archiveID, h.now())
+	h.worlds.add("world")
+	h.catalog.err = errors.New("繋がりません")
+	h.levels.version = unavailableVersion(t)
+
+	handle, err := h.uc.Restore(context.Background(), backupctl.RestoreRequest{
+		BackupID:                  archiveID,
+		ConfirmLevelName:          "world",
+		AcknowledgeVersionWarning: true,
+	})
+	if err != nil {
+		t.Fatalf("オフラインで断られた: %v", err)
+	}
+	if snap := h.wait(t, handle.ID()); snap.State != operation.StateSucceeded {
+		t.Fatalf("状態が %v（%s）", snap.State, snap.ErrorMessage)
 	}
 }

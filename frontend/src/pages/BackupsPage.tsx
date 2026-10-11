@@ -106,7 +106,7 @@ function BackupSection({ data, disabled }: { data: ListBackupsResponse; disabled
         disabled={disabled}
         onRestore={setRestoring}
         onDelete={(id) => remove.mutate(id)}
-        onDownload={(id) => download.mutate(id)}
+        onDownload={(id, format) => download.mutate({ backupId: id, format })}
       />
     </section>
   )

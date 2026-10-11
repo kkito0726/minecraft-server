@@ -30,6 +30,22 @@ const TicketTTL = 10 * time.Minute
 // maxTickets は同時に持つ券の上限。押しただけで取りに来ない券が積もるのを防ぐ。
 const maxTickets = 64
 
+/*
+Format は渡す zip の形。
+
+券に形を載せるのは、受け取りの口が券だけを見る作りだからである。
+URL の問い合わせ文字列で形を指定できるようにすると、券を手にした
+相手が形を選べる。選ばせる理由がない。
+*/
+type Format int
+
+const (
+	// FormatServer はサーバーへ戻すための形。保管しているものをそのまま渡す。
+	FormatServer Format = iota
+	// FormatSingleplayer はシングルプレイの saves/ へ置くための形。
+	FormatSingleplayer
+)
+
 // Tickets は発行済みの受取券。プロセスのメモリにだけ置く。
 //
 // 再起動で全部無効になるが、押し直せば済む。ディスクに残すと、
@@ -46,6 +62,7 @@ type Tickets struct {
 
 type ticket struct {
 	backupID  string
+	format    Format
 	expiresAt time.Time
 }
 
@@ -59,7 +76,9 @@ func NewTickets(basePath string) *Tickets {
 }
 
 // Issue は受取券を発行し、受け取りの URL と期限を返す。
-func (t *Tickets) Issue(backupID string) (url string, expiresAt time.Time, err error) {
+func (t *Tickets) Issue(
+	backupID string, format Format,
+) (url string, expiresAt time.Time, err error) {
 	token, err := newToken()
 	if err != nil {
 		return "", time.Time{}, err
@@ -71,17 +90,17 @@ func (t *Tickets) Issue(backupID string) (url string, expiresAt time.Time, err e
 	t.purgeExpired()
 	t.enforceCap()
 	expiresAt = t.now().Add(TicketTTL)
-	t.issued[token] = ticket{backupID: backupID, expiresAt: expiresAt}
+	t.issued[token] = ticket{backupID: backupID, format: format, expiresAt: expiresAt}
 
 	return fmt.Sprintf("%s?%s=%s", t.basePath, TokenParam, token), expiresAt, nil
 }
 
-// Redeem は券を照合し、対象のバックアップを返す。
+// Redeem は券を照合し、対象のバックアップと渡す形を返す。
 //
 // 期限内なら何度でも通す。Range による再開で同じ券が再び来るため。
-func (t *Tickets) Redeem(token string) (backupID string, ok bool) {
+func (t *Tickets) Redeem(token string) (backupID string, format Format, ok bool) {
 	if token == "" {
-		return "", false
+		return "", FormatServer, false
 	}
 
 	t.mu.Lock()
@@ -92,9 +111,9 @@ func (t *Tickets) Redeem(token string) (backupID string, ok bool) {
 	t.purgeExpired()
 	found, ok := t.issued[token]
 	if !ok {
-		return "", false
+		return "", FormatServer, false
 	}
-	return found.backupID, true
+	return found.backupID, found.format, true
 }
 
 // purgeExpired は期限切れを捨てる。呼び出し側がロックを持っていること。

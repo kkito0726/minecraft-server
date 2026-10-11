@@ -98,6 +98,12 @@ type BackupStore interface {
 	// 中身をメモリに載せない。ダウンロードは 200MB 規模になるため、
 	// 呼び出し側がそのまま流せる形で返す（REQ-415）。
 	Open(ctx context.Context, id backup.ID) (ArchiveFile, error)
+	// OpenVanilla は保管済みのアーカイブを、シングルプレイで読める形へ
+	// 包み直して開く。
+	//
+	// 保管しているアーカイブには手を触れない。シングルプレイ用を
+	// 別に保管はしない。同じワールドが二重に場所を取るため。
+	OpenVanilla(ctx context.Context, id backup.ID) (ArchiveFile, error)
 	// OpenLevelDat はアーカイブ内の level.dat を、展開せずに開く。
 	OpenLevelDat(ctx context.Context, id backup.ID) (io.ReadCloser, error)
 	// Stage は受け取ったバイト列を保管先の一時ファイルへ書き、中身を調べる。

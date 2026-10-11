@@ -248,13 +248,102 @@ docker compose up -d          # data/creative/ が生成される。data/world �
 | 退避の完全削除 | `rm -rf data/*.broken-*` |
 | ワールドの切り替え | `.env` の `MC_LEVEL` を書き換えて `up -d` |
 
-画面の側にだけあるのは 3 つ。どれも手作業では実質できない。
+画面の側にだけあるのは 5 つ。どれも手作業では実質できない。
 
 - **中断の検出** — `save-off` のまま落ちたことに気づいて `save-on` を送り直す
 - **バージョンの検証** — アーカイブ内の `level.dat` の `DataVersion` を現在のワールドと比べる
 - **取り込み時の包み直し** — `<名前>/level.dat` の形の zip を `data/` 配下へ入れ直す
+- **復元時の版の照合** — 復元したワールドに `MC_VERSION` を合わせる（下記）
+- **シングルプレイ用の書き出し** — バニラのクライアントが読める形に包み直す（下記）
 
 3 つめは手でコピーしたときに効いてくる。復元は `data/` 配下のエントリしか受け付けない
 ので、配布ワールドのような `<名前>/...` 形式の zip を `backups/` へ置いただけでは
 「`data/` 配下ではありません」で拒否される。手で入れるなら `data/<名前>/` の形に
 固め直しておくか、画面の取り込みを使う。
+
+## 復元時の版の照合
+
+復元すると `.env` の `MC_VERSION` が、展開し終えたワールドの `level.dat` の
+`Data.Version.Name` に合わせて書き換わる。ワールド名が変わらない復元でも書き換わる。
+
+合わせないと次のどちらかになる。
+
+- 古いワールドを今の版で開いて、版が勝手に上がる（**元に戻せない**）
+- 新しいワールドを古い版で開こうとして、サーバーが起動しない
+
+Paper がその版を配っていない場合は、**サーバーを止める前に**断る。止めてから気づくと
+落ちたまま残り、復旧が手作業になる。版の一覧が取れないとき（Pi がオフライン）は通す。
+起動できなければ元のワールドへ切り替え直せば版も戻る。
+
+版が変わるときは操作のログに警告が残る。**遊ぶ人はクライアントの版も合わせる必要がある。**
+
+## シングルプレイへの持ち出しと取り込み
+
+### 持ち出す（サーバー → シングルプレイ）
+
+一覧の「シングルプレイ用」から落とす。`saves/` にそのまま展開できる形で渡される。
+
+**サーバー用の zip をそのまま `saves/` に置いても読み込めない。** Paper とバニラでは
+ワールドの中の `.dat` の置き場所が一部違う。
+
+| ファイル | Paper | バニラ |
+| --- | --- | --- |
+| `world_gen_settings.dat` | `dimensions/minecraft/overworld/data/minecraft/` | `data/minecraft/` |
+| `game_rules.dat` | 同上 | 同上 |
+| `scheduled_events.dat` | 同上 | 同上 |
+| `wandering_trader.dat` | 同上 | 同上 |
+| `weather.dat` | 同上 | 同上 |
+
+Paper はワールドごとに別の設定を持てるようにするためディメンション側へ置く。バニラは
+ワールド直下しか見ない。`world_gen_settings.dat` が見つからないとシードも地形生成器も
+決められず、クライアントは
+
+```
+Unable to read or access the world gen settings file!
+Failed to load level data or datapacks, can't proceed with server load
+java.lang.IllegalStateException: Overworld settings missing
+```
+
+で読み込みを中断する。**ワールド一覧には出る**ので原因が分かりにくい。
+
+手でやるなら、ワールド本体だけ取り出してこの 5 つを上げる。
+
+```bash
+cd ~/Library/Application\ Support/minecraft/saves
+mkdir main
+# zip 内の階層は data/<ワールド>/。皮を 2 枚剥がす
+tar -xf ~/Downloads/backup-26.3-main-20261011-181445.zip \
+    -C main --strip-components=2 data/main
+
+cd main
+for f in game_rules scheduled_events wandering_trader weather world_gen_settings; do
+  mv "dimensions/minecraft/overworld/data/minecraft/$f.dat" "data/minecraft/$f.dat"
+done
+```
+
+移す元は**オーバーワールドに限る**。オーバーワールド側の `world_gen_settings.dat` が
+3 つのディメンションすべての設定（`minecraft:overworld` / `the_nether` / `the_end`）を
+持っているため。ネザーやエンドのものを上げると、全体の設定が 1 ディメンション分に縮む。
+
+`level.dat` の `DataPacks.Enabled` に `paper` が残るため、クライアントのログに
+`Missing data pack paper` が出る。致命的ではない（これを通過したあとに
+`world_gen_settings` で落ちていた）。
+
+### 取り込む（シングルプレイ → サーバー）
+
+**置き場所の変換は要らない。** Paper が起動時に自前で移行する。
+
+```
+[WorldFolderMigration] World storage migration is required during startup.
+[WorldFolderMigration] If you do not have a backup: interrupt the server now.
+[WorldFolderMigration] Continuing in 30 seconds...
+[VanillaWorldMigration] Starting Vanilla import for world 'demo_world_01' (minecraft:overworld)
+[VanillaWorldMigration] Completed Vanilla import for world 'demo_world_01' (minecraft:overworld)
+```
+
+移行は**その場で書き換える**。先にバックアップを取ってから入れること。30 秒の猶予が
+あるが、管理コンソールから復元した場合は自動で通過する（起動の完了待ちは 300 秒なので
+収まる）。
+
+要るのは置き場所ではなく**版**の整合である。26.3 のワールドは 26.2 のサーバーでは
+開けない。復元時の版の照合（前節）がこれを受け持つ。

@@ -6,6 +6,7 @@ import (
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/versionsync"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/shared"
@@ -135,11 +136,37 @@ func (u *UseCase) Restore(ctx context.Context, req RestoreRequest) (operations.H
 	if err := checkConfirmation(req, pre, target); err != nil {
 		return operations.Handle{}, err
 	}
+	// 版で起動できないことが分かっているなら、止める前に断る。
+	// 止めてから気づくと、落ちたまま復旧に手作業が要る。
+	if err := u.checkRestoreVersion(ctx, pre); err != nil {
+		return operations.Handle{}, err
+	}
 
 	return u.cfg.Operations.Start(ctx, operation.KindBackupRestore, restoreSteps,
 		func(ctx context.Context, r operations.Reporter) error {
 			return u.runRestore(ctx, r, req, id, target)
 		})
+}
+
+/*
+checkRestoreVersion は復元したあとに起動できるかを、止める前に確かめる。
+
+復元は「別のワールドを開き直す」操作なので、切り替えと同じ規則が要る。
+復元後は MC_VERSION をアーカイブの版に合わせるため、Paper がその版を
+配っていなければサーバーが起動しない。
+
+版が読めないアーカイブは通す。読めないこと自体は DecideRestore が
+警告して承諾を求めている。ここで二重に止める理由はない。
+
+スナップショットで開かれたワールドも通す。MC_VERSION には書かないので
+（versionsync.Follow が触らない）、今の版のままで起動する。
+*/
+func (u *UseCase) checkRestoreVersion(ctx context.Context, pre Preflight) error {
+	v := pre.Backup.Version
+	if !v.Readable() || v.Snapshot() || v.Name() == "" {
+		return nil
+	}
+	return versionsync.CheckAvailable(ctx, u.cfg.Catalog, pre.ConfiguredVersion, v.Name())
 }
 
 // resolveTarget は復元先のワールド名を決める。
@@ -258,7 +285,7 @@ func (u *UseCase) applyRestore(
 	if err := r.Step(); err != nil {
 		return err
 	}
-	if err := u.switchLevel(ctx, r, target, set); err != nil {
+	if err := u.applyRestoredSettings(ctx, r, target, set); err != nil {
 		u.rollback(ctx, r, target, quarantine, wasRunning)
 		return err
 	}
@@ -379,23 +406,63 @@ func (u *UseCase) startAfterRollback(
 	}
 }
 
-func (u *UseCase) switchLevel(
+/*
+applyRestoredSettings は復元したワールドに .env を合わせる。
+
+書くのは 2 つ。稼働するワールド（MC_LEVEL）と、サーバーの版
+（MC_VERSION）。
+
+版はアーカイブの名前ではなく、展開し終えたワールドの level.dat から
+読む。名前は人が付け替えられるので、実体を見る。
+
+ワールド名が変わらない復元でも版は合わせる。同じ名前のワールドを
+新しい版のバックアップで置き換える場合がこれで、ここを飛ばすと
+版だけ古いまま残り、復元は成功したのにサーバーが起動しない。
+*/
+func (u *UseCase) applyRestoredSettings(
 	ctx context.Context, r operations.Reporter, target world.Name, set settings,
 ) error {
-	if target == set.level {
-		r.Logf(operation.LevelInfo, "稼働するワールドは %s のままです", target)
-		return nil
-	}
-
 	snapshot, err := u.cfg.Config.Load(ctx)
 	if err != nil {
 		return err
 	}
-	if err := u.cfg.Config.Save(ctx, snapshot.With(keyLevel, target.String())); err != nil {
-		return err
+
+	next := snapshot
+	changed := false
+
+	if target == set.level {
+		r.Logf(operation.LevelInfo, "稼働するワールドは %s のままです", target)
+	} else {
+		next = next.With(keyLevel, target.String())
+		changed = true
+		r.Logf(operation.LevelInfo, "稼働するワールドを %s に変更しました", target)
 	}
-	r.Logf(operation.LevelInfo, "稼働するワールドを %s に変更しました", target)
-	return nil
+
+	next, note := u.followRestoredVersion(ctx, target, snapshot, next)
+	if note != "" {
+		changed = true
+		r.Logf(operation.LevelWarn, "%s", note)
+	}
+
+	// 変わっていなければ書かない。書くたびに .env の更新時刻が動くと、
+	// 人が編集したのかどうかの手がかりが消える。
+	if !changed {
+		return nil
+	}
+	return u.cfg.Config.Save(ctx, next)
+}
+
+// followRestoredVersion は復元したワールドの level.dat から版を読んで合わせる。
+//
+// Levels を持たない構成では何もしない。版が分からないまま書くと、
+// 動いていたサーバーが起動しなくなる。
+func (u *UseCase) followRestoredVersion(
+	ctx context.Context, target world.Name, current, next port.ConfigSnapshot,
+) (port.ConfigSnapshot, string) {
+	if u.cfg.Levels == nil {
+		return next, ""
+	}
+	return versionsync.Follow(current, next, u.cfg.Levels.ReadSettings(ctx, target))
 }
 
 // startAfterRestore は復元後にサーバーを起こす。

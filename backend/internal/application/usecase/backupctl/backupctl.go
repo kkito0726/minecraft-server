@@ -16,6 +16,7 @@ import (
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/versionsync"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/server"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
@@ -23,8 +24,9 @@ import (
 
 // 設定のキー。
 const (
-	keyLevel    = "MC_LEVEL"
-	keyVersion  = "MC_VERSION"
+	keyLevel = "MC_LEVEL"
+	// keyVersion はサーバーの版。規則は versionsync が持つ。
+	keyVersion  = versionsync.KeyVersion
 	keyKeep     = "ADMIN_BACKUP_KEEP"
 	keyKeepDays = "ADMIN_BACKUP_KEEP_DAYS"
 )
@@ -92,12 +94,17 @@ const (
 
 // Config は UseCase の依存。
 type Config struct {
-	Runtime    port.ContainerRuntime
-	Console    port.ServerConsole
-	Store      port.BackupStore
-	Worlds     port.WorldRepository
-	Config     port.ServerConfig
-	Levels     port.LevelReader
+	Runtime port.ContainerRuntime
+	Console port.ServerConsole
+	Store   port.BackupStore
+	Worlds  port.WorldRepository
+	Config  port.ServerConfig
+	Levels  port.LevelReader
+	// Catalog は Paper が配っている版の一覧。
+	//
+	// 無くてもよい。一覧が取れないときは「確かめられない」として
+	// 復元を通す。オフラインの間は一切復元できない方が困る。
+	Catalog    port.VersionCatalog
 	Operations *operations.Manager
 	// Clock は現在時刻。未設定なら実時刻を使う。
 	Clock port.Clock

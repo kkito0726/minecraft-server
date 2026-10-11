@@ -14,6 +14,7 @@ import (
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/versionsync"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/settings"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/world"
@@ -229,26 +230,12 @@ func (u *UseCase) setLevel(ctx context.Context, r operations.Reporter, name worl
 }
 
 // followVersion はサーバーの版を、切り替え先のワールドが最後に開かれた版に
-// 合わせる。
-//
-// 合わせないと、古いワールドは今の版で開かれて勝手に上がり（元に戻せない）、
-// 新しいワールドは古い版では開けずにサーバーが起動しない。
-//
-// 読めないとき（level.dat が無い、スナップショットで開いた）は触らない。
+// 合わせる。規則そのものは versionsync が持つ（復元でも同じ判断をする）。
 func followVersion(
 	current, next port.ConfigSnapshot,
 	level port.LevelSettings,
 ) (port.ConfigSnapshot, string) {
-	if !level.HasVersion {
-		return next, ""
-	}
-	before, _ := current.Get(keyVersion)
-	if strings.TrimSpace(before) == level.Version {
-		return next, ""
-	}
-	return next.With(keyVersion, level.Version), fmt.Sprintf(
-		"サーバーの版を %s から %s に切り替えます。遊ぶ人はクライアントを %s にしてください",
-		strings.TrimSpace(before), level.Version, level.Version)
+	return versionsync.Follow(current, next, level)
 }
 
 // followWorld は切り替え先のワールドが持っている設定に .env を合わせる。

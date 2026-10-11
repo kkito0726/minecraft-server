@@ -435,17 +435,43 @@ func readableVersion(t *testing.T) shared.WorldVersion {
 	return shared.NewWorldVersion("26.2", dv, false, "world")
 }
 
+// unavailableVersion は Paper が配っていない版を返す。
+//
+// 新しすぎる版のワールドを復元しようとする状況を作るために使う。
+func unavailableVersion(t *testing.T) shared.WorldVersion {
+	t.Helper()
+
+	dv, err := shared.NewDataVersion(5999)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return shared.NewWorldVersion("26.9", dv, false, "world")
+}
+
 // stoppedState はコンテナが存在しない状態を返す。
 func stoppedState() server.ContainerState { return server.ContainerMissing }
 
 type fakeLevels struct {
 	version shared.WorldVersion
+	// settings は復元したワールドの level.dat に焼かれた設定。
+	// 既定は「読めない」。版を触らないのが既定の振る舞い。
+	settings port.LevelSettings
 }
 
 func (f *fakeLevels) ReadWorld(context.Context, world.Name) shared.WorldVersion { return f.version }
 func (f *fakeLevels) Read(context.Context, io.Reader) shared.WorldVersion       { return f.version }
 func (f *fakeLevels) ReadSettings(context.Context, world.Name) port.LevelSettings {
-	return port.LevelSettings{}
+	return f.settings
+}
+
+// fakeCatalog は Paper が配っている版の一覧の偽物。
+type fakeCatalog struct {
+	versions []string
+	err      error
+}
+
+func (f *fakeCatalog) StableVersions(context.Context) ([]string, error) {
+	return f.versions, f.err
 }
 
 // fakeLock は排他の偽物。save-off の記録がいつ切り替わったかを覚える。
@@ -520,6 +546,7 @@ type harness struct {
 	runtime *fakeRuntime
 	worlds  *fakeWorlds
 	levels  *fakeLevels
+	catalog *fakeCatalog
 }
 
 // now は取得日時に使う固定の時刻。
@@ -554,6 +581,8 @@ func newHarnessCtx(
 	config := newConfig(rec, values)
 	lock := &fakeLock{}
 	levels := &fakeLevels{version: readableVersion(t)}
+	// 既定では Paper が 26.2 と 26.3 を配っている。
+	catalog := &fakeCatalog{versions: []string{"26.3", "26.2", "26.1"}}
 
 	mgr, err := operations.NewManager(operations.Config{Lock: lock, BaseCtx: baseCtx})
 	if err != nil {
@@ -567,6 +596,7 @@ func newHarnessCtx(
 		Worlds:     worlds,
 		Config:     config,
 		Levels:     levels,
+		Catalog:    catalog,
 		Operations: mgr,
 	})
 	if err != nil {
@@ -576,6 +606,7 @@ func newHarnessCtx(
 	return &harness{
 		uc: uc, ops: mgr, rec: rec, store: store,
 		config: config, lock: lock, runtime: runtime, worlds: worlds, levels: levels,
+		catalog: catalog,
 	}
 }
 

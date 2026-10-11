@@ -126,8 +126,8 @@ func TestVerdictWarning(t *testing.T) {
 		verdict  backup.Verdict
 		contains string
 	}{
-		{backup.VerdictOlderWillUpgrade, "アップグレード"},
-		{backup.VerdictNewerIncompatible, "開けない"},
+		{backup.VerdictOlderWillUpgrade, "合わせて下がります"},
+		{backup.VerdictNewerIncompatible, "合わせて上がります"},
 		{backup.VerdictUnknown, "確認できません"},
 	}
 

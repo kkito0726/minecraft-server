@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { formatWorldVersion } from '../../features/worlds'
+import { BackupDownloadFormat } from '../../gen/mcadmin/v1/backup_pb'
 import type { Backup, ListBackupsResponse } from '../../gen/mcadmin/v1/backup_pb'
 import { formatBytes, formatDateTime } from '../../lib/format'
 import { Button } from '../atoms'
@@ -16,8 +17,8 @@ export type BackupTableProps = {
   disabled: boolean
   onRestore: (id: string) => void
   onDelete: (id: string) => void
-  /** 手元の PC へ保存する。 */
-  onDownload: (id: string) => void
+  /** 手元の PC へ保存する。形はサーバー用かシングルプレイ用。 */
+  onDownload: (id: string, format: BackupDownloadFormat) => void
 }
 
 export function BackupTable({ data, disabled, onRestore, onDelete, onDownload }: BackupTableProps) {
@@ -71,7 +72,7 @@ type BackupRowProps = {
   confirming: boolean
   onRestore: (id: string) => void
   onDelete: (id: string) => void
-  onDownload: (id: string) => void
+  onDownload: (id: string, format: BackupDownloadFormat) => void
   onAskDelete: (id: string | null) => void
 }
 
@@ -128,10 +129,7 @@ function RowActions({
       <Button size="sm" disabled={disabled} onClick={() => onRestore(backup.id)}>
         復元
       </Button>
-      {/* 手元へ落とすだけ。サーバーには触らないので、操作の実行中でも押せる。 */}
-      <Button size="sm" onClick={() => onDownload(backup.id)}>
-        ダウンロード
-      </Button>
+      <DownloadButtons backup={backup} onDownload={onDownload} />
       {/* 削除は取り消せない。一度で消えないよう二度押しさせる。 */}
       {confirming ? (
         <>
@@ -176,5 +174,39 @@ function StorageNotice({ data }: { data: ListBackupsResponse }) {
       バックアップはこのディスク上にしかありません。ディスクが壊れると一緒に失われます。
       大事な世代は別の場所へも控えてください。
     </p>
+  )
+}
+
+/**
+ * ダウンロードの 2 つの形。
+ *
+ * サーバー用は保管しているものをそのまま渡す。シングルプレイ用は
+ * ワールドのフォルダが zip の直下に来て、Paper がディメンション側に
+ * 置いている設定がバニラの見る場所へ移る。移さないと、saves/ に置いても
+ * ワールド一覧に出るだけで読み込めない。
+ *
+ * 手元へ落とすだけでサーバーには触らないので、操作の実行中でも押せる。
+ */
+function DownloadButtons({
+  backup,
+  onDownload,
+}: Pick<BackupRowProps, 'backup' | 'onDownload'>) {
+  return (
+    <>
+      <Button
+        size="sm"
+        title="サーバーへ戻すための形。plugins や config も入る"
+        onClick={() => onDownload(backup.id, BackupDownloadFormat.SERVER)}
+      >
+        ダウンロード
+      </Button>
+      <Button
+        size="sm"
+        title="マインクラフト本体の saves/ にそのまま展開できる形"
+        onClick={() => onDownload(backup.id, BackupDownloadFormat.SINGLEPLAYER)}
+      >
+        シングルプレイ用
+      </Button>
+    </>
   )
 }

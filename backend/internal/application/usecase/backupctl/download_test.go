@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"testing"
 	"time"
 
@@ -94,5 +95,89 @@ func TestOpenForDownloadStreamsArchive(t *testing.T) {
 	}
 	if file.Info.SizeBytes == 0 {
 		t.Error("大きさが伝わっていない")
+	}
+}
+
+// OpenVanilla はシングルプレイ用に包み直して開く。
+// 包み直しは保管層の仕事なので、ここでは呼ばれたことだけを確かめる。
+func (f *fakeStore) OpenVanilla(_ context.Context, id backup.ID) (port.ArchiveFile, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.rec.add("OpenVanilla")
+	entry, ok := f.entries[id.String()]
+	if !ok {
+		return port.ArchiveFile{}, fmt.Errorf("%w: %s", backup.ErrNotFound, id)
+	}
+	return port.ArchiveFile{
+		Body: fakeArchive{bytes.NewReader([]byte("シングルプレイ用の中身"))},
+		Info: entry,
+	}, nil
+}
+
+func TestOpenForSingleplayerStreamsVanillaArchive(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.store.seed(t, "backup-26.3-main-20261011-181445.zip", time.Now())
+
+	file, err := h.uc.OpenForSingleplayer(context.Background(), "backup-26.3-main-20261011-181445.zip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = file.Body.Close() }()
+
+	body, err := io.ReadAll(file.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(body) != "シングルプレイ用の中身" {
+		t.Errorf("中身が %q。包み直したものが返っていない", body)
+	}
+}
+
+// 無い ID はダウンロードを始める前に落とす。
+func TestOpenForSingleplayerRejectsMissing(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+
+	_, err := h.uc.OpenForSingleplayer(context.Background(), "backup-26.3-main-20260101-0300.zip")
+	if !errors.Is(err, backup.ErrNotFound) {
+		t.Errorf("ErrNotFound を期待したが %v", err)
+	}
+}
+
+func TestOpenForSingleplayerRejectsInvalidID(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+
+	for _, id := range []string{"", "../../.env", "backup.txt"} {
+		if _, err := h.uc.OpenForSingleplayer(context.Background(), id); err == nil {
+			t.Errorf("%q が通った", id)
+		}
+	}
+}
+
+/*
+空きが足りないときは、包み直しを始める前に断る。
+
+包み直しは元のアーカイブとほぼ同じ大きさの一時ファイルを書く。
+途中でディスクが埋まると、サーバーそのものが書けなくなって止まる。
+*/
+func TestOpenForSingleplayerRefusesWhenDiskIsFull(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.store.seed(t, "backup-26.3-main-20261011-181445.zip", time.Now())
+	h.worlds.available = 1
+
+	_, err := h.uc.OpenForSingleplayer(context.Background(), "backup-26.3-main-20261011-181445.zip")
+	if !errors.Is(err, port.ErrInsufficientSpace) {
+		t.Errorf("ErrInsufficientSpace を期待したが %v", err)
+	}
+	if slices.Contains(h.rec.list(), "OpenVanilla") {
+		t.Error("空きが足りないのに包み直しを始めている")
 	}
 }

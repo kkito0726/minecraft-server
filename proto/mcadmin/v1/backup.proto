@@ -156,8 +156,27 @@ message RestoreBackupResponse {
   Operation operation = 1;
 }
 
+// BackupDownloadFormat は受け取る zip の形。
+//
+// 保管しているのはサーバー用の形だけで、シングルプレイ用は渡すときに
+// その場で包み直す。2 つ保管すると同じワールドが二重に場所を取る。
+enum BackupDownloadFormat {
+  // 未指定はサーバー用。既存の画面との互換のため。
+  BACKUP_DOWNLOAD_FORMAT_UNSPECIFIED = 0;
+  // サーバーへ戻すための形。data/<ワールド>/ と data/plugins などを含む。
+  BACKUP_DOWNLOAD_FORMAT_SERVER = 1;
+  // シングルプレイの saves/ へ置くための形。
+  //
+  // ワールドのディレクトリが zip の直下に来る。Paper がディメンション側に
+  // 置いているゲームルール・天候・生成設定を、バニラが見るワールド直下へ
+  // 移す。移さないと、ワールド一覧には出るのに
+  // 「Overworld settings missing」で読み込みが止まる。
+  BACKUP_DOWNLOAD_FORMAT_SINGLEPLAYER = 2;
+}
+
 message CreateBackupDownloadRequest {
   string backup_id = 1;
+  BackupDownloadFormat format = 2;
 }
 
 message CreateBackupDownloadResponse {

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 
 import type {
+  BackupDownloadFormat,
   BackupMode,
   GetRetentionPolicyResponse,
   ListBackupsResponse,
@@ -99,6 +100,12 @@ export function useDeleteBackup() {
   })
 }
 
+/** ダウンロードの要求。形はサーバー用かシングルプレイ用。 */
+export type DownloadInput = {
+  backupId: string
+  format: BackupDownloadFormat
+}
+
 /**
  * バックアップを手元の PC に保存する。
  *
@@ -106,11 +113,15 @@ export function useDeleteBackup() {
  * 短命の受取口を作り、その URL を開く。押すたびに新しく発行されるため、
  * 一覧にある限り、取得した直後でも後日でも同じように落とせる。
  *
+ * 形は 2 つ。サーバーへ戻すためのものと、シングルプレイの saves/ へ置く
+ * ためのもの。保管しているのは前者だけで、後者は渡すときに包み直される。
+ *
  * 一覧は変わらないので無効化しない。読むだけで何も増えない。
  */
 export function useBackupDownload() {
   return useMutation({
-    mutationFn: (backupId: string) => backupClient.createBackupDownload({ backupId }),
+    mutationFn: ({ backupId, format }: DownloadInput) =>
+      backupClient.createBackupDownload({ backupId, format }),
     onSuccess: (res) => startDownload(res.url, res.fileName),
   })
 }

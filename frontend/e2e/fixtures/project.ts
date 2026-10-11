@@ -95,6 +95,7 @@ export function createProject(opts: ProjectOptions) {
       copyFileSync(LEVEL_DAT, target)
     }
     writeFileSync(join(dir, 'data', name, 'session.lock'), '')
+    writePaperLayout(join(dir, 'data', name))
   }
 
   // 最初からコンテナが動いていることにする。実運用の常態がこれであり、
@@ -132,6 +133,44 @@ export function createProject(opts: ProjectOptions) {
       '',
     ].join('\n'),
   )
+}
+
+/**
+ * Paper が実際に書く置き場所でワールドの中身を作る。
+ *
+ * ゲームルール・天候・生成設定はディメンション側にある。バニラは
+ * ワールド直下しか見ないので、シングルプレイ用の書き出しはここを移す。
+ * 実物と同じ配置にしておかないと、その変換を実機経路で確かめられない。
+ */
+function writePaperLayout(world: string) {
+  const overworld = join(world, 'dimensions/minecraft/overworld')
+  const nether = join(world, 'dimensions/minecraft/the_nether')
+
+  mkdirSync(join(overworld, 'data/minecraft'), { recursive: true })
+  mkdirSync(join(overworld, 'data/paper'), { recursive: true })
+  mkdirSync(join(overworld, 'region'), { recursive: true })
+  mkdirSync(join(nether, 'data/minecraft'), { recursive: true })
+  mkdirSync(join(world, 'data/minecraft'), { recursive: true })
+
+  // Paper がディメンション側に置くもの。バニラはワールド直下で探す。
+  for (const name of [
+    'game_rules',
+    'scheduled_events',
+    'wandering_trader',
+    'weather',
+    'world_gen_settings',
+  ]) {
+    writeFileSync(join(overworld, `data/minecraft/${name}.dat`, ), `overworld-${name}`)
+  }
+  // バニラもディメンション側に置くもの。動かさない。
+  writeFileSync(join(overworld, 'data/minecraft/raids.dat'), 'raids')
+  writeFileSync(join(overworld, 'region/r.0.0.mca'), 'region')
+  // Paper 固有。バニラは読まない。
+  writeFileSync(join(overworld, 'data/paper/metadata.dat'), 'paper-meta')
+  // ネザー側の同名ファイル。移さずそのまま持ち出す。
+  writeFileSync(join(nether, 'data/minecraft/world_gen_settings.dat'), 'nether-gen')
+  // 元からワールド直下にあるもの。
+  writeFileSync(join(world, 'data/minecraft/scoreboard.dat'), 'score')
 }
 
 /** fake-docker は読まないが、validateProjectDir が存在を要求する。 */
