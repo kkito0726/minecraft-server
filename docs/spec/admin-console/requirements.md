@@ -282,7 +282,7 @@ Raspberry Pi 5 (4GB) 上で `docker compose` により常時稼働している P
 
 - **REQ-425**: システムは、バックアップをシングルプレイ用の形で渡す手段を提供しなければならない。その形は、ワールドのディレクトリが zip の直下にあり、`plugins`・`config`・`bukkit.yml`・`spigot.yml` を含まず、`game_rules.dat`・`scheduled_events.dat`・`wandering_trader.dat`・`weather.dat`・`world_gen_settings.dat` が **ワールド直下の `data/minecraft/`** にあるものとする 🔵 *実機で確認。Paper はこの 5 つをディメンション側（`dimensions/minecraft/overworld/data/minecraft/`）に置くが、バニラのクライアントはワールド直下しか見ない。REQ-004 の形をそのまま `saves/` に置くと、ワールド一覧には出るのに `Unable to read or access the world gen settings file!` → `IllegalStateException: Overworld settings missing` で読み込みが止まる（2026-10-11、クライアントの `logs/latest.log` で確認）*
   - 移す元は **オーバーワールドに限る**。オーバーワールド側の `world_gen_settings.dat` が 3 つのディメンションすべての設定（`minecraft:overworld` / `the_nether` / `the_end`）を持っているため。ネザーやエンドのものを移すと全体の設定が 1 ディメンション分に縮む 🔵 *両方の `level.dat` と `world_gen_settings.dat` を NBT で読んで確認*
-  - ネザーとエンドに残る同名の `.dat` は動かさずそのまま持ち出す。バニラは読まないため 🟡 *実機で読み込めることを確認するまでは推測*
+  - ネザーとエンドに残る同名の `.dat` は動かさずそのまま持ち出す。バニラはディメンション側のデータを探しているファイル名で開くため、置かれていない種類のファイルは開かれない 🟡 *観測はしていない推論。ただしバニラが必要とするものは欠けていない——移す `world_gen_settings.dat` は 3 ディメンション分の生成器定義（`minecraft:nether` / `minecraft:end` を含む）とシードを持ち、ネザーとエンドの `region/*.mca` および `chunk_tickets.dat`・`raids.dat`・`world_border.dat`・`ender_dragon_fight.dat` も揃っている。推論が外れた場合の症状は、そのディメンションの天候やゲームルールの状態が反映されない程度で、往来や地形には及ばない*
 - **REQ-426**: システムは、シングルプレイ用の形を**保管してはならない**。渡すときにその場で包み直し、渡し終えたら残してはならない 🔵 *同じワールドの zip が二重に場所を取る。Pi では空き容量がそのままサーバーの生死に関わる（REQ-415 と同じ制約）*
   - 代償として、要求ごとに包み直しが走る。Range で再開するたびにも走る
   - そのため、応答の `Last-Modified` には**保管しているアーカイブ**の更新時刻を使わなければならない。包み直した一時ファイルの時刻を使うと、再開の要求で時刻が変わって `If-Range` の照合が外れ、`http.ServeContent` が Range を無視して全体を返し直す。REQ-135（Range への応答）が静かに効かなくなる 🔵 *2026-10-11 に試験で再現して修正*

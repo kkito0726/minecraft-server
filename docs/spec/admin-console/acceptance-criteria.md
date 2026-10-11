@@ -680,11 +680,22 @@ TDD で先に書くのは U / I / E の 3 種のみ。
 - **TC-427-01**: 保存されるファイル名がサーバー用と見分けられること（`-singleplayer` が付く） 🟡
 - **TC-425-E01**（E2E）: 実物の `mcadmind` を通して落とした zip を開き、上記の配置になっていることを確かめる 🔵 *`frontend/e2e/download.spec.ts`*
 
-### 未検証（2026-10-11 時点）
+### ネザーとエンドが揃っていることの根拠 🔵
 
-- **ネザーとエンドに残る同名の `.dat` をバニラが無視すること**（TC-425-03 の前提）。比較に使ったクライアント製ワールドにネザーもエンドも生成されておらず、「バニラが `dimensions/minecraft/the_nether/data/` に何を置くか」の実例が無い。zip の形は実機経路で検証済みだが、**実際にクライアントで読み込んでネザーとエンドに入るところまでは未検証**
-- `level.dat` の `DataPacks.Enabled` に残る `paper` が無害であること。クライアントのログでは `Missing data pack paper` は警告であり、その直後に `world_gen_settings` で落ちていた（＝致命的ではないと見られる）が、読み込みが成功するところまでは未確認
-- どちらも、残すか落とすかの判断は `backup.VanillaEntryName` の 1 箇所に閉じてある
+TC-425-03 は「動かさずそのまま持ち出す」としているが、**バニラが必要とするものは欠けていない**。2026-10-11 にアーカイブの中身を確認した。
+
+- ワールド直下へ移す `world_gen_settings.dat` は 3 ディメンション分の生成器定義を完全に持つ。各ディメンションに `type`・`generator.type`（`minecraft:noise`）・`generator.settings`（`minecraft:overworld` / `minecraft:nether` / `minecraft:end`）・`biome_source` が入り、シードも共有。キーだけの殻ではない
+- ネザーとエンドの `region/*.mca` はそのまま含まれる
+- バニラがディメンション側に持つもの（`chunk_tickets.dat`・`raids.dat`・`world_border.dat`、エンドは `ender_dragon_fight.dat`）も揃っている。クライアント製ワールドのオーバーワールドと突き合わせて一致を確認した
+
+### 未検証（2026-10-11 時点）🟡
+
+残っているのは次の 2 つで、**いずれも「ネザーやエンドに入れない」という形の失敗には繋がらない**。
+
+- ネザーとエンドに残る Paper 由来の `.dat`（`game_rules` / `weather` / `world_gen_settings` / `scheduled_events` / `world_clocks`）がバニラにとって無害であること。バニラはディメンション側のデータを探しているファイル名で開くため、置かれていない種類のファイルは一度も開かれない——という推論であり、観測はしていない。外れた場合の症状は、そのディメンションの天候やゲームルールの状態が反映されない程度の局所的なもの。地形と往来は生成設定に依存しており、それはワールド直下から読まれる
+- `level.dat` の `DataPacks.Enabled` に残る `paper` が無害であること。クライアントのログでは `Missing data pack paper` は警告で、その直後に `world_gen_settings` で落ちていた（＝これ自体は致命的でないと見られる）が、読み込みが成功するところまでは未確認
+
+どちらも、残すか落とすかの判断は `backup.VanillaEntryName` の 1 箇所に閉じてある。実機での確認は「ネザーを失わないための関門」ではなく、安い裏付けである。
 
 ## REQ-428: シングルプレイのワールドの取り込み 🔵
 

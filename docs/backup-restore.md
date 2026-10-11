@@ -325,6 +325,12 @@ done
 3 つのディメンションすべての設定（`minecraft:overworld` / `the_nether` / `the_end`）を
 持っているため。ネザーやエンドのものを上げると、全体の設定が 1 ディメンション分に縮む。
 
+ネザーとエンドはこれで揃う。移した `world_gen_settings.dat` に 3 ディメンション分の
+生成器定義（`minecraft:nether` / `minecraft:end` を含む）とシードが入っており、
+`dimensions/minecraft/the_nether/` と `the_end/` の `region/*.mca`・`chunk_tickets.dat`・
+`raids.dat`・`world_border.dat`・`ender_dragon_fight.dat` もそのまま持ち出される。
+ディメンション側に残る Paper 由来の `.dat` はバニラが開かないので、消さずに置いてある。
+
 `level.dat` の `DataPacks.Enabled` に `paper` が残るため、クライアントのログに
 `Missing data pack paper` が出る。致命的ではない（これを通過したあとに
 `world_gen_settings` で落ちていた）。
