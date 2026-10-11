@@ -1,20 +1,24 @@
 # proto から Go（バックエンド）と TypeScript（フロントエンド）の型を生成する。
-# 生成物は Git で追跡しない。make gen でいつでも作り直せる。
+#
+# プラグインの版は固定する。固定しないと remote プラグインが最新を取り、
+# connectrpc/go が v2 系を吐いた時点でビルドが壊れる（生成物は
+# connectrpc.com/connect v1 を import する前提で、go.mod も v1）。
+# 版を上げるときは go.mod と一緒に上げること。
 version: v2
 clean: true
 plugins:
   # --- Go ---
-  - remote: buf.build/protocolbuffers/go
+  - remote: buf.build/protocolbuffers/go:v1.36.12
     out: backend/gen
     opt: paths=source_relative
-  - remote: buf.build/connectrpc/go
+  - remote: buf.build/connectrpc/go:v1.18.1
     out: backend/gen
     opt: paths=source_relative
 
   # --- TypeScript ---
   # protoc-gen-es v2 は Connect のクライアント定義も同じファイルに出すため、
   # protoc-gen-connect-es は不要。
-  - remote: buf.build/bufbuild/es
+  - remote: buf.build/bufbuild/es:v2.15.0
     out: frontend/src/gen
     opt:
       - target=ts
