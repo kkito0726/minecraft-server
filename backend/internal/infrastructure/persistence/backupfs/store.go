@@ -194,6 +194,9 @@ func (s *Store) Inspect(ctx context.Context, id backup.ID) (port.ArchiveInfo, er
 		EntryRoots:  manifest.Roots,
 		TotalBytes:  manifest.TotalBytes,
 		HasLevelDat: manifest.LevelDatEntry != "",
+		// バニラの配置で保管してあるものは、復元後の起動で Paper が
+		// 自分の形へ移す。
+		TriggersWorldMigration: manifest.Layout == archive.LayoutWorldRoot,
 	}, nil
 }
 

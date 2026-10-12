@@ -25,11 +25,16 @@ type Entry struct {
 	DeclaredLevel   string
 	// ArchiveLevel はエントリの接頭辞から判定した実際のワールド名。
 	ArchiveLevel string
-	// EntryRoots は含まれるルート（data/world、data/plugins など）。
+	// EntryRoots は含まれるルート（world、plugins など）。
 	EntryRoots []string
 	// Version はアーカイブ内の level.dat から読んだ値。これが真のバージョン。
 	// 読めなければ「読めない」を表す値になる（EDGE-001）。
 	Version shared.WorldVersion
+	// Migrates は復元後の最初の起動で Paper のワールド移行が走るか。
+	//
+	// バニラの配置で保管したものは真になる。30 秒の足止めがあるので、
+	// 復元の前に伝える（WorldMigrationNotice）。
+	Migrates bool
 }
 
 // ListResult は一覧の結果。
@@ -85,6 +90,8 @@ type archived struct {
 	level   string
 	roots   []string
 	version shared.WorldVersion
+	// migrates は復元後の最初の起動で Paper のワールド移行が走るか。
+	migrates bool
 }
 
 // inspect はアーカイブの中身を読む。読めなければ空の値を返す。
@@ -98,7 +105,12 @@ func (u *UseCase) inspect(ctx context.Context, id backup.ID) archived {
 	if err != nil {
 		return unreadable
 	}
-	result := archived{level: info.Level, roots: info.EntryRoots, version: shared.UnreadableWorldVersion()}
+	result := archived{
+		level:    info.Level,
+		roots:    info.EntryRoots,
+		version:  shared.UnreadableWorldVersion(),
+		migrates: info.TriggersWorldMigration,
+	}
 	if !info.HasLevelDat || u.cfg.Levels == nil {
 		return result
 	}

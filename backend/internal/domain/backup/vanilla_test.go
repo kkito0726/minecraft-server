@@ -2,6 +2,7 @@ package backup_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
@@ -448,5 +449,37 @@ func TestWorldOnlyEntryNameRequiresLevel(t *testing.T) {
 
 	if got := backup.WorldOnlyEntryName("main/level.dat", ""); got != "" {
 		t.Errorf("WorldOnlyEntryName(level=\"\") = %q。落とすはず", got)
+	}
+}
+
+// --- 復元後の起動について伝えること ---
+
+/*
+バニラの配置で保管したアーカイブを復元すると、次の起動で Paper が
+置き場所を自分の形へ移す。30 秒の足止めがあるので、何が起きるのかを
+先に伝える。
+
+黙って 30 秒待たせると「復元が固まった」と見える。利用者に形を
+意識させない代わりに、遅くなる理由だけは伝える。
+*/
+func TestWorldMigrationNoticeExplainsTheDelay(t *testing.T) {
+	t.Parallel()
+
+	notice := backup.WorldMigrationNotice()
+	if notice == "" {
+		t.Fatal("通知が空")
+	}
+
+	// 実測した数字が入っていること。「30 秒ほど」だけでは、
+	// 固まったのか待てばよいのかを判断できない。
+	for _, want := range []string{"30 秒", "1 回"} {
+		if !strings.Contains(notice, want) {
+			t.Errorf("通知に %q が無い: %s", want, notice)
+		}
+	}
+	// データが壊れないことも伝える。Paper 自身は
+	// 「バックアップが無いなら今すぐ落とせ」と警告するため。
+	if !strings.Contains(notice, "変わりません") {
+		t.Errorf("通知にデータが変わらないことが無い: %s", notice)
 	}
 }

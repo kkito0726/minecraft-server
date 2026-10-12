@@ -43,6 +43,14 @@ type ArchiveInfo struct {
 	TotalBytes int64
 	// HasLevelDat は level.dat のエントリが存在するか。
 	HasLevelDat bool
+	/*
+		TriggersWorldMigration は、復元後の最初の起動で Paper の
+		ワールド移行が走るかどうか。
+
+		バニラの配置で保管したアーカイブ（現在の形式）では真になる。
+		30 秒の足止めがあるので、復元の前に伝える必要がある。
+	*/
+	TriggersWorldMigration bool
 }
 
 /*

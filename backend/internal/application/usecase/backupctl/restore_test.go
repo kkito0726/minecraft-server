@@ -706,3 +706,91 @@ func TestRestorePassesWhenCatalogUnavailable(t *testing.T) {
 		t.Fatalf("状態が %v（%s）", snap.State, snap.ErrorMessage)
 	}
 }
+
+// --- 復元後の起動についての通知 ---
+
+/*
+バニラの配置のアーカイブを復元するとき、起動が遅くなる理由を伝える。
+
+黙って 30 秒待たせると「復元が固まった」と見える。利用者に形を
+意識させない代わりに、遅くなる理由だけは知らせる。
+*/
+func TestPreflightTellsAboutWorldMigration(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.store.seed(t, archiveID, h.now())
+	h.store.info.TriggersWorldMigration = true
+
+	pre, err := h.uc.PreflightRestore(context.Background(), archiveID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pre.MigrationNotice == "" {
+		t.Fatal("通知が空。起動が遅くなる理由が伝わらない")
+	}
+	if !strings.Contains(pre.MigrationNotice, "30 秒") {
+		t.Errorf("通知に待ち時間が無い: %s", pre.MigrationNotice)
+	}
+	// 承諾は求めない。どうするか決めるための情報ではない。
+	if pre.Decision.RequiresConfirmation {
+		t.Error("移行の通知で承諾を求めている")
+	}
+}
+
+// 古い形（data/ 配下）のアーカイブでは移行が走らないので何も言わない。
+func TestPreflightSaysNothingWhenNoMigration(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.store.seed(t, archiveID, h.now())
+	h.store.info.TriggersWorldMigration = false
+
+	pre, err := h.uc.PreflightRestore(context.Background(), archiveID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pre.MigrationNotice != "" {
+		t.Errorf("通知が %q。移行が走らないなら何も言わない", pre.MigrationNotice)
+	}
+}
+
+// 操作のログにも残ること。画面を開き直しても理由が追える。
+func TestRestoreLogsWorldMigrationNotice(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.store.seed(t, archiveID, h.now())
+	h.worlds.add("world")
+	h.store.info.TriggersWorldMigration = true
+
+	handle, err := h.uc.Restore(context.Background(), backupctl.RestoreRequest{
+		BackupID: archiveID, ConfirmLevelName: "world",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	snap := h.wait(t, handle.ID())
+	if snap.State != operation.StateSucceeded {
+		t.Fatalf("状態が %v（%s）", snap.State, snap.ErrorMessage)
+	}
+
+	// 終了済みの操作を購読すると、記録済みのイベントが再送される。
+	// 画面を開き直したときに見えるのと同じもの。
+	ch, unsubscribe, err := h.ops.Subscribe(context.Background(), handle.ID(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unsubscribe()
+
+	var found bool
+	for event := range ch {
+		if strings.Contains(event.Message(), "30 秒") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("操作のログに起動が遅くなる理由が無い")
+	}
+}
