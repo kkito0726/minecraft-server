@@ -28,7 +28,7 @@ func TestSafeEntryName(t *testing.T) {
 	for _, tt := range valid {
 		t.Run("受理/"+tt.input, func(t *testing.T) {
 			t.Parallel()
-			got, err := safeEntryName(tt.input)
+			got, err := safeEntryName(tt.input, LayoutUnderData)
 			if err != nil {
 				t.Fatalf("受理されるはずが %v", err)
 			}
@@ -56,7 +56,7 @@ func TestSafeEntryName(t *testing.T) {
 	for _, input := range invalid {
 		t.Run("拒否/"+input, func(t *testing.T) {
 			t.Parallel()
-			if _, err := safeEntryName(input); !errors.Is(err, ErrUnsafeEntry) {
+			if _, err := safeEntryName(input, LayoutUnderData); !errors.Is(err, ErrUnsafeEntry) {
 				t.Errorf("%q は拒否されるはず。err=%v", input, err)
 			}
 		})
@@ -104,7 +104,7 @@ func TestSafeEntryNameAcceptsBareDataDirectory(t *testing.T) {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := safeEntryName(input)
+			got, err := safeEntryName(input, LayoutUnderData)
 			if err != nil {
 				t.Fatalf("%q を拒否した: %v", input, err)
 			}
@@ -120,7 +120,7 @@ func TestSafeEntryNameAcceptsBareDataDirectory(t *testing.T) {
 func TestSafeEntryNameRejectsFileNamedData(t *testing.T) {
 	t.Parallel()
 
-	if _, err := safeEntryName("data"); !errors.Is(err, ErrUnsafeEntry) {
+	if _, err := safeEntryName("data", LayoutUnderData); !errors.Is(err, ErrUnsafeEntry) {
 		t.Errorf("data という名前のファイルを受理した: %v", err)
 	}
 }
@@ -130,7 +130,7 @@ func TestSafeEntryNameStillRejectsOtherRoots(t *testing.T) {
 	t.Parallel()
 
 	for _, input := range []string{"MyWorld/", "plugins/", "/", "../data/"} {
-		if _, err := safeEntryName(input); !errors.Is(err, ErrUnsafeEntry) {
+		if _, err := safeEntryName(input, LayoutUnderData); !errors.Is(err, ErrUnsafeEntry) {
 			t.Errorf("%q を受理した: %v", input, err)
 		}
 	}

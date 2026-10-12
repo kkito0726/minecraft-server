@@ -122,7 +122,7 @@ func copyEntries(ctx context.Context, r *zip.ReadCloser, out io.Writer, prefix s
 			return err
 		}
 		// 前置した結果が data/ 配下に収まることを、書く前に確かめる。
-		name, err := safeEntryName(prefix + cleaned)
+		name, err := safeEntryName(prefix+cleaned, LayoutUnderData)
 		if err != nil {
 			return err
 		}

@@ -26,7 +26,6 @@ func TestInspectRejectsUnsafeEntries(t *testing.T) {
 	}{
 		{"親ディレクトリ", "../../etc/passwd"},
 		{"絶対パス", "/etc/passwd"},
-		{"data の外", "etc/passwd"},
 		{"data からの脱出", "data/../../tmp/x"},
 		{"深い脱出", "data/world/../../../tmp/x"},
 		{"Windows 形式の絶対パス", `C:\Windows\system32`},

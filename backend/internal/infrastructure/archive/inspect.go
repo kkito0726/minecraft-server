@@ -5,15 +5,15 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"path"
-	"strings"
 )
 
 // Inspect はアーカイブの構造を、全体を展開せずに読む。
 
 // Manifest はアーカイブの構造。全体を展開せずに得られる。
 type Manifest struct {
-	// Roots はアーカイブに含まれるルート（data/world、data/plugins など）。
+	// Layout はエントリの形。展開の基点と置き場所の検証がこれで決まる。
+	Layout Layout
+	// Roots はアーカイブに含まれるルート（data/world、world、plugins など）。
 	Roots []string
 	// LevelDir はアーカイブに含まれるワールドのディレクトリ名。
 	// 復元先の判定に使う。見つからなければ空。
@@ -40,30 +40,40 @@ func Inspect(ctx context.Context, src string) (Manifest, error) {
 	}
 	defer func() { _ = r.Close() }()
 
-	m := Manifest{}
+	/*
+		安全の検証（展開先の外へ出る経路）と、置き場所の検証（形に
+		合っているか）を分けて 2 段で行う。
+
+		形は level.dat の位置から決まるので、全エントリを見終わるまで
+		分からない。先に置き場所まで検証しようとすると、形が確定する
+		前に判断することになる。
+
+		zip.Reader は中央ディレクトリを既に読み込んでいるので、
+		2 周してもファイルは読み直さない。
+	*/
+	names, sizes, err := collectEntries(r)
+	if err != nil {
+		return Manifest{}, err
+	}
+
+	m := Manifest{Layout: detectLayout(names)}
 	seenRoots := map[string]bool{}
 
-	for _, f := range r.File {
-		if err := checkMode(f.Name, f.Mode()); err != nil {
+	for i, name := range names {
+		// 置き場所は形が決まってから検証する。
+		if err := checkPlacement(name, m.Layout); err != nil {
 			return Manifest{}, err
-		}
-		name, err := safeEntryName(f.Name)
-		if err != nil {
-			return Manifest{}, err
-		}
-		if isDirEntry(f.Name) {
-			continue
 		}
 
 		m.EntryNames = append(m.EntryNames, name)
-		m.TotalBytes += int64(f.UncompressedSize64)
+		m.TotalBytes += sizes[i]
 		m.EntryCount++
 
-		if root := rootOf(name); root != "" && !seenRoots[root] {
+		if root := rootOf(name, m.Layout); root != "" && !seenRoots[root] {
 			seenRoots[root] = true
 			m.Roots = append(m.Roots, root)
 		}
-		if dir, ok := levelDirOf(name); ok {
+		if dir, ok := levelDirOf(name, m.Layout); ok {
 			m.LevelDir = dir
 			m.LevelDatEntry = name
 		}
@@ -71,38 +81,24 @@ func Inspect(ctx context.Context, src string) (Manifest, error) {
 	return m, nil
 }
 
-// rootOf は "data/world/level.dat" から "data/world" を、
-// "data/spigot.yml" から "data/spigot.yml" を返す。
-func rootOf(name string) string {
-	rest, ok := strings.CutPrefix(name, allowedRoot)
-	if !ok {
-		return ""
+// collectEntries は安全の検証だけを通して、ファイルのエントリ名と
+// 展開後の大きさを集める。ディレクトリのエントリは落とす。
+func collectEntries(r *zip.ReadCloser) (names []string, sizes []int64, err error) {
+	for _, f := range r.File {
+		if err := checkMode(f.Name, f.Mode()); err != nil {
+			return nil, nil, err
+		}
+		cleaned, _, err := normalizeEntryName(f.Name)
+		if err != nil {
+			return nil, nil, err
+		}
+		if isDirEntry(f.Name) {
+			continue
+		}
+		names = append(names, cleaned)
+		sizes = append(sizes, int64(f.UncompressedSize64))
 	}
-	first, _, hasMore := strings.Cut(rest, "/")
-	if first == "" {
-		return ""
-	}
-	if !hasMore {
-		// data/ 直下のファイル
-		return allowedRoot + first
-	}
-	return allowedRoot + first
-}
-
-// levelDirOf は "data/<名前>/level.dat" から "<名前>" を返す。
-func levelDirOf(name string) (string, bool) {
-	if path.Base(name) != "level.dat" {
-		return "", false
-	}
-	rest, ok := strings.CutPrefix(name, allowedRoot)
-	if !ok {
-		return "", false
-	}
-	dir, file, hasSlash := strings.Cut(rest, "/")
-	if !hasSlash || file != "level.dat" {
-		return "", false
-	}
-	return dir, true
+	return names, sizes, nil
 }
 
 // OpenEntry はアーカイブ内の 1 エントリを開く。
@@ -113,7 +109,9 @@ func OpenEntry(ctx context.Context, src, entryName string) (io.ReadCloser, error
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if _, err := safeEntryName(entryName); err != nil {
+	// 置き場所は問わない。Inspect が返した名前をそのまま受けるため、
+	// 形ごとに判定を持ち込む理由がない。読むだけで何も書かない。
+	if _, _, err := normalizeEntryName(entryName); err != nil {
 		return nil, err
 	}
 
