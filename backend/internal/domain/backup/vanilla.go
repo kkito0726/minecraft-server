@@ -135,3 +135,86 @@ func SingleplayerFileName(filename string) string {
 	}
 	return base + singleplayerSuffix + nameExt
 }
+
+/*
+StoredEntryName は保管するアーカイブでのエントリ名を返す。
+
+入力は data/ からではなく**プロジェクトディレクトリからの相対パス**
+（つまり data/... で始まる）。戻り値が空なら、そのエントリは入れない。
+
+出来上がる形はこうなる。
+
+	<ワールド>/...     バニラの配置（移す 5 つはワールド直下）
+	plugins/
+	config/
+	bukkit.yml
+	spigot.yml
+
+ワールドをバニラの配置で保管するのは、直せない側（クライアント）には
+手が届かず、吸収できる側（サーバー）には手が届くからである。Paper は
+起動時に自分の配置へ移してくれる（VanillaWorldMigration）が、逆向きの
+機構はクライアントに無い。保管を 1 形式にすれば、利用者が形を選ぶ
+場面が無くなる。
+
+サーバーの設定はルートに並べて残す。落とすと、手編集した spigot.yml が
+復元で戻らなくなる（REQ-004 の網羅列挙）。
+*/
+func StoredEntryName(entry, level string) string {
+	// ワールドの中身。置き場所の変換はこちらが持つ。
+	if name := VanillaEntryName(entry, level); name != "" {
+		return name
+	}
+	return storedExtraName(entry)
+}
+
+// storedExtraName はワールド以外の対象（ExtraPaths）のエントリ名を返す。
+//
+// data/ の皮を外すだけ。中身の置き場所は Paper もバニラも使わないので
+// 変換しない。
+func storedExtraName(entry string) string {
+	rest, ok := strippedDataPrefix(entry)
+	if !ok {
+		return ""
+	}
+
+	// 網羅列挙の中にあるものだけを通す。ここに無いパスは入れない。
+	// data/plugins/x は "plugins"、data/bukkit.yml は "bukkit.yml"。
+	head, _, _ := strings.Cut(rest, "/")
+	if !slices.Contains(extraPaths, head) {
+		return ""
+	}
+	// ディレクトリそのものを指すエントリは入れない。
+	if head == rest && !isExtraFile(head) {
+		return ""
+	}
+	return rest
+}
+
+// isExtraFile は対象がディレクトリではなくファイルかを返す。
+// bukkit.yml と spigot.yml は単体のファイルなので、それ自身が入る。
+func isExtraFile(name string) bool {
+	return strings.HasSuffix(name, ".yml")
+}
+
+// strippedDataPrefix は data/ を外した残りを返す。
+// 外せない、あるいは展開先の外を指すものは偽を返す。
+func strippedDataPrefix(entry string) (string, bool) {
+	name := strings.ReplaceAll(entry, `\`, "/")
+
+	if len(name) >= 2 && name[1] == ':' {
+		return "", false
+	}
+	if strings.HasPrefix(name, "/") {
+		return "", false
+	}
+	cleaned := path.Clean(name)
+	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+		return "", false
+	}
+
+	rest, ok := strings.CutPrefix(cleaned, dataPrefix)
+	if !ok || rest == "" {
+		return "", false
+	}
+	return rest, true
+}

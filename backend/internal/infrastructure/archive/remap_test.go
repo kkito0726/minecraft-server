@@ -255,3 +255,100 @@ func TestRemapRequiresRenameRule(t *testing.T) {
 		t.Error("規則が無いのに通した")
 	}
 }
+
+// --- Source.Rename（作成時の名前の変換）---
+
+/*
+Create も名前を変換できること。
+
+保管する形はバニラの配置なので、走査したパスをそのままエントリ名に
+できない。取得のあとで包み直すと 200MB を 2 度書くことになるため、
+作る時点で変換する。
+*/
+func TestCreateRenamesEntries(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeFiles(t, root, map[string]string{
+		"data/main/level.dat":         "nbt",
+		"data/main/region/r.0.0.mca":  "chunk",
+		"data/plugins/Essentials.jar": "plugin",
+		"data/server.properties":      "ひみつ",
+	})
+	dest := filepath.Join(t.TempDir(), "out.zip")
+
+	sources := []archive.Source{
+		{Root: root, Path: "data/main", Rename: stripData},
+		{Root: root, Path: "data/plugins", Rename: stripData},
+		{Root: root, Path: "data/server.properties", Rename: func(string) string { return "" }},
+	}
+	if err := archive.Create(context.Background(), dest, sources, nil); err != nil {
+		t.Fatalf("作れなかった: %v", err)
+	}
+
+	want := []string{"main/level.dat", "main/region/r.0.0.mca", "plugins/Essentials.jar"}
+	if got := entryNames(t, dest); !slices.Equal(got, want) {
+		t.Errorf("エントリが %v。%v のはず", got, want)
+	}
+	if got := entryBody(t, dest, "main/level.dat"); got != "nbt" {
+		t.Errorf("中身が %q", got)
+	}
+}
+
+// 空を返したものは入れない。単体のファイルを対象にしたときも効くこと。
+func TestCreateDropsEntriesRenamedToEmpty(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeFiles(t, root, map[string]string{"data/secret.txt": "ひみつ"})
+	dest := filepath.Join(t.TempDir(), "out.zip")
+
+	sources := []archive.Source{
+		{Root: root, Path: "data/secret.txt", Rename: func(string) string { return "" }},
+	}
+	if err := archive.Create(context.Background(), dest, sources, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := entryNames(t, dest); len(got) != 0 {
+		t.Errorf("エントリが %v。空のはず", got)
+	}
+}
+
+// 空のディレクトリも変換後の名前で残ること。
+func TestCreateRenamesEmptyDirectories(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeFiles(t, root, map[string]string{"data/main/level.dat": "nbt"})
+	if err := os.MkdirAll(filepath.Join(root, "data/main/datapacks"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(t.TempDir(), "out.zip")
+
+	sources := []archive.Source{{Root: root, Path: "data/main", Rename: stripData}}
+	if err := archive.Create(context.Background(), dest, sources, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{"main/datapacks/", "main/level.dat"}
+	if got := entryNames(t, dest); !slices.Equal(got, want) {
+		t.Errorf("エントリが %v。%v のはず", got, want)
+	}
+}
+
+// Rename を渡さなければこれまでどおり走査したパスがそのまま名前になる。
+func TestCreateWithoutRenameKeepsPaths(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeFiles(t, root, map[string]string{"data/main/level.dat": "nbt"})
+	dest := filepath.Join(t.TempDir(), "out.zip")
+
+	sources := []archive.Source{{Root: root, Path: "data/main"}}
+	if err := archive.Create(context.Background(), dest, sources, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := entryNames(t, dest); !slices.Equal(got, []string{"data/main/level.dat"}) {
+		t.Errorf("エントリが %v", got)
+	}
+}

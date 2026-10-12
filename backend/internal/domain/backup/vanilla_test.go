@@ -245,3 +245,97 @@ func TestSingleplayerFileNameLeavesUnexpectedNamesAlone(t *testing.T) {
 		}
 	}
 }
+
+// --- 保管するアーカイブでのエントリ名 ---
+
+/*
+保管する形はバニラの配置にしてある。
+
+直せない側（クライアント）には手が届かず、吸収できる側（サーバー）には
+手が届く。だから複雑さは吸収できる側に寄せる。保管が 1 形式なら、
+利用者が形を選ぶ場面が無くなる。
+
+サーバーの設定はルートに並べて残す。これを落とすと、手編集した
+spigot.yml が復元で戻らなくなる（REQ-004）。
+*/
+func TestStoredEntryNamePutsWorldAtRoot(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]string{
+		// ワールドは data/ の皮を外してルートへ
+		"data/main/level.dat":            "main/level.dat",
+		"data/main/players/data/abc.dat": "main/players/data/abc.dat",
+		"data/main/dimensions/minecraft/overworld/region/r.0.0.mca": "main/dimensions/minecraft/overworld/region/r.0.0.mca",
+		// Paper がディメンション側に置く 5 つはワールド直下へ
+		"data/main/dimensions/minecraft/overworld/data/minecraft/world_gen_settings.dat": "main/data/minecraft/world_gen_settings.dat",
+		"data/main/dimensions/minecraft/overworld/data/minecraft/game_rules.dat":         "main/data/minecraft/game_rules.dat",
+		// サーバーの設定はルートに並べる
+		"data/plugins/Essentials.jar":  "plugins/Essentials.jar",
+		"data/config/paper-global.yml": "config/paper-global.yml",
+		"data/bukkit.yml":              "bukkit.yml",
+		"data/spigot.yml":              "spigot.yml",
+	}
+
+	for entry, want := range cases {
+		if got := backup.StoredEntryName(entry, "main"); got != want {
+			t.Errorf("StoredEntryName(%q) = %q。%q のはず", entry, got, want)
+		}
+	}
+}
+
+// 対象の網羅列挙の外にあるものは入れない（REQ-004）。
+// server.properties は rcon.password を平文で持つ。
+func TestStoredEntryNameDropsNonTargets(t *testing.T) {
+	t.Parallel()
+
+	dropped := []string{
+		"data/server.properties",
+		"data/ops.json",
+		"data/whitelist.json",
+		"data/logs/latest.log",
+		"data/libraries/lib.jar",
+		"data/versions/v.json",
+		"data/cache/c.bin",
+		"data/paper-26.3-174.jar",
+		"data/other/level.dat",
+		"data/.env",
+	}
+
+	for _, entry := range dropped {
+		if got := backup.StoredEntryName(entry, "main"); got != "" {
+			t.Errorf("StoredEntryName(%q) = %q。入れないはず", entry, got)
+		}
+	}
+}
+
+// 展開先の外を指すものは入れない。作る側でも塞ぐ。
+func TestStoredEntryNameDropsEscapingEntries(t *testing.T) {
+	t.Parallel()
+
+	for _, entry := range []string{"../etc/passwd", "/etc/passwd", "data/../../etc/passwd"} {
+		if got := backup.StoredEntryName(entry, "main"); got != "" {
+			t.Errorf("StoredEntryName(%q) = %q。入れないはず", entry, got)
+		}
+	}
+}
+
+// ワールド名が空のときは何も入れない。基準が無いのに通すと、
+// data/ 配下の全部をワールドとして吐き出すことになる。
+func TestStoredEntryNameRequiresLevel(t *testing.T) {
+	t.Parallel()
+
+	if got := backup.StoredEntryName("data/main/level.dat", ""); got != "" {
+		t.Errorf("StoredEntryName(level=\"\") = %q。入れないはず", got)
+	}
+}
+
+// ディレクトリそのものを指すエントリは入れない。
+func TestStoredEntryNameDropsDirectoriesThemselves(t *testing.T) {
+	t.Parallel()
+
+	for _, entry := range []string{"data", "data/", "data/main", "data/plugins"} {
+		if got := backup.StoredEntryName(entry, "main"); got != "" {
+			t.Errorf("StoredEntryName(%q) = %q。入れないはず", entry, got)
+		}
+	}
+}
