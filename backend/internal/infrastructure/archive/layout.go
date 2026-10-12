@@ -45,16 +45,25 @@ func (l Layout) String() string {
 	}
 }
 
-// requiredPrefix はその形でエントリに要求する接頭辞。
-//
-// LayoutWorldRoot は接頭辞を要求しない。展開の基点が data/ なので、
-// 置き場所は基点そのものが保証する。
-func (l Layout) requiredPrefix() string {
+/*
+Prefix はその形でエントリが持つ接頭辞を返す。
+
+LayoutUnderData は "data/"、LayoutWorldRoot は空。復元先のワールド名を
+書き換えるときに、前置する文字列を組み立てるのに使う。出典をここ 1 つに
+保つため公開している。
+*/
+func (l Layout) Prefix() string {
 	if l == LayoutWorldRoot {
 		return ""
 	}
 	return allowedRoot
 }
+
+// requiredPrefix は置き場所の検証で要求する接頭辞。
+//
+// LayoutWorldRoot は要求しない。展開の基点が data/ なので、
+// 置き場所は基点そのものが保証する。
+func (l Layout) requiredPrefix() string { return l.Prefix() }
 
 /*
 detectLayout は level.dat の位置から形を判定する。

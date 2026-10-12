@@ -40,10 +40,11 @@ Open と同じく Seek できる形で返す。シングルプレイ用の zip �
 200MB 規模になるため、Range 要求に応えられる必要がある（REQ-415）。
 */
 func (s *Store) OpenVanilla(ctx context.Context, id backup.ID) (port.ArchiveFile, error) {
-	level, err := s.levelOf(ctx, id)
+	manifest, err := s.manifestWithLevel(ctx, id)
 	if err != nil {
 		return port.ArchiveFile{}, err
 	}
+	level := manifest.LevelDir
 
 	/*
 		更新時刻は保管しているアーカイブのものを使う。
@@ -69,9 +70,7 @@ func (s *Store) OpenVanilla(ctx context.Context, id backup.ID) (port.ArchiveFile
 	}
 
 	err = archive.Remap(ctx, s.pathOf(id), tmp, archive.RemapOptions{
-		Rename: func(entry string) string {
-			return backup.VanillaEntryName(entry, level)
-		},
+		Rename: vanillaRename(manifest.Layout, level),
 		// level.dat が無ければワールドとして認識されない。
 		// 中身の足りない zip を渡すと、saves/ に置いてから気づく。
 		Require: level + "/" + "level.dat",
@@ -84,21 +83,45 @@ func (s *Store) OpenVanilla(ctx context.Context, id backup.ID) (port.ArchiveFile
 	return openAndUnlink(tmp, id, stored.ModTime())
 }
 
-// levelOf はアーカイブに入っているワールド名を、展開せずに読む。
-func (s *Store) levelOf(ctx context.Context, id backup.ID) (string, error) {
+/*
+vanillaRename は保管している形に応じた変換の規則を返す。
+
+	LayoutUnderData   data/<ワールド>/... を <ワールド>/... へ移し、
+	                  Paper がディメンション側に置く 5 つをワールド直下へ上げる
+	LayoutWorldRoot   既にバニラの配置なので、ワールド以外を落とすだけ
+
+どちらの形でも保管されている。片方だけ扱うと、2026-10 より前に
+取ったアーカイブがシングルプレイ用に渡せなくなる。
+*/
+func vanillaRename(layout archive.Layout, level string) func(string) string {
+	if layout == archive.LayoutWorldRoot {
+		return func(entry string) string {
+			return backup.WorldOnlyEntryName(entry, level)
+		}
+	}
+	return func(entry string) string {
+		return backup.VanillaEntryName(entry, level)
+	}
+}
+
+// manifestWithLevel はアーカイブの構成を、展開せずに読む。
+// ワールド名を判定できないアーカイブは渡せないので、ここで弾く。
+func (s *Store) manifestWithLevel(
+	ctx context.Context, id backup.ID,
+) (archive.Manifest, error) {
 	if _, err := os.Stat(s.pathOf(id)); errors.Is(err, os.ErrNotExist) {
-		return "", fmt.Errorf("%w: %s", backup.ErrNotFound, id)
+		return archive.Manifest{}, fmt.Errorf("%w: %s", backup.ErrNotFound, id)
 	}
 
 	manifest, err := archive.Inspect(ctx, s.pathOf(id))
 	if err != nil {
-		return "", err
+		return archive.Manifest{}, err
 	}
 	if manifest.LevelDir == "" {
-		return "", fmt.Errorf(
+		return archive.Manifest{}, fmt.Errorf(
 			"%w: %s に含まれるワールドの名前を判定できません", backup.ErrNotFound, id)
 	}
-	return manifest.LevelDir, nil
+	return manifest, nil
 }
 
 // vanillaTempPath は包み直し先の名前を決める。

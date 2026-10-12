@@ -109,10 +109,10 @@ func TestCreateArchivesExactlyTheBackupSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// 保管する形はバニラの配置。ワールドのディレクトリが zip の直下に来て、
+	// サーバーの設定がその横に並ぶ（REQ-004 の網羅列挙は維持）。
 	got := rootsOf(t, filepath.Join(root, "backups", id.String()))
-	want := []string{
-		"data/bukkit.yml", "data/config", "data/plugins", "data/spigot.yml", "data/world",
-	}
+	want := []string{"bukkit.yml", "config", "plugins", "spigot.yml", "world"}
 	slices.Sort(got)
 	if !slices.Equal(got, want) {
 		t.Errorf("ルート集合が %v。%v のはず", got, want)
@@ -170,11 +170,11 @@ func TestCreateUsesGivenLevel(t *testing.T) {
 	}
 
 	roots := rootsOf(t, filepath.Join(root, "backups", id.String()))
-	if !slices.Contains(roots, "data/creative") {
-		t.Errorf("ルートが %v。data/creative を含むはず", roots)
+	if !slices.Contains(roots, "creative") {
+		t.Errorf("ルートが %v。creative を含むはず", roots)
 	}
-	if slices.Contains(roots, "data/world") {
-		t.Errorf("ルートが %v。data/world を含まないはず", roots)
+	if slices.Contains(roots, "world") {
+		t.Errorf("ルートが %v。world を含まないはず", roots)
 	}
 }
 
@@ -254,12 +254,12 @@ func TestCreateProducesExtractableArchive(t *testing.T) {
 
 	entries := entriesOf(t, filepath.Join(root, "backups", id.String()))
 	for _, want := range []string{
-		"data/world/level.dat",
-		"data/world/dimensions/minecraft/overworld/r.0.0.mca",
-		"data/plugins/Essentials.jar",
-		"data/config/paper-global.yml",
-		"data/bukkit.yml",
-		"data/spigot.yml",
+		"world/level.dat",
+		"world/dimensions/minecraft/overworld/r.0.0.mca",
+		"plugins/Essentials.jar",
+		"config/paper-global.yml",
+		"bukkit.yml",
+		"spigot.yml",
 	} {
 		if !slices.Contains(entries, want) {
 			t.Errorf("%q が含まれていない。実際: %v", want, entries)
@@ -379,7 +379,7 @@ func TestInspect(t *testing.T) {
 	if info.TotalBytes <= 0 {
 		t.Errorf("TotalBytes が %d", info.TotalBytes)
 	}
-	if !slices.Contains(info.EntryRoots, "data/world") {
+	if !slices.Contains(info.EntryRoots, "world") {
 		t.Errorf("EntryRoots が %v", info.EntryRoots)
 	}
 }
@@ -493,17 +493,20 @@ func TestListReadsModTime(t *testing.T) {
 	}
 }
 
+// rootsOf はアーカイブのルートの集合を返す。
+//
+// 保管する形はバニラの配置なので、ルートはワールド名とサーバーの設定が
+// 直接並ぶ（world、plugins、bukkit.yml など）。data/ の皮は無い。
 func rootsOf(t *testing.T, path string) []string {
 	t.Helper()
 
 	seen := map[string]bool{}
 	var roots []string
 	for _, name := range entriesOf(t, path) {
-		rest, ok := strings.CutPrefix(name, "data/")
-		if !ok {
-			t.Fatalf("data/ 以外のエントリ: %q", name)
+		if strings.HasPrefix(name, "data/") {
+			t.Fatalf("data/ の皮が残っている: %q", name)
 		}
-		root := "data/" + strings.SplitN(rest, "/", 2)[0]
+		root := strings.SplitN(name, "/", 2)[0]
 		if !seen[root] {
 			seen[root] = true
 			roots = append(roots, root)

@@ -218,3 +218,38 @@ func strippedDataPrefix(entry string) (string, bool) {
 	}
 	return rest, true
 }
+
+/*
+WorldOnlyEntryName は、既にバニラの配置で保管されているアーカイブの
+エントリ名を、シングルプレイ用に渡すアーカイブでの名前に変換する。
+
+保管する形が既にバニラの配置なので、置き場所の変換は要らない。残って
+いるのは「サーバー専用のものを落とす」ことだけで、saves/ に展開した
+ときに plugins/ や bukkit.yml が散らないようにする。
+
+古い形（data/<ワールド>/...）で保管されているアーカイブには使えない。
+そちらは VanillaEntryName が置き場所の変換まで行う。
+*/
+func WorldOnlyEntryName(entry, level string) string {
+	if level == "" {
+		return ""
+	}
+
+	name := strings.ReplaceAll(entry, `\`, "/")
+	if len(name) >= 2 && name[1] == ':' {
+		return ""
+	}
+	if strings.HasPrefix(name, "/") {
+		return ""
+	}
+	cleaned := path.Clean(name)
+	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+		return ""
+	}
+
+	// 末尾に / を付けて比べるのは、main が mainly に誤って一致するのを防ぐため。
+	if rest, ok := strings.CutPrefix(cleaned, level+"/"); !ok || rest == "" {
+		return ""
+	}
+	return cleaned
+}

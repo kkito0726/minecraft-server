@@ -460,3 +460,189 @@ func TestOpenVanillaModTimeIsStableAcrossCalls(t *testing.T) {
 			first.Info.SizeBytes, second.Info.SizeBytes)
 	}
 }
+
+// --- 保管する形（バニラの配置）---
+
+/*
+取得したアーカイブがそのままシングルプレイで読める形であること。
+
+直せない側（クライアント）には手が届かず、吸収できる側（サーバー）には
+手が届く。だから複雑さは吸収できる側に寄せ、保管は 1 形式にする。
+*/
+func TestCreateStoresVanillaLayout(t *testing.T) {
+	t.Parallel()
+
+	root := newPaperProject(t)
+	store := newStore(t, root)
+	id := createPaperBackup(t, store)
+
+	want := []string{
+		"bukkit.yml",
+		"config/paper-global.yml",
+		// Paper がディメンション側に置いていたものがワールド直下へ
+		"main/data/minecraft/game_rules.dat",
+		"main/data/minecraft/scheduled_events.dat",
+		"main/data/minecraft/scoreboard.dat",
+		"main/data/minecraft/wandering_trader.dat",
+		"main/data/minecraft/weather.dat",
+		"main/data/minecraft/world_gen_settings.dat",
+		// バニラもディメンション側に置くものは動かない
+		"main/dimensions/minecraft/overworld/data/minecraft/raids.dat",
+		"main/dimensions/minecraft/overworld/data/paper/metadata.dat",
+		"main/dimensions/minecraft/overworld/paper-world.yml",
+		"main/dimensions/minecraft/overworld/region/r.0.0.mca",
+		"main/dimensions/minecraft/the_nether/data/minecraft/world_gen_settings.dat",
+		"main/icon.png",
+		"main/level.dat",
+		"main/level.dat_old",
+		"main/players/data/abc.dat",
+		"plugins/Essentials.jar",
+		"spigot.yml",
+	}
+
+	if got := archiveNames(t, filepath.Join(root, "backups", id.String())); !slices.Equal(got, want) {
+		t.Errorf("エントリが違う。\n得た:   %v\nはず: %v", got, want)
+	}
+}
+
+// 取得したものが、そのまま新しい形として判定されること。
+func TestCreateProducesWorldRootLayout(t *testing.T) {
+	t.Parallel()
+
+	root := newPaperProject(t)
+	store := newStore(t, root)
+	id := createPaperBackup(t, store)
+
+	info, err := store.Inspect(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Level != "main" {
+		t.Errorf("ワールド名が %q", info.Level)
+	}
+	if !info.HasLevelDat {
+		t.Error("level.dat が見つかっていない")
+	}
+}
+
+// --- 新旧どちらの形も展開できる ---
+
+/*
+新しい形（<ワールド>/...）は data/ へ展開する。
+*/
+func TestExtractPlacesWorldRootArchive(t *testing.T) {
+	t.Parallel()
+
+	root := newPaperProject(t)
+	store := newStore(t, root)
+	id := createPaperBackup(t, store)
+
+	// 展開先を空にしてから戻す。
+	if err := os.RemoveAll(filepath.Join(root, "data", "main")); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Extract(context.Background(), id, "", nil); err != nil {
+		t.Fatalf("展開できない: %v", err)
+	}
+
+	assertDiskFile(t, filepath.Join(root, "data/main/level.dat"), "level")
+	assertDiskFile(t, filepath.Join(root, "data/bukkit.yml"), "bukkit")
+	// ワールド直下に移っていたものは、そのままワールド直下へ戻る。
+	// Paper が起動時にディメンション側へ移す（VanillaWorldMigration）。
+	assertDiskFile(t, filepath.Join(root, "data/main/data/minecraft/world_gen_settings.dat"), "overworld-gen")
+}
+
+/*
+古い形（data/<ワールド>/...）はプロジェクトディレクトリへ展開する。
+
+2026-10 より前に取ったアーカイブがこれ。片方だけにすると、既に
+保管してあるものが戻せなくなる。
+*/
+func TestExtractPlacesUnderDataArchive(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	store := newStore(t, root)
+
+	id := mustID(t, "backup-26.2-world-20260916-030000.zip")
+	writeZipFile(t, filepath.Join(root, "backups", id.String()), map[string]string{
+		"data/world/level.dat": "古い形の level.dat",
+		"data/world/dimensions/minecraft/overworld/data/minecraft/world_gen_settings.dat": "paper-gen",
+		"data/bukkit.yml": "古い bukkit",
+	})
+
+	if err := store.Extract(context.Background(), id, "", nil); err != nil {
+		t.Fatalf("古い形を展開できない: %v", err)
+	}
+
+	assertDiskFile(t, filepath.Join(root, "data/world/level.dat"), "古い形の level.dat")
+	assertDiskFile(t, filepath.Join(root, "data/bukkit.yml"), "古い bukkit")
+	// 古い形は Paper の配置のまま戻る。移行は走らない。
+	assertDiskFile(t,
+		filepath.Join(root, "data/world/dimensions/minecraft/overworld/data/minecraft/world_gen_settings.dat"),
+		"paper-gen")
+}
+
+// 復元先のワールド名の書き換えも、両方の形で効くこと。
+func TestExtractRewritesLevelNameInBothLayouts(t *testing.T) {
+	t.Parallel()
+
+	t.Run("新しい形", func(t *testing.T) {
+		t.Parallel()
+
+		root := newPaperProject(t)
+		store := newStore(t, root)
+		id := createPaperBackup(t, store)
+
+		if err := store.Extract(context.Background(), id, "creative", nil); err != nil {
+			t.Fatal(err)
+		}
+		assertDiskFile(t, filepath.Join(root, "data/creative/level.dat"), "level")
+	})
+
+	t.Run("古い形", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		store := newStore(t, root)
+		id := mustID(t, "backup-26.2-world-20260916-030000.zip")
+		writeZipFile(t, filepath.Join(root, "backups", id.String()), map[string]string{
+			"data/world/level.dat": "古い",
+		})
+
+		if err := store.Extract(context.Background(), id, "creative", nil); err != nil {
+			t.Fatal(err)
+		}
+		assertDiskFile(t, filepath.Join(root, "data/creative/level.dat"), "古い")
+	})
+}
+
+// archiveNames はアーカイブのエントリ名を並べて返す。
+func archiveNames(t *testing.T, path string) []string {
+	t.Helper()
+
+	r, err := zip.OpenReader(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = r.Close() }()
+
+	names := make([]string, 0, len(r.File))
+	for _, f := range r.File {
+		names = append(names, f.Name)
+	}
+	slices.Sort(names)
+	return names
+}
+
+func assertDiskFile(t *testing.T, path, want string) {
+	t.Helper()
+
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%s を読めない: %v", path, err)
+	}
+	if string(body) != want {
+		t.Errorf("%s の中身が %q。%q のはず", path, body, want)
+	}
+}

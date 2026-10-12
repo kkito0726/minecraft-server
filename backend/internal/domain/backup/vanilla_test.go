@@ -392,3 +392,61 @@ func TestStoredEntryNameCoversEveryExtraPath(t *testing.T) {
 		}
 	}
 }
+
+// --- シングルプレイへ渡すときの絞り込み ---
+
+/*
+保管している形が既にバニラの配置なら、置き場所の変換は要らない。
+
+残っているのは「サーバー専用のものを落とす」ことだけ。saves/ に
+展開したときに plugins/ や bukkit.yml が散らないようにする。
+*/
+func TestWorldOnlyEntryNameKeepsOnlyTheWorld(t *testing.T) {
+	t.Parallel()
+
+	kept := map[string]string{
+		"main/level.dat": "main/level.dat",
+		"main/data/minecraft/world_gen_settings.dat":            "main/data/minecraft/world_gen_settings.dat",
+		"main/dimensions/minecraft/the_nether/region/r.0.0.mca": "main/dimensions/minecraft/the_nether/region/r.0.0.mca",
+	}
+	for entry, want := range kept {
+		if got := backup.WorldOnlyEntryName(entry, "main"); got != want {
+			t.Errorf("WorldOnlyEntryName(%q) = %q。%q のはず", entry, got, want)
+		}
+	}
+
+	dropped := []string{
+		"plugins/Essentials.jar",
+		"config/paper-global.yml",
+		"bukkit.yml",
+		"spigot.yml",
+		"other/level.dat",
+		"mainly/level.dat",
+		"main",
+	}
+	for _, entry := range dropped {
+		if got := backup.WorldOnlyEntryName(entry, "main"); got != "" {
+			t.Errorf("WorldOnlyEntryName(%q) = %q。落とすはず", entry, got)
+		}
+	}
+}
+
+// 展開先の外を指すものは渡さない。
+func TestWorldOnlyEntryNameDropsEscapingEntries(t *testing.T) {
+	t.Parallel()
+
+	for _, entry := range []string{"../main/level.dat", "/main/level.dat", "main/../../etc/passwd"} {
+		if got := backup.WorldOnlyEntryName(entry, "main"); got != "" {
+			t.Errorf("WorldOnlyEntryName(%q) = %q。落とすはず", entry, got)
+		}
+	}
+}
+
+// ワールド名が無ければ何も渡さない。
+func TestWorldOnlyEntryNameRequiresLevel(t *testing.T) {
+	t.Parallel()
+
+	if got := backup.WorldOnlyEntryName("main/level.dat", ""); got != "" {
+		t.Errorf("WorldOnlyEntryName(level=\"\") = %q。落とすはず", got)
+	}
+}
