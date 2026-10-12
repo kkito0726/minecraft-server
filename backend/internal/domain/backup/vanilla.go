@@ -167,10 +167,20 @@ func StoredEntryName(entry, level string) string {
 	return storedExtraName(entry)
 }
 
-// storedExtraName はワールド以外の対象（ExtraPaths）のエントリ名を返す。
-//
-// data/ の皮を外すだけ。中身の置き場所は Paper もバニラも使わないので
-// 変換しない。
+/*
+storedExtraName はワールド以外の対象（ExtraPaths）のエントリ名を返す。
+
+data/ の皮を外すだけ。中身の置き場所は Paper もバニラも使わないので
+変換しない。
+
+ディレクトリかファイルかは見分けない。ExtraPaths は plugins のような
+ディレクトリと bukkit.yml のような単体のファイルが混ざっているが、
+どちらも「data/ を外した名前」で同じに扱える。書くときに末尾の / を
+付けるかどうかは、走査している側（addSource / addEmptyDir）が知っている。
+
+名前の末尾で見分けると、ExtraPaths に .yml 以外のファイルを足した
+瞬間に黙って落ちる。
+*/
 func storedExtraName(entry string) string {
 	rest, ok := strippedDataPrefix(entry)
 	if !ok {
@@ -183,17 +193,7 @@ func storedExtraName(entry string) string {
 	if !slices.Contains(extraPaths, head) {
 		return ""
 	}
-	// ディレクトリそのものを指すエントリは入れない。
-	if head == rest && !isExtraFile(head) {
-		return ""
-	}
 	return rest
-}
-
-// isExtraFile は対象がディレクトリではなくファイルかを返す。
-// bukkit.yml と spigot.yml は単体のファイルなので、それ自身が入る。
-func isExtraFile(name string) bool {
-	return strings.HasSuffix(name, ".yml")
 }
 
 // strippedDataPrefix は data/ を外した残りを返す。

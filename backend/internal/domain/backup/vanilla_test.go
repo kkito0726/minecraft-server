@@ -263,8 +263,8 @@ func TestStoredEntryNamePutsWorldAtRoot(t *testing.T) {
 
 	cases := map[string]string{
 		// ワールドは data/ の皮を外してルートへ
-		"data/main/level.dat":            "main/level.dat",
-		"data/main/players/data/abc.dat": "main/players/data/abc.dat",
+		"data/main/level.dat":                                       "main/level.dat",
+		"data/main/players/data/abc.dat":                            "main/players/data/abc.dat",
 		"data/main/dimensions/minecraft/overworld/region/r.0.0.mca": "main/dimensions/minecraft/overworld/region/r.0.0.mca",
 		// Paper がディメンション側に置く 5 つはワールド直下へ
 		"data/main/dimensions/minecraft/overworld/data/minecraft/world_gen_settings.dat": "main/data/minecraft/world_gen_settings.dat",
@@ -329,13 +329,66 @@ func TestStoredEntryNameRequiresLevel(t *testing.T) {
 	}
 }
 
-// ディレクトリそのものを指すエントリは入れない。
-func TestStoredEntryNameDropsDirectoriesThemselves(t *testing.T) {
+/*
+ディレクトリかファイルかは見分けない。
+
+ExtraPaths には plugins のようなディレクトリと bukkit.yml のような
+単体のファイルが混ざっている。どちらも「data/ を外した名前」で
+同じに扱える。末尾の / を付けるかは走査している側が決める。
+
+名前の末尾（.yml など）で見分けると、ExtraPaths に .yml 以外の
+ファイルを足した瞬間に黙って落ちる。
+*/
+func TestStoredEntryNameTreatsExtraDirsAndFilesAlike(t *testing.T) {
 	t.Parallel()
 
-	for _, entry := range []string{"data", "data/", "data/main", "data/plugins"} {
+	cases := map[string]string{
+		// ディレクトリそのもの。空なら plugins/ として残せる
+		"data/plugins": "plugins",
+		"data/config":  "config",
+		// 単体のファイル
+		"data/bukkit.yml": "bukkit.yml",
+		"data/spigot.yml": "spigot.yml",
+	}
+
+	for entry, want := range cases {
+		if got := backup.StoredEntryName(entry, "main"); got != want {
+			t.Errorf("StoredEntryName(%q) = %q。%q のはず", entry, got, want)
+		}
+	}
+}
+
+// data/ そのものと、ワールドのディレクトリそのものは入れない。
+// ワールドの中身は必ず data/<ワールド>/ の下にある。
+func TestStoredEntryNameDropsDataAndWorldRoot(t *testing.T) {
+	t.Parallel()
+
+	for _, entry := range []string{"data", "data/", "data/main"} {
 		if got := backup.StoredEntryName(entry, "main"); got != "" {
 			t.Errorf("StoredEntryName(%q) = %q。入れないはず", entry, got)
+		}
+	}
+}
+
+/*
+対象の列挙が増えても、名前の付け方は変わらないこと。
+
+ExtraPaths() を走って確かめる。個別の名前を書き並べると、列挙に
+.yml 以外のファイルを足したときに試験が追従せず、黙って落ちる経路が
+できる（実際に一度その作りにしてしまった）。
+*/
+func TestStoredEntryNameCoversEveryExtraPath(t *testing.T) {
+	t.Parallel()
+
+	for _, extra := range backup.ExtraPaths() {
+		// 対象そのもの
+		if got := backup.StoredEntryName("data/"+extra, "main"); got != extra {
+			t.Errorf("StoredEntryName(%q) = %q。%q のはず", "data/"+extra, got, extra)
+		}
+		// 対象の配下（ディレクトリの場合）
+		under := extra + "/nested/file.bin"
+		if got := backup.StoredEntryName("data/"+under, "main"); got != under {
+			t.Errorf("StoredEntryName(%q) = %q。%q のはず", "data/"+under, got, under)
 		}
 	}
 }
