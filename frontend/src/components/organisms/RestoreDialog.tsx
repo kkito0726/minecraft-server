@@ -79,6 +79,8 @@ export function RestoreDialog({ preflight, disabled, onCancel, onConfirm }: Rest
 
       <SpaceNotice required={preflight.requiredBytes} available={preflight.availableBytes} />
 
+      <MigrationNotice notice={preflight.migrationNotice} />
+
       <ConfirmSection
         expected={expected}
         typed={typed}
@@ -270,6 +272,28 @@ function RestoreSummary({ preflight }: { preflight: PreflightRestoreResponse }) 
         </ul>
       )}
     </div>
+  )
+}
+
+/**
+ * 復元後の起動が遅くなる理由。
+ *
+ * バニラの配置で保管したアーカイブを復元すると、次の起動で Paper が
+ * 置き場所を自分の形へ移すため 30 秒ほど余分にかかる。黙って待たせると
+ * 「復元が固まった」と見える。
+ *
+ * 警告ではないので承諾は求めない。文はサーバーが組み立てたものを
+ * そのまま出す。出典をドメイン層の 1 箇所に保つため。
+ */
+function MigrationNotice({ notice }: { notice: string }) {
+  if (!notice) {
+    return null
+  }
+
+  return (
+    <p className="text-sm text-dim" data-testid="migration-notice">
+      {notice}
+    </p>
   )
 }
 

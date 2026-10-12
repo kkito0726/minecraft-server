@@ -194,6 +194,7 @@ func (h *BackupHandler) PreflightRestore(
 		RequiresConfirmation: pre.Decision.RequiresConfirmation,
 		RequiredBytes:        pre.RequiredBytes,
 		AvailableBytes:       pre.AvailableBytes,
+		MigrationNotice:      pre.MigrationNotice,
 	}), nil
 }
 

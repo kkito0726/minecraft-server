@@ -224,3 +224,34 @@ describe('RestoreDialog', () => {
     expect(nameInput()).toBeDisabled()
   })
 })
+
+/**
+ * 復元後の起動が遅くなる理由を出す。
+ *
+ * バニラの配置で保管したアーカイブを復元すると、次の起動で Paper が
+ * 置き場所を自分の形へ移すため 30 秒ほど余分にかかる。黙って待たせると
+ * 「復元が固まった」と見える。
+ */
+describe('復元後の起動についての通知', () => {
+  it('通知があれば出す', () => {
+    renderDialog({
+      migrationNotice:
+        '復元後の最初の起動で、Paper がワールドの置き場所を自分の形へ移します。そのぶん起動に 30 秒ほど余分にかかります。',
+    })
+
+    expect(screen.getByTestId('migration-notice')).toHaveTextContent(/30 秒ほど余分にかかります/)
+  })
+
+  // 警告ではないので承諾は求めない。これだけで復元が止まってはならない。
+  it('通知があっても承諾は求めない', () => {
+    renderDialog({ migrationNotice: '起動に 30 秒ほど余分にかかります。' })
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('通知が無ければ何も出さない', () => {
+    renderDialog({ migrationNotice: '' })
+
+    expect(screen.queryByTestId('migration-notice')).not.toBeInTheDocument()
+  })
+})

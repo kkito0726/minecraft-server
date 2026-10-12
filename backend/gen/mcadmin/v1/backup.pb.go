@@ -702,8 +702,15 @@ type PreflightRestoreResponse struct {
 	// 展開に必要な容量と、実際の空き容量。
 	RequiredBytes  int64 `protobuf:"varint,9,opt,name=required_bytes,json=requiredBytes,proto3" json:"required_bytes,omitempty"`
 	AvailableBytes int64 `protobuf:"varint,10,opt,name=available_bytes,json=availableBytes,proto3" json:"available_bytes,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 復元後の最初の起動について伝えること。空なら何もない。
+	//
+	// バニラの配置で保管したアーカイブを復元すると、次の起動で Paper が
+	// 置き場所を自分の形へ移すため 30 秒ほど余分にかかる。warnings と違い
+	// 承諾は求めない（どうするか決めるための情報ではなく、なぜ遅いかを
+	// 知らせるもの）。
+	MigrationNotice string `protobuf:"bytes,11,opt,name=migration_notice,json=migrationNotice,proto3" json:"migration_notice,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *PreflightRestoreResponse) Reset() {
@@ -804,6 +811,13 @@ func (x *PreflightRestoreResponse) GetAvailableBytes() int64 {
 		return x.AvailableBytes
 	}
 	return 0
+}
+
+func (x *PreflightRestoreResponse) GetMigrationNotice() string {
+	if x != nil {
+		return x.MigrationNotice
+	}
+	return ""
 }
 
 type RestoreBackupRequest struct {
@@ -1393,7 +1407,7 @@ const file_mcadmin_v1_backup_proto_rawDesc = "" +
 	"\vfreed_bytes\x18\x01 \x01(\x03R\n" +
 	"freedBytes\"6\n" +
 	"\x17PreflightRestoreRequest\x12\x1b\n" +
-	"\tbackup_id\x18\x01 \x01(\tR\bbackupId\"\xf4\x03\n" +
+	"\tbackup_id\x18\x01 \x01(\tR\bbackupId\"\x9f\x04\n" +
 	"\x18PreflightRestoreResponse\x12*\n" +
 	"\x06backup\x18\x01 \x01(\v2\x12.mcadmin.v1.BackupR\x06backup\x12#\n" +
 	"\rcurrent_level\x18\x02 \x01(\tR\fcurrentLevel\x12L\n" +
@@ -1405,7 +1419,8 @@ const file_mcadmin_v1_backup_proto_rawDesc = "" +
 	"\x15requires_confirmation\x18\b \x01(\bR\x14requiresConfirmation\x12%\n" +
 	"\x0erequired_bytes\x18\t \x01(\x03R\rrequiredBytes\x12'\n" +
 	"\x0favailable_bytes\x18\n" +
-	" \x01(\x03R\x0eavailableBytes\"\xd4\x01\n" +
+	" \x01(\x03R\x0eavailableBytes\x12)\n" +
+	"\x10migration_notice\x18\v \x01(\tR\x0fmigrationNotice\"\xd4\x01\n" +
 	"\x14RestoreBackupRequest\x12\x1b\n" +
 	"\tbackup_id\x18\x01 \x01(\tR\bbackupId\x121\n" +
 	"\x06target\x18\x02 \x01(\x0e2\x19.mcadmin.v1.RestoreTargetR\x06target\x12>\n" +

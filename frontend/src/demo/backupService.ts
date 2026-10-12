@@ -233,6 +233,13 @@ export const backupImpl: Partial<ServiceImpl<typeof BackupService>> = {
       requiresConfirmation: verdict !== VersionVerdict.MATCH || mismatch,
       requiredBytes: backup.sizeBytes * 2n,
       availableBytes: AVAILABLE_BYTES,
+      // デモのバックアップはバニラの配置で保管されているものとして扱う。
+      // 実物では、復元後の最初の起動で Paper が置き場所を自分の形へ移す。
+      migrationNotice:
+        '復元後の最初の起動で、Paper がワールドの置き場所を自分の形へ移します。' +
+        'そのぶん起動に 30 秒ほど余分にかかります（実測 53〜58 秒、通常は 23〜28 秒）。' +
+        '移行は 1 回だけで、次の起動からは元の速さに戻ります。' +
+        'ワールドのデータは変わりません。',
     }
   },
 

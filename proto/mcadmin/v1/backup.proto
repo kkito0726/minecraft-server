@@ -140,6 +140,15 @@ message PreflightRestoreResponse {
   // 展開に必要な容量と、実際の空き容量。
   int64 required_bytes = 9;
   int64 available_bytes = 10;
+  /*
+     復元後の最初の起動について伝えること。空なら何もない。
+
+     バニラの配置で保管したアーカイブを復元すると、次の起動で Paper が
+     置き場所を自分の形へ移すため 30 秒ほど余分にかかる。warnings と違い
+     承諾は求めない（どうするか決めるための情報ではなく、なぜ遅いかを
+     知らせるもの）。
+  */
+  string migration_notice = 11;
 }
 
 message RestoreBackupRequest {
