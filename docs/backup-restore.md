@@ -283,6 +283,10 @@ Paper がその版を配っていない場合は、**サーバーを止める前
 
 一覧の「シングルプレイ用」から落とす。`saves/` にそのまま展開できる形で渡される。
 
+**保管しているアーカイブ自体がバニラの配置になっている。** 「ダウンロード」で落とした
+zip も、`<ワールド>/` を取り出せばそのまま `saves/` に置ける。「シングルプレイ用」は
+そこからサーバーの設定（`plugins/` など）を除いたもので、`saves/` の直下が散らない。
+
 構成の違いの詳細は [world-layout.md](world-layout.md) にまとめてある。要点だけ再掲する。
 
 Paper とバニラでは、ワールドの中の `.dat` の置き場所が一部違う。
@@ -307,15 +311,22 @@ java.lang.IllegalStateException: Overworld settings missing
 
 で読み込みを中断する。**ワールド一覧には出る**ので原因が分かりにくい。
 
-手でやるなら、ワールド本体だけ取り出してこの 5 つを上げる。
+管理コンソールが作るアーカイブはこの変換を済ませてある。手でワールドだけ
+取り出すならこうする。
 
 ```bash
 cd ~/Library/Application\ Support/minecraft/saves
 mkdir main
-# zip 内の階層は data/<ワールド>/。皮を 2 枚剥がす
+# zip のルートがワールド名。皮は 1 枚
 tar -xf ~/Downloads/backup-26.3-main-20261011-181445.zip \
-    -C main --strip-components=2 data/main
+    -C main --strip-components=1 main
+```
 
+2026-10 より前に取ったアーカイブは `data/<ワールド>/` の形なので、皮を 2 枚
+剥がしたうえで 5 ファイルを上げる必要がある。
+
+```bash
+tar -xf <古いアーカイブ>.zip -C main --strip-components=2 data/main
 cd main
 for f in game_rules scheduled_events wandering_trader weather world_gen_settings; do
   mv "dimensions/minecraft/overworld/data/minecraft/$f.dat" "data/minecraft/$f.dat"
@@ -348,9 +359,14 @@ done
 [VanillaWorldMigration] Completed Vanilla import for world 'demo_world_01' (minecraft:overworld)
 ```
 
-移行は**その場で書き換える**。先にバックアップを取ってから入れること。30 秒の猶予が
-あるが、管理コンソールから復元した場合は自動で通過する（起動の完了待ちは 300 秒なので
-収まる）。
+移行は**その場で書き換える**。実測では無損失（region 62 ファイルが 1 バイトも変化せず、
+シードも 3 ディメンションの生成設定も維持）だが、Paper 自身は「バックアップが無いなら
+今すぐ落とせ」と警告する。30 秒の猶予があり、管理コンソールから復元した場合は自動で
+通過する（起動の完了待ちは 300 秒なので収まる）。
+
+**管理コンソールが保管するアーカイブはバニラの配置なので、復元のたびにこの移行が
+走る。** 復元の画面と操作のログに、起動に 30 秒ほど余分にかかることが出る。移行は
+復元ごとに 1 回で、以降の再起動では発生しない。
 
 要るのは置き場所ではなく**版**の整合である。26.3 のワールドは 26.2 のサーバーでは
 開けない。復元時の版の照合（前節）がこれを受け持つ。
