@@ -75,7 +75,7 @@ describe('uploadBackup', () => {
     expect(xhr.url).toBe(UPLOAD_URL)
     expect(xhr.headers.Authorization).toBe(`Bearer ${'t'.repeat(64)}`)
 
-    xhr.respond(200, JSON.stringify({ id: 'a.zip', level: 'world', rewrapped: false }))
+    xhr.respond(200, JSON.stringify({ id: 'a.zip', level: 'world' }))
     await expect(promise).resolves.toMatchObject({ id: 'a.zip', level: 'world' })
   })
 

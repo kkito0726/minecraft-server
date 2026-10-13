@@ -106,7 +106,9 @@ func TestUploadAcceptsArchiveUnderData(t *testing.T) {
 }
 
 // 配布ワールドの形をそのまま受け取れること。これが取り込みの主目的。
-func TestUploadRewrapsWorldOutsideData(t *testing.T) {
+//
+// 2026-10 以降はこれが保管形式そのものなので、包み直しもしない。
+func TestUploadAcceptsWorldRootArchive(t *testing.T) {
 	t.Parallel()
 
 	h, _ := newHandler(t)
@@ -120,14 +122,13 @@ func TestUploadRewrapsWorldOutsideData(t *testing.T) {
 	}
 
 	var got struct {
-		Level     string `json:"level"`
-		Rewrapped bool   `json:"rewrapped"`
+		Level string `json:"level"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Level != "MyWorld" || !got.Rewrapped {
-		t.Errorf("包み直されていない: %+v", got)
+	if got.Level != "MyWorld" {
+		t.Errorf("ワールド名が %q", got.Level)
 	}
 }
 

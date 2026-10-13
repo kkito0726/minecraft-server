@@ -16,8 +16,6 @@ export type UploadResult = {
   /** アーカイブ内の level.dat から読んだ版。読めなければ空。 */
   version: string
   sizeBytes: number
-  /** data/ 配下へ包み直したか。 */
-  rewrapped: boolean
 }
 
 export type UploadOptions = {

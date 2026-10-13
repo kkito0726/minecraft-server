@@ -34,7 +34,6 @@ export function uploadNotice(result: UploadResult | undefined): string | undefin
     return undefined
   }
   const version = result.version ? `（${result.version}）` : '（バージョン不明）'
-  // 包み直したことは伝える。利用者が渡した zip とは中身の並びが変わるため。
-  const wrapped = result.rewrapped ? 'data/ 配下へ包み直しました。' : ''
-  return `${result.level}${version}を取り込みました。${wrapped}一覧から復元できます。`
+  // 中身は触らずそのまま保管する。渡した zip と並びは変わらない。
+  return `${result.level}${version}を取り込みました。一覧から復元できます。`
 }

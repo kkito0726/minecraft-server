@@ -103,12 +103,15 @@ func (a *stagedArchive) OpenEntry(ctx context.Context, entry string) (io.ReadClo
 /*
 Adopt は一時ファイルを正式な名前で保管先に置く。
 
-prefix が空なら rename するだけ。空でなければ data/ 配下へ包み直した
-新しいアーカイブを作ってから置く。包み直しに失敗しても、元の一時
-ファイルはそのまま残るので中途半端な結果にはならない。
+中身は触らない。rename するだけなので、200MB のアーカイブでも一瞬で
+終わり、途中で失敗して中途半端なファイルが残ることもない。
+
+以前はワールド名から始まる形を data/ 配下へ包み直していた。復元が
+data/ 配下しか受け付けなかったためだが、復元が両方の形を受けるように
+なった（archive.Layout）ので、入口の全コピーをやめた。
 */
 func (a *stagedArchive) Adopt(
-	ctx context.Context, id backup.ID, prefix string,
+	_ context.Context, id backup.ID,
 ) (port.StoredBackup, error) {
 	dest := a.store.pathOf(id)
 	// 同じ名前が既にあれば上書きしない。取り込みで既存のバックアップを
@@ -117,24 +120,10 @@ func (a *stagedArchive) Adopt(
 		return port.StoredBackup{}, fmt.Errorf("%w: %s", os.ErrExist, id)
 	}
 
-	source := a.path
-	if prefix != "" {
-		wrapped := source + ".wrapped"
-		if err := archive.Rewrap(ctx, source, wrapped, prefix); err != nil {
-			return port.StoredBackup{}, err
-		}
-		defer func() { _ = os.Remove(wrapped) }()
-		source = wrapped
-	}
-
-	if err := os.Rename(source, dest); err != nil {
+	if err := os.Rename(a.path, dest); err != nil {
 		return port.StoredBackup{}, fmt.Errorf("保管先へ置けません: %w", err)
 	}
 	a.adopted = true
-	// 包み直した場合、元の一時ファイルはまだ残っている。
-	if source != a.path {
-		_ = os.Remove(a.path)
-	}
 
 	info, err := os.Stat(dest)
 	if err != nil {

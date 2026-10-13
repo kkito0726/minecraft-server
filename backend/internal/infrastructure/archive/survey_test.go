@@ -3,8 +3,6 @@ package archive_test
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/kkito0726/minecraft-server/backend/internal/infrastructure/archive"
@@ -67,61 +65,5 @@ func TestSurveyStillRejectsEscapes(t *testing.T) {
 				t.Errorf("%q を受理した: %v", entry, err)
 			}
 		})
-	}
-}
-
-/*
-Rewrap は持ち込まれたアーカイブを data/ 配下へ包み直す。
-
-展開の側（allowedRoot）を緩めずに外部のワールドを受け入れるため、
-入口で形を揃える。これで Extract の不変条件は 1 文字も変わらない。
-*/
-func TestRewrapMovesEntriesUnderData(t *testing.T) {
-	t.Parallel()
-
-	src := writeZip(t, map[string]string{
-		"MyWorld/level.dat":        "nbt",
-		"MyWorld/region/r.0.0.mca": "chunk",
-	})
-	dest := filepath.Join(t.TempDir(), "wrapped.zip")
-
-	if err := archive.Rewrap(context.Background(), src, dest, "data/"); err != nil {
-		t.Fatalf("包み直せなかった: %v", err)
-	}
-
-	// 包み直した結果は、展開の検証を通るようになっていること。
-	m, err := archive.Inspect(context.Background(), dest)
-	if err != nil {
-		t.Fatalf("包み直した結果が展開の検証を通らない: %v", err)
-	}
-	if m.LevelDir != "MyWorld" {
-		t.Errorf("ワールド名が %q", m.LevelDir)
-	}
-
-	out := t.TempDir()
-	if err := archive.Extract(context.Background(), dest, out, archive.ExtractOptions{}, nil); err != nil {
-		t.Fatalf("展開できない: %v", err)
-	}
-	body, err := os.ReadFile(filepath.Join(out, "data/MyWorld/region/r.0.0.mca"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(body) != "chunk" {
-		t.Errorf("中身が違う: %q", body)
-	}
-}
-
-// 包み直した結果が展開先の外を指してはいけない。
-func TestRewrapRejectsEscapingEntries(t *testing.T) {
-	t.Parallel()
-
-	src := writeZip(t, map[string]string{"../escape/level.dat": "nbt"})
-	dest := filepath.Join(t.TempDir(), "wrapped.zip")
-
-	if err := archive.Rewrap(context.Background(), src, dest, "data/"); !errors.Is(err, archive.ErrUnsafeEntry) {
-		t.Errorf("受理した: %v", err)
-	}
-	if _, err := os.Stat(dest); err == nil {
-		t.Error("拒否したのに出力が残っている")
 	}
 }

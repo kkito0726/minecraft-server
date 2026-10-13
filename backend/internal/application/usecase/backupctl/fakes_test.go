@@ -633,11 +633,12 @@ type fakeStaged struct {
 	entries []string
 	total   int64
 	body    string
-	// adoptedAs と adoptedPrefix は確定のときの引数を記録する。
-	adoptedAs     string
-	adoptedPrefix string
-	adoptErr      error
-	discarded     bool
+	// adoptedAs は確定のときの名前を記録する。
+	adoptedAs string
+	// adopted は確定が呼ばれたか。
+	adopted   bool
+	adoptErr  error
+	discarded bool
 }
 
 func (a *fakeStaged) LevelDatEntries() []string { return a.entries }
@@ -648,13 +649,13 @@ func (a *fakeStaged) OpenEntry(context.Context, string) (io.ReadCloser, error) {
 }
 
 func (a *fakeStaged) Adopt(
-	_ context.Context, id backup.ID, prefix string,
+	_ context.Context, id backup.ID,
 ) (port.StoredBackup, error) {
 	if a.adoptErr != nil {
 		return port.StoredBackup{}, a.adoptErr
 	}
 	a.adoptedAs = id.String()
-	a.adoptedPrefix = prefix
+	a.adopted = true
 	return port.StoredBackup{ID: id, SizeBytes: a.total}, nil
 }
 

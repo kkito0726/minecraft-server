@@ -22,6 +22,8 @@ zip を読み書きする手順だけを受け持つ。
 type RemapOptions struct {
 	// Rename はエントリ名を変換する。
 	//
+	// 受け取るのは正規化した名前（区切りは /、.. は解決済み）。
+	//
 	// 空を返したエントリは持ち出さない。「持ち出さない」と「危険だから
 	// 拒否する」は別で、後者はこの関数を呼ぶ前に弾く。
 	Rename func(entry string) string
@@ -95,7 +97,8 @@ func remapEntries(ctx context.Context, r *zip.ReadCloser, out io.Writer, opts Re
 			return err
 		}
 		// 置き場所は問わず、展開先の外へ出る経路だけを塞ぐ。
-		if _, _, err := normalizeEntryName(f.Name); err != nil {
+		cleaned, _, err := normalizeEntryName(f.Name)
+		if err != nil {
 			return err
 		}
 		// ディレクトリのエントリは持ち出さない。配下のファイルを
@@ -104,7 +107,9 @@ func remapEntries(ctx context.Context, r *zip.ReadCloser, out io.Writer, opts Re
 			continue
 		}
 
-		name := opts.Rename(f.Name)
+		// 規則には正規化した名前を渡す。生の名前を渡すと、Windows 製の
+		// \ 区切りのエントリが規則に一致せず、判定が黙って外れる。
+		name := opts.Rename(cleaned)
 		if name == "" {
 			continue
 		}

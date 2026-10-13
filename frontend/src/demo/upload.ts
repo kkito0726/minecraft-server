@@ -21,7 +21,6 @@ export type DemoUploadResult = {
   level: string
   version: string
   sizeBytes: number
-  rewrapped: boolean
 }
 
 export type DemoUploadOptions = {
@@ -82,7 +81,6 @@ function adopt(file: File): DemoUploadResult {
     sizeBytes: Number(entry.sizeBytes),
     // 配布ワールドの形（data/ を含まない）だったことにして、
     // 包み直しの案内も見せる。
-    rewrapped: true,
   }
 }
 

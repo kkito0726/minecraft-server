@@ -40,8 +40,6 @@ type response struct {
 	Level     string `json:"level"`
 	Version   string `json:"version"`
 	SizeBytes int64  `json:"sizeBytes"`
-	// Rewrapped は data/ 配下へ包み直したか。画面の案内を変えるために返す。
-	Rewrapped bool `json:"rewrapped"`
 }
 
 type errorResponse struct {
@@ -69,7 +67,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Level:     result.Level,
 		Version:   versionText(result),
 		SizeBytes: result.SizeBytes,
-		Rewrapped: result.Rewrapped,
 	})
 }
 

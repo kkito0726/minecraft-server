@@ -126,13 +126,17 @@ func TestSurveyExcludesBackslashDirEntries(t *testing.T) {
 }
 
 /*
-取り込みの経路がいちばん重い。壊れたアーカイブが黙って保管され、
-壊れていると分かるのは後日それを復元しようとしたときになる。
+包み直しの経路で、\ 区切りのディレクトリのエントリをファイルとして
+書かないこと。
+
+書いてしまうと、ディレクトリの位置に 0 バイトのファイルができ、その
+配下を作れずに展開が途中で失敗する。壊れたアーカイブが黙って渡され、
+壊れていると分かるのは後日それを使おうとしたときになる。
 
 ディレクトリのエントリは（/ 区切りの zip と同じく）写さない。
 展開側が親ディレクトリを作るので、無くても中身は揃う。
 */
-func TestRewrapDoesNotWriteBackslashDirEntriesAsFiles(t *testing.T) {
+func TestRemapDoesNotWriteBackslashDirEntriesAsFiles(t *testing.T) {
 	t.Parallel()
 
 	src := writeZipOrdered(t, []zipEntry{
@@ -141,7 +145,10 @@ func TestRewrapDoesNotWriteBackslashDirEntriesAsFiles(t *testing.T) {
 	})
 	dest := filepath.Join(t.TempDir(), "out.zip")
 
-	if err := archive.Rewrap(context.Background(), src, dest, "data/"); err != nil {
+	err := archive.Remap(context.Background(), src, dest, archive.RemapOptions{
+		Rename: func(entry string) string { return entry },
+	})
+	if err != nil {
 		t.Fatalf("包み直せなかった: %v", err)
 	}
 
@@ -155,7 +162,7 @@ func TestRewrapDoesNotWriteBackslashDirEntriesAsFiles(t *testing.T) {
 	for _, f := range r.File {
 		names = append(names, f.Name)
 	}
-	if len(names) != 1 || names[0] != "data/MyWorld/level.dat" {
+	if len(names) != 1 || names[0] != "MyWorld/level.dat" {
 		t.Errorf("包み直しの中身が違う: %v", names)
 	}
 }
