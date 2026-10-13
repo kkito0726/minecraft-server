@@ -43,14 +43,22 @@ type ArchiveInfo struct {
 	TotalBytes int64
 	// HasLevelDat は level.dat のエントリが存在するか。
 	HasLevelDat bool
+	/*
+		TriggersWorldMigration は、復元後の最初の起動で Paper の
+		ワールド移行が走るかどうか。
+
+		バニラの配置で保管したアーカイブ（現在の形式）では真になる。
+		30 秒の足止めがあるので、復元の前に伝える必要がある。
+	*/
+	TriggersWorldMigration bool
 }
 
 /*
 ArchiveImport は取り込み途中のアーカイブ。保管先の一時ファイルを指す。
 
-外から持ち込まれた zip は、まだ data/ 配下に無いかもしれない。
-中身を見てから置き場所を決める必要があるため、「受け取る」と
-「確定する」を 2 段に分けてある。確定しなければ何も増えない。
+中身を見てから受け取るかを決める必要があるため（ワールドが無い、
+複数ある、名前が使えない）、「受け取る」と「確定する」を 2 段に
+分けてある。確定しなければ何も増えない。
 */
 type ArchiveImport interface {
 	// LevelDatEntries はアーカイブ内の level.dat のエントリ名。
@@ -60,11 +68,11 @@ type ArchiveImport interface {
 	TotalBytes() int64
 	// OpenEntry はエントリを展開せずに開く。版の読み取りに使う。
 	OpenEntry(ctx context.Context, entry string) (io.ReadCloser, error)
-	// Adopt は prefix を前置して保管先へ確定する。
+	// Adopt は受け取ったアーカイブを、中身を触らずに保管先へ確定する。
 	//
-	// prefix が空なら中身を触らずに置く。空でなければ data/ 配下へ
-	// 包み直してから置く。確定できた時点で一時ファイルは残らない。
-	Adopt(ctx context.Context, id backup.ID, prefix string) (StoredBackup, error)
+	// 復元が新旧どちらの形も受け付けるので、入口で包み直す必要がない。
+	// 確定できた時点で一時ファイルは残らない。
+	Adopt(ctx context.Context, id backup.ID) (StoredBackup, error)
 	// Discard は一時ファイルを捨てる。確定済みなら何もしない。
 	//
 	// 失敗しても呼び出し側にできることは無いので、エラーを返さない。
@@ -98,6 +106,12 @@ type BackupStore interface {
 	// 中身をメモリに載せない。ダウンロードは 200MB 規模になるため、
 	// 呼び出し側がそのまま流せる形で返す（REQ-415）。
 	Open(ctx context.Context, id backup.ID) (ArchiveFile, error)
+	// OpenVanilla は保管済みのアーカイブを、シングルプレイで読める形へ
+	// 包み直して開く。
+	//
+	// 保管しているアーカイブには手を触れない。シングルプレイ用を
+	// 別に保管はしない。同じワールドが二重に場所を取るため。
+	OpenVanilla(ctx context.Context, id backup.ID) (ArchiveFile, error)
 	// OpenLevelDat はアーカイブ内の level.dat を、展開せずに開く。
 	OpenLevelDat(ctx context.Context, id backup.ID) (io.ReadCloser, error)
 	// Stage は受け取ったバイト列を保管先の一時ファイルへ書き、中身を調べる。

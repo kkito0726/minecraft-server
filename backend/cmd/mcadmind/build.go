@@ -226,6 +226,9 @@ func buildUseCases(
 	backups, err := backupctl.New(backupctl.Config{
 		Runtime: in.runtime, Console: in.console, Store: in.backups,
 		Worlds: in.worlds, Config: config, Levels: in.levels, Operations: ops,
+		// 復元は別のワールドを開き直す操作なので、切り替えと同じ
+		// 版の照合が要る。一覧の出どころも同じものを使う。
+		Catalog: in.catalog,
 	})
 	if err != nil {
 		return deps{}, err

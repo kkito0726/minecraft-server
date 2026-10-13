@@ -114,10 +114,16 @@ func (s *Store) Create(
 // 中身の無いアーカイブが「バックアップが取れた」として残ることはない。
 // 一方 plugins や spigot.yml は環境によって存在しないため、飛ばす。
 func (s *Store) sourcesFor(level world.Name) []archive.Source {
+	// 保管する形はバニラの配置。置き場所の規則はドメインが持つ。
+	rename := func(entry string) string {
+		return backup.StoredEntryName(entry, level.String())
+	}
+
 	sources := []archive.Source{{
 		Root:         s.cfg.ProjectDir,
 		Path:         filepath.Join(dataDirName, level.String()),
 		ExcludeNames: backup.ExcludedNames(),
+		Rename:       rename,
 	}}
 
 	for _, extra := range backup.ExtraPaths() {
@@ -125,7 +131,9 @@ func (s *Store) sourcesFor(level world.Name) []archive.Source {
 		if _, err := os.Stat(filepath.Join(s.cfg.ProjectDir, rel)); err != nil {
 			continue
 		}
-		sources = append(sources, archive.Source{Root: s.cfg.ProjectDir, Path: rel})
+		sources = append(sources, archive.Source{
+			Root: s.cfg.ProjectDir, Path: rel, Rename: rename,
+		})
 	}
 	return sources
 }
@@ -186,6 +194,9 @@ func (s *Store) Inspect(ctx context.Context, id backup.ID) (port.ArchiveInfo, er
 		EntryRoots:  manifest.Roots,
 		TotalBytes:  manifest.TotalBytes,
 		HasLevelDat: manifest.LevelDatEntry != "",
+		// バニラの配置で保管してあるものは、復元後の起動で Paper が
+		// 自分の形へ移す。
+		TriggersWorldMigration: manifest.Layout == archive.LayoutWorldRoot,
 	}, nil
 }
 
@@ -216,40 +227,60 @@ func (s *Store) OpenLevelDat(ctx context.Context, id backup.ID) (io.ReadCloser, 
 func (s *Store) Extract(
 	ctx context.Context, id backup.ID, rewriteLevel string, progress port.Progress,
 ) error {
-	opts, err := s.rewriteOptions(ctx, id, rewriteLevel)
+	manifest, err := archive.Inspect(ctx, s.pathOf(id))
 	if err != nil {
 		return err
 	}
-	return archive.Extract(ctx, s.pathOf(id), s.cfg.ProjectDir, opts, archive.Progress(progress))
+
+	opts, err := rewriteOptions(manifest, id, rewriteLevel)
+	if err != nil {
+		return err
+	}
+	return archive.Extract(
+		ctx, s.pathOf(id), s.extractRoot(manifest.Layout), opts, archive.Progress(progress))
 }
 
-func (s *Store) rewriteOptions(
-	ctx context.Context, id backup.ID, rewriteLevel string,
+/*
+extractRoot は展開の基点を返す。
+
+エントリ名は書き換えず、基点だけを形に合わせる。
+
+	LayoutUnderData   エントリは data/... なのでプロジェクトディレクトリ
+	LayoutWorldRoot   エントリは <ワールド>/... なので data/
+
+こうすると、どちらの形でも最終的な置き場所は data/ 配下に揃う。
+*/
+func (s *Store) extractRoot(layout archive.Layout) string {
+	if layout == archive.LayoutWorldRoot {
+		return filepath.Join(s.cfg.ProjectDir, dataDirName)
+	}
+	return s.cfg.ProjectDir
+}
+
+func rewriteOptions(
+	manifest archive.Manifest, id backup.ID, rewriteLevel string,
 ) (archive.ExtractOptions, error) {
+	opts := archive.ExtractOptions{Layout: manifest.Layout}
 	if rewriteLevel == "" {
-		return archive.ExtractOptions{}, nil
+		return opts, nil
 	}
 
-	manifest, err := archive.Inspect(ctx, s.pathOf(id))
-	if err != nil {
-		return archive.ExtractOptions{}, err
-	}
 	if manifest.LevelDir == "" {
 		return archive.ExtractOptions{}, fmt.Errorf(
 			"%s に含まれるワールドの名前を判定できないため、復元先を書き換えられません", id)
 	}
-
 	if manifest.LevelDir == rewriteLevel {
-		return archive.ExtractOptions{}, nil
+		return opts, nil
 	}
 
-	// Manifest.LevelDir は data/ を除いたワールド名なので、
-	// エントリ名に合わせて data/ を付け直す。
-	// 末尾に / を付けるのは data/world が data/worldbackup に
-	// 誤って一致するのを防ぐため。
-	from := dataDirName + "/" + manifest.LevelDir + "/"
-	to := dataDirName + "/" + rewriteLevel + "/"
-	return archive.ExtractOptions{RewritePrefix: map[string]string{from: to}}, nil
+	// Manifest.LevelDir は接頭辞を除いたワールド名なので、エントリ名に
+	// 合わせて形の接頭辞を付け直す。
+	// 末尾に / を付けるのは world が worldbackup に誤って一致するのを防ぐため。
+	prefix := manifest.Layout.Prefix()
+	opts.RewritePrefix = map[string]string{
+		prefix + manifest.LevelDir + "/": prefix + rewriteLevel + "/",
+	}
+	return opts, nil
 }
 
 func (s *Store) pathOf(id backup.ID) string {

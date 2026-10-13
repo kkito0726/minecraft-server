@@ -8,6 +8,7 @@
 import type { ServiceImpl } from '@connectrpc/connect'
 
 import {
+  BackupDownloadFormat,
   BackupMode,
   BackupService,
   RestoreTarget,
@@ -196,19 +197,22 @@ export const backupImpl: Partial<ServiceImpl<typeof BackupService>> = {
    */
   createBackupDownload: (req) => {
     const backup = requireBackup(req.backupId)
+    const singleplayer = req.format === BackupDownloadFormat.SINGLEPLAYER
     const text = [
       'これはデモです。実際のバックアップではありません。',
       '',
       `実物の管理コンソールでは、ここで ${backup.id}（${backup.sizeBytes} バイト）の`,
       'zip が手元の PC に保存されます。',
       '',
+      ...formatNotice(singleplayer),
       'ダウンロードのリンクは、認証済みの操作で発行される 10 分間だけ有効な',
       '使い捨てのものです。押すたびに新しく発行されます。',
     ].join('\n')
 
+    const name = singleplayer ? `${backup.id}-singleplayer` : backup.id
     return {
       url: `data:text/plain;charset=utf-8,${encodeURIComponent(text)}`,
-      fileName: `${backup.id}.txt`,
+      fileName: `${name}.txt`,
     }
   },
 
@@ -229,6 +233,13 @@ export const backupImpl: Partial<ServiceImpl<typeof BackupService>> = {
       requiresConfirmation: verdict !== VersionVerdict.MATCH || mismatch,
       requiredBytes: backup.sizeBytes * 2n,
       availableBytes: AVAILABLE_BYTES,
+      // デモのバックアップはバニラの配置で保管されているものとして扱う。
+      // 実物では、復元後の最初の起動で Paper が置き場所を自分の形へ移す。
+      migrationNotice:
+        '復元後の最初の起動で、Paper がワールドの置き場所を自分の形へ移します。' +
+        'そのぶん起動に 30 秒ほど余分にかかります（実測 53〜58 秒、通常は 23〜28 秒）。' +
+        '移行は 1 回だけで、次の起動からは元の速さに戻ります。' +
+        'ワールドのデータは変わりません。',
     }
   },
 
@@ -286,4 +297,26 @@ export const backupImpl: Partial<ServiceImpl<typeof BackupService>> = {
     }
     return { deletedIds: targets.map((b) => b.id), freedBytes: freed }
   },
+}
+
+/**
+ * 形ごとの説明。
+ *
+ * サーバー用とシングルプレイ用は中身が違う。デモでも違いが伝わるように
+ * しておく。押し間違えて「起動しない」に戻るのを防ぐため。
+ */
+function formatNotice(singleplayer: boolean): string[] {
+  if (singleplayer) {
+    return [
+      'シングルプレイ用の形では、ワールドのフォルダが zip の直下に来ます。',
+      'マインクラフト本体の saves/ にそのまま展開できます。',
+      'plugins や config などサーバー専用のものは入りません。',
+      '',
+    ]
+  }
+  return [
+    'サーバーへ戻すための形では、data/<ワールド>/ のほかに',
+    'plugins・config・bukkit.yml・spigot.yml が入ります。',
+    '',
+  ]
 }

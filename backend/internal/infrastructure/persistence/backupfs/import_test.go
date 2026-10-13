@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -91,7 +92,7 @@ func TestStageThenAdopt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stored, err := staged.Adopt(context.Background(), id, "")
+	stored, err := staged.Adopt(context.Background(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,8 +110,14 @@ func TestStageThenAdopt(t *testing.T) {
 	}
 }
 
-// 配布ワールドの形は data/ 配下へ包み直してから置く。
-func TestAdoptRewrapsIntoData(t *testing.T) {
+/*
+ワールド名から始まる形も、中身を触らずそのまま置く。
+
+これは 2026-10 以降の保管形式そのもの。復元が両方の形を受けるように
+なったので、入口で data/ 配下へ包み直す必要が無くなった。包み直しは
+最大 200MB の全コピーで、Pi ではそれが効く。
+*/
+func TestAdoptPlacesWorldRootArchiveAsIs(t *testing.T) {
 	t.Parallel()
 
 	store, dir := newImportStore(t)
@@ -126,19 +133,23 @@ func TestAdoptRewrapsIntoData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := staged.Adopt(context.Background(), id, "data/"); err != nil {
+	if _, err := staged.Adopt(context.Background(), id); err != nil {
 		t.Fatal(err)
 	}
 
 	info, err := store.Inspect(context.Background(), id)
 	if err != nil {
-		t.Fatalf("包み直した結果を読めない: %v", err)
+		t.Fatalf("置いた結果を読めない: %v", err)
 	}
 	if info.Level != "MyWorld" {
 		t.Errorf("ワールド名が %q", info.Level)
 	}
+	// そのまま置いたのだから、エントリ名も変わっていない。
+	if got := archiveNames(t, filepath.Join(dir, id.String())); !slices.Equal(got, []string{"MyWorld/level.dat"}) {
+		t.Errorf("エントリが %v。包み直されている", got)
+	}
 
-	// 包み直しに使った中間ファイルも残らない。
+	// 中間ファイルは作らないので、保管先はアーカイブ 1 件だけ。
 	left, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -171,7 +182,7 @@ func TestAdoptDoesNotOverwrite(t *testing.T) {
 	}
 	defer staged.Discard()
 
-	if _, err := staged.Adopt(context.Background(), id, ""); !errors.Is(err, os.ErrExist) {
+	if _, err := staged.Adopt(context.Background(), id); !errors.Is(err, os.ErrExist) {
 		t.Fatalf("上書きされた、または別のエラー: %v", err)
 	}
 	body, err := os.ReadFile(filepath.Join(dir, id.String()))

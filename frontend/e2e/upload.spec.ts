@@ -13,10 +13,12 @@ const LEVEL_DAT = readFileSync(
 /**
  * 外から持ち込んだ zip の取り込み（REQ-117）。
  *
- * 配布されているワールドは <名前>/level.dat の形をしている。展開側の
- * 制限（data/ 配下のみ）を緩めずに受け入れるため、取り込みの時点で
- * 包み直す。ここが壊れると「持ち込めない」か「data/ の外に書ける」の
- * どちらかになり、後者は致命的になる。
+ * 配布されているワールドは <名前>/level.dat の形をしている。これは
+ * 2026-10 以降の保管形式そのものなので、中身を触らずそのまま置ける。
+ * 復元が data/<名前>/... の形（それより前に取ったもの）も受け付ける。
+ *
+ * ここが壊れると「持ち込めない」か「data/ の外に書ける」のどちらかに
+ * なり、後者は致命的になる。
  */
 test.describe('zip の取り込み', () => {
   test('配布ワールドの形を取り込んで一覧に出す', async ({ page }) => {
@@ -33,7 +35,6 @@ test.describe('zip の取り込み', () => {
     await page.getByRole('button', { name: '取り込む', exact: true }).click()
 
     await expect(page.getByText(/取り込みました/)).toBeVisible()
-    await expect(page.getByText(/包み直しました/)).toBeVisible()
 
     // 一覧に出て、ワールド名が読めている。
     const row = page.getByRole('row').filter({ hasText: 'MyWorld' })

@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import { ListBackupsResponseSchema } from '../../gen/mcadmin/v1/backup_pb'
+import { BackupDownloadFormat, ListBackupsResponseSchema } from '../../gen/mcadmin/v1/backup_pb'
 import { BackupTable } from './BackupTable'
 
 type Overrides = Extract<
@@ -107,7 +107,27 @@ describe('BackupTable', () => {
     const { onDownload } = renderTable()
 
     await userEvent.click(screen.getAllByRole('button', { name: 'ダウンロード' })[0]!)
-    expect(onDownload).toHaveBeenCalledWith('backup-26.2-world-20260910-160000.zip')
+    expect(onDownload).toHaveBeenCalledWith(
+      'backup-26.2-world-20260910-160000.zip',
+      BackupDownloadFormat.SERVER,
+    )
+  })
+
+  /**
+   * シングルプレイ用は形が違う。
+   *
+   * ワールドのフォルダが zip の直下に来て、Paper がディメンション側に
+   * 置いている設定がバニラの見る場所へ移る。サーバー用をそのまま saves/ に
+   * 置いても、ワールド一覧に出るだけで読み込めない。
+   */
+  it('シングルプレイ用の形でもダウンロードできる', async () => {
+    const { onDownload } = renderTable()
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'シングルプレイ用' })[0]!)
+    expect(onDownload).toHaveBeenCalledWith(
+      'backup-26.2-world-20260910-160000.zip',
+      BackupDownloadFormat.SINGLEPLAYER,
+    )
   })
 
   /**

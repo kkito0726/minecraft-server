@@ -22,6 +22,25 @@ type Source struct {
 	// ExcludeNames は除外するファイル名（ディレクトリ部分を含まない）。
 	// session.lock は起動時に作り直されるため持ち込まない。
 	ExcludeNames []string
+	/*
+		Rename はエントリ名を変換する。nil なら Root からの相対パスをそのまま使う。
+
+		空を返したエントリは含めない。保管する形はディスク上の配置と
+		違うため（バニラの配置にしてある）、作る時点で変換する。取得の
+		あとで包み直すと、200MB を 2 度書くことになる。
+
+		置き場所の規則そのものはドメインが持つ。この層は zip を書く
+		手順だけを受け持つ。
+	*/
+	Rename func(entry string) string
+}
+
+// rename はエントリ名を変換する。規則が無ければそのまま返す。
+func (s Source) rename(entry string) string {
+	if s.Rename == nil {
+		return entry
+	}
+	return s.Rename(entry)
 }
 
 func (s Source) excludes(name string) bool {
@@ -112,7 +131,11 @@ func addSource(
 	}
 
 	if !info.IsDir() {
-		return addFile(ctx, zw, base, src.Path, buf, done, progress)
+		name := src.rename(filepath.ToSlash(src.Path))
+		if name == "" {
+			return nil
+		}
+		return addFile(ctx, zw, base, name, buf, done, progress)
 	}
 
 	return filepath.Walk(base, func(p string, fi os.FileInfo, walkErr error) error {
@@ -140,7 +163,11 @@ func addSource(
 		if err != nil {
 			return fmt.Errorf("相対パスを解決できません (%s): %w", p, err)
 		}
-		return addFile(ctx, zw, p, filepath.ToSlash(rel), buf, done, progress)
+		name := src.rename(filepath.ToSlash(rel))
+		if name == "" {
+			return nil
+		}
+		return addFile(ctx, zw, p, name, buf, done, progress)
 	})
 }
 
@@ -159,7 +186,13 @@ func addEmptyDir(zw *zip.Writer, src Source, dirPath string) error {
 	if err != nil {
 		return fmt.Errorf("相対パスを解決できません (%s): %w", dirPath, err)
 	}
-	if _, err := zw.Create(filepath.ToSlash(rel) + "/"); err != nil {
+	// 変換は末尾の / を付けない名前で行う。規則は「ファイルかどうか」を
+	// 見分けないので、/ 付きを渡すと一致しなくなる。
+	name := src.rename(filepath.ToSlash(rel))
+	if name == "" {
+		return nil
+	}
+	if _, err := zw.Create(name + "/"); err != nil {
 		return fmt.Errorf("ディレクトリのエントリを作れません (%s): %w", rel, err)
 	}
 	return nil

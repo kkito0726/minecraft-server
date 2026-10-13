@@ -6,6 +6,7 @@ import (
 
 	"github.com/kkito0726/minecraft-server/backend/internal/application/operations"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/port"
+	"github.com/kkito0726/minecraft-server/backend/internal/application/versionsync"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/operation"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/shared"
@@ -43,6 +44,14 @@ type Preflight struct {
 	Decision          backup.RestoreDecision
 	RequiredBytes     int64
 	AvailableBytes    int64
+	/*
+		MigrationNotice は復元後の最初の起動について伝えること。空なら何もない。
+
+		承諾は求めない。Warnings と違って「どうするか決める」ための情報では
+		なく、「なぜ起動が遅いのか」を知らせるためのもの。黙って 30 秒
+		待たせると「復元が固まった」と見える。
+	*/
+	MigrationNotice string
 }
 
 // restoreSteps は復元の手順。画面にそのまま出る。
@@ -94,15 +103,25 @@ func (u *UseCase) preflight(ctx context.Context, id backup.ID, set settings) (Pr
 			ArchiveLevel:    archived.level,
 			EntryRoots:      archived.roots,
 			Version:         archived.version,
+			Migrates:        archived.migrates,
 		},
 		CurrentLevel:      set.level,
 		CurrentVersion:    current,
 		ConfiguredVersion: set.version,
 		Decision: backup.DecideRestore(
 			archived.version, current, archived.level, set.level.String()),
-		RequiredBytes:  int64(float64(info.TotalBytes) * restoreMargin),
-		AvailableBytes: available,
+		RequiredBytes:   int64(float64(info.TotalBytes) * restoreMargin),
+		AvailableBytes:  available,
+		MigrationNotice: migrationNotice(archived.migrates),
 	}, nil
+}
+
+// migrationNotice は移行が走るときだけ文を返す。
+func migrationNotice(migrates bool) string {
+	if !migrates {
+		return ""
+	}
+	return backup.WorldMigrationNotice()
 }
 
 // Restore はバックアップから復元する。
@@ -135,11 +154,37 @@ func (u *UseCase) Restore(ctx context.Context, req RestoreRequest) (operations.H
 	if err := checkConfirmation(req, pre, target); err != nil {
 		return operations.Handle{}, err
 	}
+	// 版で起動できないことが分かっているなら、止める前に断る。
+	// 止めてから気づくと、落ちたまま復旧に手作業が要る。
+	if err := u.checkRestoreVersion(ctx, pre); err != nil {
+		return operations.Handle{}, err
+	}
 
 	return u.cfg.Operations.Start(ctx, operation.KindBackupRestore, restoreSteps,
 		func(ctx context.Context, r operations.Reporter) error {
 			return u.runRestore(ctx, r, req, id, target)
 		})
+}
+
+/*
+checkRestoreVersion は復元したあとに起動できるかを、止める前に確かめる。
+
+復元は「別のワールドを開き直す」操作なので、切り替えと同じ規則が要る。
+復元後は MC_VERSION をアーカイブの版に合わせるため、Paper がその版を
+配っていなければサーバーが起動しない。
+
+版が読めないアーカイブは通す。読めないこと自体は DecideRestore が
+警告して承諾を求めている。ここで二重に止める理由はない。
+
+スナップショットで開かれたワールドも通す。MC_VERSION には書かないので
+（versionsync.Follow が触らない）、今の版のままで起動する。
+*/
+func (u *UseCase) checkRestoreVersion(ctx context.Context, pre Preflight) error {
+	v := pre.Backup.Version
+	if !v.Readable() || v.Snapshot() || v.Name() == "" {
+		return nil
+	}
+	return versionsync.CheckAvailable(ctx, u.cfg.Catalog, pre.ConfiguredVersion, v.Name())
 }
 
 // resolveTarget は復元先のワールド名を決める。
@@ -207,7 +252,7 @@ func (u *UseCase) runRestore(
 			port.ErrInsufficientSpace, pre.RequiredBytes, pre.AvailableBytes)
 	}
 
-	return u.applyRestore(ctx, r, req, id, target, set)
+	return u.applyRestore(ctx, r, req, id, target, set, pre.MigrationNotice)
 }
 
 // applyRestore は実際にディスクを触る部分。
@@ -218,6 +263,8 @@ func (u *UseCase) applyRestore(
 	id backup.ID,
 	target world.Name,
 	set settings,
+	// migrationNotice は起動が遅くなる理由。空なら何も言わない。
+	migrationNotice string,
 ) error {
 	// 3. 停止。LEVEL は起動時に一度しか読まれないため、
 	//    稼働したままでは設定の変更が反映されない。
@@ -254,21 +301,50 @@ func (u *UseCase) applyRestore(
 		return err
 	}
 
-	// 6. 設定。復元先が現在の MC_LEVEL と違うときだけ書き換える。
+	return u.finishRestore(ctx, r, finishRestoreArgs{
+		target:          target,
+		set:             set,
+		quarantine:      quarantine,
+		wasRunning:      wasRunning,
+		migrationNotice: migrationNotice,
+	})
+}
+
+// finishRestoreArgs は展開のあとの手順に要るもの。
+type finishRestoreArgs struct {
+	target          world.Name
+	set             settings
+	quarantine      world.Quarantine
+	wasRunning      bool
+	migrationNotice string
+}
+
+// finishRestore は「設定 → 起動」を行う。
+//
+// 設定で失敗したら巻き戻す。起動で失敗しても巻き戻さない。展開は
+// 終わっているので、戻すと復元した内容が失われる。
+func (u *UseCase) finishRestore(
+	ctx context.Context, r operations.Reporter, a finishRestoreArgs,
+) error {
+	// 6. 設定。復元先の MC_LEVEL と、ワールドに合わせた MC_VERSION。
 	if err := r.Step(); err != nil {
 		return err
 	}
-	if err := u.switchLevel(ctx, r, target, set); err != nil {
-		u.rollback(ctx, r, target, quarantine, wasRunning)
+	if err := u.applyRestoredSettings(ctx, r, a.target, a.set); err != nil {
+		u.rollback(ctx, r, a.target, a.quarantine, a.wasRunning)
 		return err
 	}
 
-	// 7. 起動。ここで失敗しても巻き戻さない。
-	//    展開は終わっているので、戻すと復元した内容が失われる。
+	// 7. 起動。
 	if err := r.Step(); err != nil {
 		return err
 	}
-	return u.startAfterRestore(ctx, r, wasRunning)
+	// 移行が走るなら、待たせる理由を記録に残す。これが無いと
+	// 進捗が止まって見えて「固まった」と判断される。
+	if a.migrationNotice != "" {
+		r.Logf(operation.LevelInfo, "%s", a.migrationNotice)
+	}
+	return u.startAfterRestore(ctx, r, a.wasRunning)
 }
 
 // quarantine は復元先のワールドを退避する。無ければ何もしない。
@@ -379,23 +455,63 @@ func (u *UseCase) startAfterRollback(
 	}
 }
 
-func (u *UseCase) switchLevel(
+/*
+applyRestoredSettings は復元したワールドに .env を合わせる。
+
+書くのは 2 つ。稼働するワールド（MC_LEVEL）と、サーバーの版
+（MC_VERSION）。
+
+版はアーカイブの名前ではなく、展開し終えたワールドの level.dat から
+読む。名前は人が付け替えられるので、実体を見る。
+
+ワールド名が変わらない復元でも版は合わせる。同じ名前のワールドを
+新しい版のバックアップで置き換える場合がこれで、ここを飛ばすと
+版だけ古いまま残り、復元は成功したのにサーバーが起動しない。
+*/
+func (u *UseCase) applyRestoredSettings(
 	ctx context.Context, r operations.Reporter, target world.Name, set settings,
 ) error {
-	if target == set.level {
-		r.Logf(operation.LevelInfo, "稼働するワールドは %s のままです", target)
-		return nil
-	}
-
 	snapshot, err := u.cfg.Config.Load(ctx)
 	if err != nil {
 		return err
 	}
-	if err := u.cfg.Config.Save(ctx, snapshot.With(keyLevel, target.String())); err != nil {
-		return err
+
+	next := snapshot
+	changed := false
+
+	if target == set.level {
+		r.Logf(operation.LevelInfo, "稼働するワールドは %s のままです", target)
+	} else {
+		next = next.With(keyLevel, target.String())
+		changed = true
+		r.Logf(operation.LevelInfo, "稼働するワールドを %s に変更しました", target)
 	}
-	r.Logf(operation.LevelInfo, "稼働するワールドを %s に変更しました", target)
-	return nil
+
+	next, note := u.followRestoredVersion(ctx, target, snapshot, next)
+	if note != "" {
+		changed = true
+		r.Logf(operation.LevelWarn, "%s", note)
+	}
+
+	// 変わっていなければ書かない。書くたびに .env の更新時刻が動くと、
+	// 人が編集したのかどうかの手がかりが消える。
+	if !changed {
+		return nil
+	}
+	return u.cfg.Config.Save(ctx, next)
+}
+
+// followRestoredVersion は復元したワールドの level.dat から版を読んで合わせる。
+//
+// Levels を持たない構成では何もしない。版が分からないまま書くと、
+// 動いていたサーバーが起動しなくなる。
+func (u *UseCase) followRestoredVersion(
+	ctx context.Context, target world.Name, current, next port.ConfigSnapshot,
+) (port.ConfigSnapshot, string) {
+	if u.cfg.Levels == nil {
+		return next, ""
+	}
+	return versionsync.Follow(current, next, u.cfg.Levels.ReadSettings(ctx, target))
 }
 
 // startAfterRestore は復元後にサーバーを起こす。

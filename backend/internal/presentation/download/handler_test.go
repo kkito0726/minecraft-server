@@ -26,6 +26,10 @@ type fakeOpener struct {
 	err  error
 	// opened は開かれた ID。券と結び付いた ID が渡ることを確かめる。
 	opened string
+	// singleplayerBody はシングルプレイ用に開いたときの中身。
+	singleplayerBody string
+	// usedSingleplayer はシングルプレイ用の経路を通ったか。
+	usedSingleplayer bool
 }
 
 func (f *fakeOpener) OpenForDownload(_ context.Context, backupID string) (port.ArchiveFile, error) {
@@ -36,6 +40,23 @@ func (f *fakeOpener) OpenForDownload(_ context.Context, backupID string) (port.A
 	return port.ArchiveFile{
 		Body: fakeArchive{bytes.NewReader([]byte(f.body))},
 		Info: port.StoredBackup{SizeBytes: int64(len(f.body)), CreatedAt: time.Unix(1_700_000_000, 0)},
+	}, nil
+}
+
+func (f *fakeOpener) OpenForSingleplayer(
+	_ context.Context, backupID string,
+) (port.ArchiveFile, error) {
+	f.opened = backupID
+	f.usedSingleplayer = true
+	if f.err != nil {
+		return port.ArchiveFile{}, f.err
+	}
+	return port.ArchiveFile{
+		Body: fakeArchive{bytes.NewReader([]byte(f.singleplayerBody))},
+		Info: port.StoredBackup{
+			SizeBytes: int64(len(f.singleplayerBody)),
+			CreatedAt: time.Unix(1_700_000_000, 0),
+		},
 	}, nil
 }
 
@@ -63,7 +84,7 @@ func TestServesArchiveForValidTicket(t *testing.T) {
 
 	opener := &fakeOpener{body: archiveBody}
 	h, tickets := newHandler(t, opener)
-	url, _, err := tickets.Issue("backup-26.2-world-20260916-0300.zip")
+	url, _, err := tickets.Issue("backup-26.2-world-20260916-0300.zip", FormatServer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +118,7 @@ func TestSupportsRangeRequests(t *testing.T) {
 	t.Parallel()
 
 	h, tickets := newHandler(t, &fakeOpener{body: archiveBody})
-	url, _, err := tickets.Issue("backup.zip")
+	url, _, err := tickets.Issue("backup.zip", FormatServer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +154,7 @@ func TestRejectsNonGet(t *testing.T) {
 	t.Parallel()
 
 	h, tickets := newHandler(t, &fakeOpener{body: archiveBody})
-	url, _, err := tickets.Issue("backup.zip")
+	url, _, err := tickets.Issue("backup.zip", FormatServer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +174,7 @@ func TestMissingArchiveIsNotFound(t *testing.T) {
 
 	opener := &fakeOpener{err: fmt.Errorf("%w: backup.zip", backup.ErrNotFound)}
 	h, tickets := newHandler(t, opener)
-	url, _, err := tickets.Issue("backup.zip")
+	url, _, err := tickets.Issue("backup.zip", FormatServer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +192,7 @@ func TestUnexpectedFailureIsHidden(t *testing.T) {
 
 	opener := &fakeOpener{err: errors.New("/home/pi/minecraft-server/backups が読めない")}
 	h, tickets := newHandler(t, opener)
-	url, _, err := tickets.Issue("backup.zip")
+	url, _, err := tickets.Issue("backup.zip", FormatServer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,5 +204,98 @@ func TestUnexpectedFailureIsHidden(t *testing.T) {
 	}
 	if body, _ := io.ReadAll(rec.Body); bytes.Contains(body, []byte("/home/pi")) {
 		t.Errorf("内部のパスが漏れている: %s", body)
+	}
+}
+
+/*
+券にシングルプレイ用と書かれていれば、包み直したものを渡す。
+
+形は券に載せてある。URL の問い合わせ文字列で選べるようにすると、
+券を手にした相手が形を選べることになる。
+*/
+func TestServeHTTPUsesSingleplayerFormatFromTicket(t *testing.T) {
+	t.Parallel()
+
+	opener := &fakeOpener{
+		body:             "サーバー用の中身",
+		singleplayerBody: "シングルプレイ用の中身",
+	}
+	handler, tickets := newHandler(t, opener)
+
+	url, _, err := tickets.Issue("backup-26.3-main-20261011-181445.zip", FormatSingleplayer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := get(t, handler, url, nil)
+	if res.Code != http.StatusOK {
+		t.Fatalf("状態が %d", res.Code)
+	}
+	if !opener.usedSingleplayer {
+		t.Error("シングルプレイ用の経路を通っていない")
+	}
+	if got := res.Body.String(); got != "シングルプレイ用の中身" {
+		t.Errorf("中身が %q", got)
+	}
+}
+
+// 保存される名前で、サーバー用と見分けられること。
+func TestServeHTTPNamesSingleplayerFileDistinctly(t *testing.T) {
+	t.Parallel()
+
+	opener := &fakeOpener{singleplayerBody: "x"}
+	handler, tickets := newHandler(t, opener)
+
+	url, _, err := tickets.Issue("backup-26.3-main-20261011-181445.zip", FormatSingleplayer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := get(t, handler, url, nil)
+	const want = `attachment; filename="backup-26.3-main-20261011-181445-singleplayer.zip"`
+	if got := res.Header().Get("Content-Disposition"); got != want {
+		t.Errorf("Content-Disposition が %q。%q のはず", got, want)
+	}
+}
+
+// 形が指定されていない券はサーバー用。既存の画面がそのまま動く。
+func TestServeHTTPDefaultsToServerFormat(t *testing.T) {
+	t.Parallel()
+
+	opener := &fakeOpener{body: "サーバー用の中身", singleplayerBody: "別物"}
+	handler, tickets := newHandler(t, opener)
+
+	url, _, err := tickets.Issue("backup-26.3-main-20261011-181445.zip", FormatServer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := get(t, handler, url, nil)
+	if opener.usedSingleplayer {
+		t.Error("サーバー用のはずがシングルプレイ用の経路を通った")
+	}
+	if got := res.Body.String(); got != "サーバー用の中身" {
+		t.Errorf("中身が %q", got)
+	}
+}
+
+// シングルプレイ用も続きから取り直せること。包み直す経路でも
+// Range を落としてはならない（REQ-135）。
+func TestSupportsRangeRequestsForSingleplayer(t *testing.T) {
+	t.Parallel()
+
+	h, tickets := newHandler(t, &fakeOpener{singleplayerBody: archiveBody})
+	url, _, err := tickets.Issue("backup.zip", FormatSingleplayer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := get(t, h, url, map[string]string{"Range": "bytes=4-"})
+
+	if rec.Code != http.StatusPartialContent {
+		t.Fatalf("status = %d。206 のはず", rec.Code)
+	}
+	if got, want := rec.Body.String(), archiveBody[4:]; got != want {
+		t.Errorf("続きが %q。%q のはず", got, want)
 	}
 }

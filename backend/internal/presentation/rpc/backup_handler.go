@@ -11,6 +11,7 @@ import (
 	"github.com/kkito0726/minecraft-server/backend/gen/mcadmin/v1/mcadminv1connect"
 	"github.com/kkito0726/minecraft-server/backend/internal/application/usecase/backupctl"
 	"github.com/kkito0726/minecraft-server/backend/internal/domain/backup"
+	"github.com/kkito0726/minecraft-server/backend/internal/presentation/download"
 )
 
 // DownloadIssuer はダウンロード用の受取券を発行する。
@@ -18,7 +19,7 @@ import (
 // ブラウザのダウンロードはリンクを辿るだけで Authorization ヘッダーを
 // 付けられない。認証はこの RPC で済ませ、受け取りの口には短命の券を渡す。
 type DownloadIssuer interface {
-	Issue(backupID string) (url string, expiresAt time.Time, err error)
+	Issue(backupID string, format download.Format) (url string, expiresAt time.Time, err error)
 }
 
 // BackupHandler は BackupService のハンドラ。
@@ -47,9 +48,15 @@ func (h *BackupHandler) CreateBackupDownload(
 		return nil, toConnectError(err)
 	}
 
-	url, expiresAt, err := h.downloads.Issue(fileName)
+	format := downloadFormat(req.Msg.GetFormat())
+	url, expiresAt, err := h.downloads.Issue(fileName, format)
 	if err != nil {
 		return nil, toConnectError(err)
+	}
+
+	// 画面に出す名前は、実際に保存される名前と同じにする。
+	if format == download.FormatSingleplayer {
+		fileName = backup.SingleplayerFileName(fileName)
 	}
 
 	return connect.NewResponse(&mcadminv1.CreateBackupDownloadResponse{
@@ -57,6 +64,16 @@ func (h *BackupHandler) CreateBackupDownload(
 		ExpiresAt: timestamppb.New(expiresAt),
 		FileName:  fileName,
 	}), nil
+}
+
+// downloadFormat は要求の形を内部の表現へ移す。
+//
+// 未指定はサーバー用にする。形を足す前の画面がそのまま動くため。
+func downloadFormat(f mcadminv1.BackupDownloadFormat) download.Format {
+	if f == mcadminv1.BackupDownloadFormat_BACKUP_DOWNLOAD_FORMAT_SINGLEPLAYER {
+		return download.FormatSingleplayer
+	}
+	return download.FormatServer
 }
 
 // ListBackups は保管済みのバックアップを新しい順で返す。
@@ -177,6 +194,7 @@ func (h *BackupHandler) PreflightRestore(
 		RequiresConfirmation: pre.Decision.RequiresConfirmation,
 		RequiredBytes:        pre.RequiredBytes,
 		AvailableBytes:       pre.AvailableBytes,
+		MigrationNotice:      pre.MigrationNotice,
 	}), nil
 }
 

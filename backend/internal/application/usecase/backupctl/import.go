@@ -16,11 +16,17 @@ const importNote = "imported"
 // unknownVersion はアーカイブの版を読めなかったときのファイル名用の値。
 const unknownVersion = "unknown"
 
-// rewrapFactor は包み直しに要る一時的な容量の倍率。
-//
-// 包み直しは元のアーカイブを読みながら新しいアーカイブを書くので、
-// 確定するまでの間だけ 2 つ分の場所が要る。
-const rewrapFactor = 2
+/*
+stagingFactor は取り込みに要る一時的な容量の倍率。
+
+受け取ったバイト列を一時ファイルへ書き、確定は rename で済ませるので、
+要るのは 1 つ分だけ。
+
+以前は 2 だった。ワールド名から始まる形を data/ 配下へ包み直していて、
+確定するまでの間だけ 2 つ分の場所が必要だったため。復元が両方の形を
+受けるようになり包み直しをやめたので、1 で足りる。
+*/
+const stagingFactor = 1
 
 // ImportResult は取り込みの結果。
 type ImportResult struct {
@@ -28,8 +34,6 @@ type ImportResult struct {
 	Level     string
 	Version   shared.WorldVersion
 	SizeBytes int64
-	// Rewrapped は data/ 配下へ包み直したかどうか。
-	Rewrapped bool
 }
 
 /*
@@ -71,7 +75,7 @@ func (u *UseCase) Import(
 		return ImportResult{}, err
 	}
 
-	stored, err := staged.Adopt(ctx, id, plan.Prefix)
+	stored, err := staged.Adopt(ctx, id)
 	if err != nil {
 		return ImportResult{}, err
 	}
@@ -81,7 +85,6 @@ func (u *UseCase) Import(
 		Level:     plan.Level,
 		Version:   version,
 		SizeBytes: stored.SizeBytes,
-		Rewrapped: plan.NeedsRewrap(),
 	}, nil
 }
 
@@ -98,14 +101,13 @@ func (u *UseCase) importLimit(ctx context.Context, declaredSize int64) (int64, e
 		return 0, err
 	}
 
-	// 包み直しの可能性があるので、確定までに 2 つ分を見込む。
-	budget := available / rewrapFactor
+	budget := available / stagingFactor
 	if budget <= 0 {
 		return 0, fmt.Errorf("%w（空き %d バイト）", port.ErrInsufficientSpace, available)
 	}
 	if declaredSize > 0 && declaredSize > budget {
 		return 0, fmt.Errorf("%w（必要 %d バイト、空き %d バイト）",
-			port.ErrInsufficientSpace, declaredSize*rewrapFactor, available)
+			port.ErrInsufficientSpace, declaredSize*stagingFactor, available)
 	}
 	return budget, nil
 }

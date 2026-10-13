@@ -20,10 +20,9 @@ func TestPlanImport(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		entries    []string
-		wantLevel  string
-		wantPrefix string
+		name      string
+		entries   []string
+		wantLevel string
 	}{
 		{
 			name:      "コンソールが作った形はそのまま置ける",
@@ -36,16 +35,15 @@ func TestPlanImport(t *testing.T) {
 			wantLevel: "creative",
 		},
 		{
-			name:       "配布ワールドの形は data/ 配下へ包み直す",
-			entries:    []string{"MyWorld/level.dat"},
-			wantLevel:  "MyWorld",
-			wantPrefix: "data/",
+			// 2026-10 以降の保管形式そのもの。包み直しは要らない。
+			name:      "ワールド名から始まる形もそのまま置ける",
+			entries:   []string{"MyWorld/level.dat"},
+			wantLevel: "MyWorld",
 		},
 		{
-			name:       "深い階層を持つ配布ワールドも包み直せる",
-			entries:    []string{"SkyBlock/level.dat"},
-			wantLevel:  "SkyBlock",
-			wantPrefix: "data/",
+			name:      "深い階層を持つ配布ワールドもそのまま置ける",
+			entries:   []string{"SkyBlock/level.dat"},
+			wantLevel: "SkyBlock",
 		},
 	}
 
@@ -59,9 +57,6 @@ func TestPlanImport(t *testing.T) {
 			}
 			if got.Level != tt.wantLevel {
 				t.Errorf("ワールド名が %q（期待 %q）", got.Level, tt.wantLevel)
-			}
-			if got.Prefix != tt.wantPrefix {
-				t.Errorf("接頭辞が %q（期待 %q）", got.Prefix, tt.wantPrefix)
 			}
 		})
 	}

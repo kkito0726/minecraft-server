@@ -195,6 +195,67 @@ func (RestoreTarget) EnumDescriptor() ([]byte, []int) {
 	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{2}
 }
 
+// BackupDownloadFormat は受け取る zip の形。
+//
+// 保管しているのはサーバー用の形だけで、シングルプレイ用は渡すときに
+// その場で包み直す。2 つ保管すると同じワールドが二重に場所を取る。
+type BackupDownloadFormat int32
+
+const (
+	// 未指定はサーバー用。既存の画面との互換のため。
+	BackupDownloadFormat_BACKUP_DOWNLOAD_FORMAT_UNSPECIFIED BackupDownloadFormat = 0
+	// サーバーへ戻すための形。data/<ワールド>/ と data/plugins などを含む。
+	BackupDownloadFormat_BACKUP_DOWNLOAD_FORMAT_SERVER BackupDownloadFormat = 1
+	// シングルプレイの saves/ へ置くための形。
+	//
+	// ワールドのディレクトリが zip の直下に来る。Paper がディメンション側に
+	// 置いているゲームルール・天候・生成設定を、バニラが見るワールド直下へ
+	// 移す。移さないと、ワールド一覧には出るのに
+	// 「Overworld settings missing」で読み込みが止まる。
+	BackupDownloadFormat_BACKUP_DOWNLOAD_FORMAT_SINGLEPLAYER BackupDownloadFormat = 2
+)
+
+// Enum value maps for BackupDownloadFormat.
+var (
+	BackupDownloadFormat_name = map[int32]string{
+		0: "BACKUP_DOWNLOAD_FORMAT_UNSPECIFIED",
+		1: "BACKUP_DOWNLOAD_FORMAT_SERVER",
+		2: "BACKUP_DOWNLOAD_FORMAT_SINGLEPLAYER",
+	}
+	BackupDownloadFormat_value = map[string]int32{
+		"BACKUP_DOWNLOAD_FORMAT_UNSPECIFIED":  0,
+		"BACKUP_DOWNLOAD_FORMAT_SERVER":       1,
+		"BACKUP_DOWNLOAD_FORMAT_SINGLEPLAYER": 2,
+	}
+)
+
+func (x BackupDownloadFormat) Enum() *BackupDownloadFormat {
+	p := new(BackupDownloadFormat)
+	*p = x
+	return p
+}
+
+func (x BackupDownloadFormat) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (BackupDownloadFormat) Descriptor() protoreflect.EnumDescriptor {
+	return file_mcadmin_v1_backup_proto_enumTypes[3].Descriptor()
+}
+
+func (BackupDownloadFormat) Type() protoreflect.EnumType {
+	return &file_mcadmin_v1_backup_proto_enumTypes[3]
+}
+
+func (x BackupDownloadFormat) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use BackupDownloadFormat.Descriptor instead.
+func (BackupDownloadFormat) EnumDescriptor() ([]byte, []int) {
+	return file_mcadmin_v1_backup_proto_rawDescGZIP(), []int{3}
+}
+
 // Backup は保管済みのアーカイブ 1 つ。
 type Backup struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -641,8 +702,15 @@ type PreflightRestoreResponse struct {
 	// 展開に必要な容量と、実際の空き容量。
 	RequiredBytes  int64 `protobuf:"varint,9,opt,name=required_bytes,json=requiredBytes,proto3" json:"required_bytes,omitempty"`
 	AvailableBytes int64 `protobuf:"varint,10,opt,name=available_bytes,json=availableBytes,proto3" json:"available_bytes,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 復元後の最初の起動について伝えること。空なら何もない。
+	//
+	// バニラの配置で保管したアーカイブを復元すると、次の起動で Paper が
+	// 置き場所を自分の形へ移すため 30 秒ほど余分にかかる。warnings と違い
+	// 承諾は求めない（どうするか決めるための情報ではなく、なぜ遅いかを
+	// 知らせるもの）。
+	MigrationNotice string `protobuf:"bytes,11,opt,name=migration_notice,json=migrationNotice,proto3" json:"migration_notice,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *PreflightRestoreResponse) Reset() {
@@ -743,6 +811,13 @@ func (x *PreflightRestoreResponse) GetAvailableBytes() int64 {
 		return x.AvailableBytes
 	}
 	return 0
+}
+
+func (x *PreflightRestoreResponse) GetMigrationNotice() string {
+	if x != nil {
+		return x.MigrationNotice
+	}
+	return ""
 }
 
 type RestoreBackupRequest struct {
@@ -863,6 +938,7 @@ func (x *RestoreBackupResponse) GetOperation() *Operation {
 type CreateBackupDownloadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BackupId      string                 `protobuf:"bytes,1,opt,name=backup_id,json=backupId,proto3" json:"backup_id,omitempty"`
+	Format        BackupDownloadFormat   `protobuf:"varint,2,opt,name=format,proto3,enum=mcadmin.v1.BackupDownloadFormat" json:"format,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -902,6 +978,13 @@ func (x *CreateBackupDownloadRequest) GetBackupId() string {
 		return x.BackupId
 	}
 	return ""
+}
+
+func (x *CreateBackupDownloadRequest) GetFormat() BackupDownloadFormat {
+	if x != nil {
+		return x.Format
+	}
+	return BackupDownloadFormat_BACKUP_DOWNLOAD_FORMAT_UNSPECIFIED
 }
 
 type CreateBackupDownloadResponse struct {
@@ -1324,7 +1407,7 @@ const file_mcadmin_v1_backup_proto_rawDesc = "" +
 	"\vfreed_bytes\x18\x01 \x01(\x03R\n" +
 	"freedBytes\"6\n" +
 	"\x17PreflightRestoreRequest\x12\x1b\n" +
-	"\tbackup_id\x18\x01 \x01(\tR\bbackupId\"\xf4\x03\n" +
+	"\tbackup_id\x18\x01 \x01(\tR\bbackupId\"\x9f\x04\n" +
 	"\x18PreflightRestoreResponse\x12*\n" +
 	"\x06backup\x18\x01 \x01(\v2\x12.mcadmin.v1.BackupR\x06backup\x12#\n" +
 	"\rcurrent_level\x18\x02 \x01(\tR\fcurrentLevel\x12L\n" +
@@ -1336,16 +1419,18 @@ const file_mcadmin_v1_backup_proto_rawDesc = "" +
 	"\x15requires_confirmation\x18\b \x01(\bR\x14requiresConfirmation\x12%\n" +
 	"\x0erequired_bytes\x18\t \x01(\x03R\rrequiredBytes\x12'\n" +
 	"\x0favailable_bytes\x18\n" +
-	" \x01(\x03R\x0eavailableBytes\"\xd4\x01\n" +
+	" \x01(\x03R\x0eavailableBytes\x12)\n" +
+	"\x10migration_notice\x18\v \x01(\tR\x0fmigrationNotice\"\xd4\x01\n" +
 	"\x14RestoreBackupRequest\x12\x1b\n" +
 	"\tbackup_id\x18\x01 \x01(\tR\bbackupId\x121\n" +
 	"\x06target\x18\x02 \x01(\x0e2\x19.mcadmin.v1.RestoreTargetR\x06target\x12>\n" +
 	"\x1backnowledge_version_warning\x18\x03 \x01(\bR\x19acknowledgeVersionWarning\x12,\n" +
 	"\x12confirm_level_name\x18\x04 \x01(\tR\x10confirmLevelName\"L\n" +
 	"\x15RestoreBackupResponse\x123\n" +
-	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\":\n" +
+	"\toperation\x18\x01 \x01(\v2\x15.mcadmin.v1.OperationR\toperation\"t\n" +
 	"\x1bCreateBackupDownloadRequest\x12\x1b\n" +
-	"\tbackup_id\x18\x01 \x01(\tR\bbackupId\"\x88\x01\n" +
+	"\tbackup_id\x18\x01 \x01(\tR\bbackupId\x128\n" +
+	"\x06format\x18\x02 \x01(\x0e2 .mcadmin.v1.BackupDownloadFormatR\x06format\"\x88\x01\n" +
 	"\x1cCreateBackupDownloadResponse\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x129\n" +
 	"\n" +
@@ -1383,7 +1468,11 @@ const file_mcadmin_v1_backup_proto_rawDesc = "" +
 	"\rRestoreTarget\x12\x1e\n" +
 	"\x1aRESTORE_TARGET_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cRESTORE_TARGET_ARCHIVE_LEVEL\x10\x01\x12 \n" +
-	"\x1cRESTORE_TARGET_CURRENT_LEVEL\x10\x022\xd4\x06\n" +
+	"\x1cRESTORE_TARGET_CURRENT_LEVEL\x10\x02*\x8a\x01\n" +
+	"\x14BackupDownloadFormat\x12&\n" +
+	"\"BACKUP_DOWNLOAD_FORMAT_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dBACKUP_DOWNLOAD_FORMAT_SERVER\x10\x01\x12'\n" +
+	"#BACKUP_DOWNLOAD_FORMAT_SINGLEPLAYER\x10\x022\xd4\x06\n" +
 	"\rBackupService\x12P\n" +
 	"\vListBackups\x12\x1e.mcadmin.v1.ListBackupsRequest\x1a\x1f.mcadmin.v1.ListBackupsResponse\"\x00\x12S\n" +
 	"\fCreateBackup\x12\x1f.mcadmin.v1.CreateBackupRequest\x1a .mcadmin.v1.CreateBackupResponse\"\x00\x12S\n" +
@@ -1407,74 +1496,76 @@ func file_mcadmin_v1_backup_proto_rawDescGZIP() []byte {
 	return file_mcadmin_v1_backup_proto_rawDescData
 }
 
-var file_mcadmin_v1_backup_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_mcadmin_v1_backup_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_mcadmin_v1_backup_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_mcadmin_v1_backup_proto_goTypes = []any{
 	(BackupMode)(0),                      // 0: mcadmin.v1.BackupMode
 	(VersionVerdict)(0),                  // 1: mcadmin.v1.VersionVerdict
 	(RestoreTarget)(0),                   // 2: mcadmin.v1.RestoreTarget
-	(*Backup)(nil),                       // 3: mcadmin.v1.Backup
-	(*ListBackupsRequest)(nil),           // 4: mcadmin.v1.ListBackupsRequest
-	(*ListBackupsResponse)(nil),          // 5: mcadmin.v1.ListBackupsResponse
-	(*CreateBackupRequest)(nil),          // 6: mcadmin.v1.CreateBackupRequest
-	(*CreateBackupResponse)(nil),         // 7: mcadmin.v1.CreateBackupResponse
-	(*DeleteBackupRequest)(nil),          // 8: mcadmin.v1.DeleteBackupRequest
-	(*DeleteBackupResponse)(nil),         // 9: mcadmin.v1.DeleteBackupResponse
-	(*PreflightRestoreRequest)(nil),      // 10: mcadmin.v1.PreflightRestoreRequest
-	(*PreflightRestoreResponse)(nil),     // 11: mcadmin.v1.PreflightRestoreResponse
-	(*RestoreBackupRequest)(nil),         // 12: mcadmin.v1.RestoreBackupRequest
-	(*RestoreBackupResponse)(nil),        // 13: mcadmin.v1.RestoreBackupResponse
-	(*CreateBackupDownloadRequest)(nil),  // 14: mcadmin.v1.CreateBackupDownloadRequest
-	(*CreateBackupDownloadResponse)(nil), // 15: mcadmin.v1.CreateBackupDownloadResponse
-	(*RetentionPolicy)(nil),              // 16: mcadmin.v1.RetentionPolicy
-	(*GetRetentionPolicyRequest)(nil),    // 17: mcadmin.v1.GetRetentionPolicyRequest
-	(*GetRetentionPolicyResponse)(nil),   // 18: mcadmin.v1.GetRetentionPolicyResponse
-	(*SetRetentionPolicyRequest)(nil),    // 19: mcadmin.v1.SetRetentionPolicyRequest
-	(*SetRetentionPolicyResponse)(nil),   // 20: mcadmin.v1.SetRetentionPolicyResponse
-	(*PruneBackupsRequest)(nil),          // 21: mcadmin.v1.PruneBackupsRequest
-	(*PruneBackupsResponse)(nil),         // 22: mcadmin.v1.PruneBackupsResponse
-	(*timestamppb.Timestamp)(nil),        // 23: google.protobuf.Timestamp
-	(*WorldVersion)(nil),                 // 24: mcadmin.v1.WorldVersion
-	(*Operation)(nil),                    // 25: mcadmin.v1.Operation
+	(BackupDownloadFormat)(0),            // 3: mcadmin.v1.BackupDownloadFormat
+	(*Backup)(nil),                       // 4: mcadmin.v1.Backup
+	(*ListBackupsRequest)(nil),           // 5: mcadmin.v1.ListBackupsRequest
+	(*ListBackupsResponse)(nil),          // 6: mcadmin.v1.ListBackupsResponse
+	(*CreateBackupRequest)(nil),          // 7: mcadmin.v1.CreateBackupRequest
+	(*CreateBackupResponse)(nil),         // 8: mcadmin.v1.CreateBackupResponse
+	(*DeleteBackupRequest)(nil),          // 9: mcadmin.v1.DeleteBackupRequest
+	(*DeleteBackupResponse)(nil),         // 10: mcadmin.v1.DeleteBackupResponse
+	(*PreflightRestoreRequest)(nil),      // 11: mcadmin.v1.PreflightRestoreRequest
+	(*PreflightRestoreResponse)(nil),     // 12: mcadmin.v1.PreflightRestoreResponse
+	(*RestoreBackupRequest)(nil),         // 13: mcadmin.v1.RestoreBackupRequest
+	(*RestoreBackupResponse)(nil),        // 14: mcadmin.v1.RestoreBackupResponse
+	(*CreateBackupDownloadRequest)(nil),  // 15: mcadmin.v1.CreateBackupDownloadRequest
+	(*CreateBackupDownloadResponse)(nil), // 16: mcadmin.v1.CreateBackupDownloadResponse
+	(*RetentionPolicy)(nil),              // 17: mcadmin.v1.RetentionPolicy
+	(*GetRetentionPolicyRequest)(nil),    // 18: mcadmin.v1.GetRetentionPolicyRequest
+	(*GetRetentionPolicyResponse)(nil),   // 19: mcadmin.v1.GetRetentionPolicyResponse
+	(*SetRetentionPolicyRequest)(nil),    // 20: mcadmin.v1.SetRetentionPolicyRequest
+	(*SetRetentionPolicyResponse)(nil),   // 21: mcadmin.v1.SetRetentionPolicyResponse
+	(*PruneBackupsRequest)(nil),          // 22: mcadmin.v1.PruneBackupsRequest
+	(*PruneBackupsResponse)(nil),         // 23: mcadmin.v1.PruneBackupsResponse
+	(*timestamppb.Timestamp)(nil),        // 24: google.protobuf.Timestamp
+	(*WorldVersion)(nil),                 // 25: mcadmin.v1.WorldVersion
+	(*Operation)(nil),                    // 26: mcadmin.v1.Operation
 }
 var file_mcadmin_v1_backup_proto_depIdxs = []int32{
-	23, // 0: mcadmin.v1.Backup.created_at:type_name -> google.protobuf.Timestamp
-	24, // 1: mcadmin.v1.Backup.version:type_name -> mcadmin.v1.WorldVersion
-	3,  // 2: mcadmin.v1.ListBackupsResponse.backups:type_name -> mcadmin.v1.Backup
+	24, // 0: mcadmin.v1.Backup.created_at:type_name -> google.protobuf.Timestamp
+	25, // 1: mcadmin.v1.Backup.version:type_name -> mcadmin.v1.WorldVersion
+	4,  // 2: mcadmin.v1.ListBackupsResponse.backups:type_name -> mcadmin.v1.Backup
 	0,  // 3: mcadmin.v1.CreateBackupRequest.mode:type_name -> mcadmin.v1.BackupMode
-	25, // 4: mcadmin.v1.CreateBackupResponse.operation:type_name -> mcadmin.v1.Operation
-	3,  // 5: mcadmin.v1.PreflightRestoreResponse.backup:type_name -> mcadmin.v1.Backup
-	24, // 6: mcadmin.v1.PreflightRestoreResponse.current_world_version:type_name -> mcadmin.v1.WorldVersion
+	26, // 4: mcadmin.v1.CreateBackupResponse.operation:type_name -> mcadmin.v1.Operation
+	4,  // 5: mcadmin.v1.PreflightRestoreResponse.backup:type_name -> mcadmin.v1.Backup
+	25, // 6: mcadmin.v1.PreflightRestoreResponse.current_world_version:type_name -> mcadmin.v1.WorldVersion
 	1,  // 7: mcadmin.v1.PreflightRestoreResponse.verdict:type_name -> mcadmin.v1.VersionVerdict
 	2,  // 8: mcadmin.v1.RestoreBackupRequest.target:type_name -> mcadmin.v1.RestoreTarget
-	25, // 9: mcadmin.v1.RestoreBackupResponse.operation:type_name -> mcadmin.v1.Operation
-	23, // 10: mcadmin.v1.CreateBackupDownloadResponse.expires_at:type_name -> google.protobuf.Timestamp
-	16, // 11: mcadmin.v1.GetRetentionPolicyResponse.policy:type_name -> mcadmin.v1.RetentionPolicy
-	16, // 12: mcadmin.v1.SetRetentionPolicyRequest.policy:type_name -> mcadmin.v1.RetentionPolicy
-	16, // 13: mcadmin.v1.SetRetentionPolicyResponse.policy:type_name -> mcadmin.v1.RetentionPolicy
-	4,  // 14: mcadmin.v1.BackupService.ListBackups:input_type -> mcadmin.v1.ListBackupsRequest
-	6,  // 15: mcadmin.v1.BackupService.CreateBackup:input_type -> mcadmin.v1.CreateBackupRequest
-	8,  // 16: mcadmin.v1.BackupService.DeleteBackup:input_type -> mcadmin.v1.DeleteBackupRequest
-	10, // 17: mcadmin.v1.BackupService.PreflightRestore:input_type -> mcadmin.v1.PreflightRestoreRequest
-	12, // 18: mcadmin.v1.BackupService.RestoreBackup:input_type -> mcadmin.v1.RestoreBackupRequest
-	14, // 19: mcadmin.v1.BackupService.CreateBackupDownload:input_type -> mcadmin.v1.CreateBackupDownloadRequest
-	17, // 20: mcadmin.v1.BackupService.GetRetentionPolicy:input_type -> mcadmin.v1.GetRetentionPolicyRequest
-	19, // 21: mcadmin.v1.BackupService.SetRetentionPolicy:input_type -> mcadmin.v1.SetRetentionPolicyRequest
-	21, // 22: mcadmin.v1.BackupService.PruneBackups:input_type -> mcadmin.v1.PruneBackupsRequest
-	5,  // 23: mcadmin.v1.BackupService.ListBackups:output_type -> mcadmin.v1.ListBackupsResponse
-	7,  // 24: mcadmin.v1.BackupService.CreateBackup:output_type -> mcadmin.v1.CreateBackupResponse
-	9,  // 25: mcadmin.v1.BackupService.DeleteBackup:output_type -> mcadmin.v1.DeleteBackupResponse
-	11, // 26: mcadmin.v1.BackupService.PreflightRestore:output_type -> mcadmin.v1.PreflightRestoreResponse
-	13, // 27: mcadmin.v1.BackupService.RestoreBackup:output_type -> mcadmin.v1.RestoreBackupResponse
-	15, // 28: mcadmin.v1.BackupService.CreateBackupDownload:output_type -> mcadmin.v1.CreateBackupDownloadResponse
-	18, // 29: mcadmin.v1.BackupService.GetRetentionPolicy:output_type -> mcadmin.v1.GetRetentionPolicyResponse
-	20, // 30: mcadmin.v1.BackupService.SetRetentionPolicy:output_type -> mcadmin.v1.SetRetentionPolicyResponse
-	22, // 31: mcadmin.v1.BackupService.PruneBackups:output_type -> mcadmin.v1.PruneBackupsResponse
-	23, // [23:32] is the sub-list for method output_type
-	14, // [14:23] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	26, // 9: mcadmin.v1.RestoreBackupResponse.operation:type_name -> mcadmin.v1.Operation
+	3,  // 10: mcadmin.v1.CreateBackupDownloadRequest.format:type_name -> mcadmin.v1.BackupDownloadFormat
+	24, // 11: mcadmin.v1.CreateBackupDownloadResponse.expires_at:type_name -> google.protobuf.Timestamp
+	17, // 12: mcadmin.v1.GetRetentionPolicyResponse.policy:type_name -> mcadmin.v1.RetentionPolicy
+	17, // 13: mcadmin.v1.SetRetentionPolicyRequest.policy:type_name -> mcadmin.v1.RetentionPolicy
+	17, // 14: mcadmin.v1.SetRetentionPolicyResponse.policy:type_name -> mcadmin.v1.RetentionPolicy
+	5,  // 15: mcadmin.v1.BackupService.ListBackups:input_type -> mcadmin.v1.ListBackupsRequest
+	7,  // 16: mcadmin.v1.BackupService.CreateBackup:input_type -> mcadmin.v1.CreateBackupRequest
+	9,  // 17: mcadmin.v1.BackupService.DeleteBackup:input_type -> mcadmin.v1.DeleteBackupRequest
+	11, // 18: mcadmin.v1.BackupService.PreflightRestore:input_type -> mcadmin.v1.PreflightRestoreRequest
+	13, // 19: mcadmin.v1.BackupService.RestoreBackup:input_type -> mcadmin.v1.RestoreBackupRequest
+	15, // 20: mcadmin.v1.BackupService.CreateBackupDownload:input_type -> mcadmin.v1.CreateBackupDownloadRequest
+	18, // 21: mcadmin.v1.BackupService.GetRetentionPolicy:input_type -> mcadmin.v1.GetRetentionPolicyRequest
+	20, // 22: mcadmin.v1.BackupService.SetRetentionPolicy:input_type -> mcadmin.v1.SetRetentionPolicyRequest
+	22, // 23: mcadmin.v1.BackupService.PruneBackups:input_type -> mcadmin.v1.PruneBackupsRequest
+	6,  // 24: mcadmin.v1.BackupService.ListBackups:output_type -> mcadmin.v1.ListBackupsResponse
+	8,  // 25: mcadmin.v1.BackupService.CreateBackup:output_type -> mcadmin.v1.CreateBackupResponse
+	10, // 26: mcadmin.v1.BackupService.DeleteBackup:output_type -> mcadmin.v1.DeleteBackupResponse
+	12, // 27: mcadmin.v1.BackupService.PreflightRestore:output_type -> mcadmin.v1.PreflightRestoreResponse
+	14, // 28: mcadmin.v1.BackupService.RestoreBackup:output_type -> mcadmin.v1.RestoreBackupResponse
+	16, // 29: mcadmin.v1.BackupService.CreateBackupDownload:output_type -> mcadmin.v1.CreateBackupDownloadResponse
+	19, // 30: mcadmin.v1.BackupService.GetRetentionPolicy:output_type -> mcadmin.v1.GetRetentionPolicyResponse
+	21, // 31: mcadmin.v1.BackupService.SetRetentionPolicy:output_type -> mcadmin.v1.SetRetentionPolicyResponse
+	23, // 32: mcadmin.v1.BackupService.PruneBackups:output_type -> mcadmin.v1.PruneBackupsResponse
+	24, // [24:33] is the sub-list for method output_type
+	15, // [15:24] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_mcadmin_v1_backup_proto_init() }
@@ -1489,7 +1580,7 @@ func file_mcadmin_v1_backup_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mcadmin_v1_backup_proto_rawDesc), len(file_mcadmin_v1_backup_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,

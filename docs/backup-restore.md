@@ -244,17 +244,132 @@ docker compose up -d          # data/creative/ が生成される。data/world �
 | 復元先の選択 | 展開後に `MC_LEVEL` を書き換えるか、ディレクトリを `mv` するか |
 | 保持ポリシーの適用 | 古い zip を手で消す |
 | 持ち出し（ダウンロード） | `scp user@<tailscale-hostname>:<プロジェクト>/backups/backup-*.zip .` |
-| zip の取り込み | `cp <zip> backups/`（形によっては包み直しが要る。下記） |
+| zip の取り込み | `cp <zip> backups/`（形は新旧どちらでもよい。下記） |
 | 退避の完全削除 | `rm -rf data/*.broken-*` |
 | ワールドの切り替え | `.env` の `MC_LEVEL` を書き換えて `up -d` |
 
-画面の側にだけあるのは 3 つ。どれも手作業では実質できない。
+画面の側にだけあるのは 5 つ。どれも手作業では実質できない。
 
 - **中断の検出** — `save-off` のまま落ちたことに気づいて `save-on` を送り直す
 - **バージョンの検証** — アーカイブ内の `level.dat` の `DataVersion` を現在のワールドと比べる
-- **取り込み時の包み直し** — `<名前>/level.dat` の形の zip を `data/` 配下へ入れ直す
+- **形の判定** — `<名前>/...` と `data/<名前>/...` のどちらで固めた zip かを見分けて置き場所を決める
+- **復元時の版の照合** — 復元したワールドに `MC_VERSION` を合わせる（下記）
+- **移行の通知** — 復元後の起動が遅くなる理由を伝える（下記）
 
-3 つめは手でコピーしたときに効いてくる。復元は `data/` 配下のエントリしか受け付けない
-ので、配布ワールドのような `<名前>/...` 形式の zip を `backups/` へ置いただけでは
-「`data/` 配下ではありません」で拒否される。手で入れるなら `data/<名前>/` の形に
-固め直しておくか、画面の取り込みを使う。
+1 つめは手でコピーしたときに効いてくる。復元は `<名前>/...` の形（現在の保管形式。
+配布ワールドもこの形）と `data/<名前>/...` の形（2026-10 より前に取ったもの）の
+どちらも受け付けるので、`backups/` へ置くだけでよい。
+
+ただし **`data/` 配下と外が混ざった zip は拒否する。** `data/` の形は展開の基点が
+プロジェクトディレクトリになるため、混ざっていると `compose.yaml` や `.env` と
+並ぶ位置に書けてしまう。
+
+## 復元時の版の照合
+
+復元すると `.env` の `MC_VERSION` が、展開し終えたワールドの `level.dat` の
+`Data.Version.Name` に合わせて書き換わる。ワールド名が変わらない復元でも書き換わる。
+
+合わせないと次のどちらかになる。
+
+- 古いワールドを今の版で開いて、版が勝手に上がる（**元に戻せない**）
+- 新しいワールドを古い版で開こうとして、サーバーが起動しない
+
+Paper がその版を配っていない場合は、**サーバーを止める前に**断る。止めてから気づくと
+落ちたまま残り、復旧が手作業になる。版の一覧が取れないとき（Pi がオフライン）は通す。
+起動できなければ元のワールドへ切り替え直せば版も戻る。
+
+版が変わるときは操作のログに警告が残る。**遊ぶ人はクライアントの版も合わせる必要がある。**
+
+## シングルプレイへの持ち出しと取り込み
+
+### 持ち出す（サーバー → シングルプレイ）
+
+一覧の「シングルプレイ用」から落とす。`saves/` にそのまま展開できる形で渡される。
+
+**保管しているアーカイブ自体がバニラの配置になっている。** 「ダウンロード」で落とした
+zip も、`<ワールド>/` を取り出せばそのまま `saves/` に置ける。「シングルプレイ用」は
+そこからサーバーの設定（`plugins/` など）を除いたもので、`saves/` の直下が散らない。
+
+構成の違いの詳細は [world-layout.md](world-layout.md) にまとめてある。要点だけ再掲する。
+
+Paper とバニラでは、ワールドの中の `.dat` の置き場所が一部違う。
+
+| ファイル | Paper | バニラ |
+| --- | --- | --- |
+| `world_gen_settings.dat` | `dimensions/minecraft/overworld/data/minecraft/` | `data/minecraft/` |
+| `game_rules.dat` | 同上 | 同上 |
+| `scheduled_events.dat` | 同上 | 同上 |
+| `wandering_trader.dat` | 同上 | 同上 |
+| `weather.dat` | 同上 | 同上 |
+
+Paper はワールドごとに別の設定を持てるようにするためディメンション側へ置く。バニラは
+ワールド直下しか見ない。`world_gen_settings.dat` が見つからないとシードも地形生成器も
+決められず、クライアントは
+
+```
+Unable to read or access the world gen settings file!
+Failed to load level data or datapacks, can't proceed with server load
+java.lang.IllegalStateException: Overworld settings missing
+```
+
+で読み込みを中断する。**ワールド一覧には出る**ので原因が分かりにくい。
+
+管理コンソールが作るアーカイブはこの変換を済ませてある。手でワールドだけ
+取り出すならこうする。
+
+```bash
+cd ~/Library/Application\ Support/minecraft/saves
+mkdir main
+# zip のルートがワールド名。皮は 1 枚
+tar -xf ~/Downloads/backup-26.3-main-20261011-181445.zip \
+    -C main --strip-components=1 main
+```
+
+2026-10 より前に取ったアーカイブは `data/<ワールド>/` の形なので、皮を 2 枚
+剥がしたうえで 5 ファイルを上げる必要がある。
+
+```bash
+tar -xf <古いアーカイブ>.zip -C main --strip-components=2 data/main
+cd main
+for f in game_rules scheduled_events wandering_trader weather world_gen_settings; do
+  mv "dimensions/minecraft/overworld/data/minecraft/$f.dat" "data/minecraft/$f.dat"
+done
+```
+
+移す元は**オーバーワールドに限る**。オーバーワールド側の `world_gen_settings.dat` が
+3 つのディメンションすべての設定（`minecraft:overworld` / `the_nether` / `the_end`）を
+持っているため。ネザーやエンドのものを上げると、全体の設定が 1 ディメンション分に縮む。
+
+ネザーとエンドはこれで揃う。移した `world_gen_settings.dat` に 3 ディメンション分の
+生成器定義（`minecraft:nether` / `minecraft:end` を含む）とシードが入っており、
+`dimensions/minecraft/the_nether/` と `the_end/` の `region/*.mca`・`chunk_tickets.dat`・
+`raids.dat`・`world_border.dat`・`ender_dragon_fight.dat` もそのまま持ち出される。
+ディメンション側に残る Paper 由来の `.dat` はバニラが開かないので、消さずに置いてある。
+
+`level.dat` の `DataPacks.Enabled` に `paper` が残るため、クライアントのログに
+`Missing data pack paper` が出る。致命的ではない（これを通過したあとに
+`world_gen_settings` で落ちていた）。
+
+### 取り込む（シングルプレイ → サーバー）
+
+**置き場所の変換は要らない。** Paper が起動時に自前で移行する。
+
+```
+[WorldFolderMigration] World storage migration is required during startup.
+[WorldFolderMigration] If you do not have a backup: interrupt the server now.
+[WorldFolderMigration] Continuing in 30 seconds...
+[VanillaWorldMigration] Starting Vanilla import for world 'demo_world_01' (minecraft:overworld)
+[VanillaWorldMigration] Completed Vanilla import for world 'demo_world_01' (minecraft:overworld)
+```
+
+移行は**その場で書き換える**。実測では無損失（region 62 ファイルが 1 バイトも変化せず、
+シードも 3 ディメンションの生成設定も維持）だが、Paper 自身は「バックアップが無いなら
+今すぐ落とせ」と警告する。30 秒の猶予があり、管理コンソールから復元した場合は自動で
+通過する（起動の完了待ちは 300 秒なので収まる）。
+
+**管理コンソールが保管するアーカイブはバニラの配置なので、復元のたびにこの移行が
+走る。** 復元の画面と操作のログに、起動に 30 秒ほど余分にかかることが出る。移行は
+復元ごとに 1 回で、以降の再起動では発生しない。
+
+要るのは置き場所ではなく**版**の整合である。26.3 のワールドは 26.2 のサーバーでは
+開けない。復元時の版の照合（前節）がこれを受け持つ。

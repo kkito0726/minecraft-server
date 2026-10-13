@@ -28,11 +28,8 @@ func TestImportAdoptsArchiveUnderData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got.Rewrapped {
-		t.Error("data/ 配下なのに包み直している")
-	}
-	if h.store.staged.adoptedPrefix != "" {
-		t.Errorf("接頭辞を渡している: %q", h.store.staged.adoptedPrefix)
+	if !h.store.staged.adopted {
+		t.Error("保管先へ確定していない")
 	}
 	if got.Level != "world" {
 		t.Errorf("ワールド名が %q", got.Level)
@@ -43,9 +40,14 @@ func TestImportAdoptsArchiveUnderData(t *testing.T) {
 	}
 }
 
-// 配布ワールドの形は data/ 配下へ包み直す。
-// 展開側の制限を緩めずに外部のワールドを受け入れるための入口の処理。
-func TestImportRewrapsWorldOutsideData(t *testing.T) {
+/*
+ワールド名から始まる形も、中身を触らず受け取る。
+
+2026-10 以降の保管形式そのものであり、配布ワールドもこの形。復元が
+両方の形を受けるようになったので、入口で包み直さない（最大 200MB の
+全コピーを避ける）。
+*/
+func TestImportAcceptsWorldRootArchiveWithoutRewrap(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(t, true, nil)
@@ -56,11 +58,8 @@ func TestImportRewrapsWorldOutsideData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !got.Rewrapped {
-		t.Error("包み直していない")
-	}
-	if h.store.staged.adoptedPrefix != "data/" {
-		t.Errorf("接頭辞が %q", h.store.staged.adoptedPrefix)
+	if !h.store.staged.adopted {
+		t.Error("保管先へ確定していない")
 	}
 	if got.Level != "MyWorld" {
 		t.Errorf("ワールド名が %q", got.Level)
@@ -133,7 +132,8 @@ func TestImportRejectsArchiveWithoutWorld(t *testing.T) {
 Pi ではディスクを埋めきるとサーバーごと止まる。
 
 送られてくる大きさが分かっているなら、1 バイトも受け取らずに落とす。
-包み直しの可能性があるので、確定までに 2 つ分の場所を見込む。
+見込むのは 1 つ分。一時ファイルへ書いて rename で確定するだけなので、
+2 つ分の場所は要らない（包み直しをやめた）。
 */
 func TestImportRefusesWhenDiskIsTight(t *testing.T) {
 	t.Parallel()
@@ -141,12 +141,30 @@ func TestImportRefusesWhenDiskIsTight(t *testing.T) {
 	h := newHarness(t, true, nil)
 	h.worlds.available = 1000
 
-	if _, err := h.uc.Import(t.Context(), strings.NewReader("zip"), 900); !errors.Is(
+	if _, err := h.uc.Import(t.Context(), strings.NewReader("zip"), 1001); !errors.Is(
 		err, port.ErrInsufficientSpace) {
 		t.Fatalf("空きが足りないのに受理した: %v", err)
 	}
 	if h.store.staged != nil {
 		t.Error("受け取る前に落としていない")
+	}
+}
+
+/*
+空きと同じ大きさまでは受け取る。
+
+包み直していた頃は半分までしか受け取れなかった。入口の全コピーを
+やめたぶん、同じ空き容量でより大きなアーカイブを取り込める。
+*/
+func TestImportAcceptsArchiveUpToAvailableSpace(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(t, true, nil)
+	h.worlds.available = 1000
+	h.store.staged = &fakeStaged{entries: []string{"data/world/level.dat"}, total: 900}
+
+	if _, err := h.uc.Import(t.Context(), strings.NewReader("zip"), 900); err != nil {
+		t.Fatalf("空きに収まるのに断られた: %v", err)
 	}
 }
 
@@ -161,8 +179,9 @@ func TestImportPassesLimitToStore(t *testing.T) {
 	if _, err := h.uc.Import(t.Context(), strings.NewReader("zip"), 0); err != nil {
 		t.Fatal(err)
 	}
-	if h.store.stagedLimit != 2000 {
-		t.Errorf("上限が %d（期待 2000）", h.store.stagedLimit)
+	// 包み直しをやめたので、上限は空き容量そのもの。
+	if h.store.stagedLimit != 4000 {
+		t.Errorf("上限が %d（期待 4000）", h.store.stagedLimit)
 	}
 }
 

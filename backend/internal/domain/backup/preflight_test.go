@@ -39,18 +39,18 @@ func TestDecideRestore(t *testing.T) {
 			wantConfirm: false,
 		},
 		{
-			name:    "アーカイブの方が古いとアップグレードが再走する",
+			name:    "アーカイブの方が古いとサーバーの版も下がる",
 			archive: older, current: same,
 			archiveLevel: "world", currentLevel: "world",
 			wantVerdict: backup.VerdictOlderWillUpgrade,
-			wantConfirm: true, wantWarningWord: "片道",
+			wantConfirm: true, wantWarningWord: "合わせて下げます",
 		},
 		{
-			name:    "アーカイブの方が新しいと開けない可能性が高い",
+			name:    "アーカイブの方が新しいとサーバーの版も上がる",
 			archive: newer, current: same,
 			archiveLevel: "world", currentLevel: "world",
 			wantVerdict: backup.VerdictNewerIncompatible,
-			wantConfirm: true, wantWarningWord: "開けない",
+			wantConfirm: true, wantWarningWord: "合わせて上げます",
 		},
 		{
 			name:    "アーカイブのバージョンを読めない",

@@ -1,4 +1,4 @@
-import { deflateRawSync } from 'node:zlib'
+import { deflateRawSync, inflateRawSync } from 'node:zlib'
 
 /**
  * zip を組み立てる。
@@ -56,6 +56,76 @@ export function makeZip(files: Record<string, string | Buffer>): Buffer {
   end.writeUInt32LE(offset, 16)
 
   return Buffer.concat([...locals, centralBytes, end])
+}
+
+/**
+ * zip のエントリ名を並べて返す。
+ *
+ * 書き出した結果の形そのものを確かめたいので、中央ディレクトリを
+ * 自前で読む。makeZip と同じ理由で依存を増やさない。
+ */
+export function entryNames(zip: Buffer): string[] {
+  return centralEntries(zip).map((e) => e.name)
+}
+
+/** zip のエントリ 1 つの中身を文字列で返す。 */
+export function readEntry(zip: Buffer, name: string): string {
+  const entry = centralEntries(zip).find((e) => e.name === name)
+  if (!entry) {
+    throw new Error(`${name} が無い。あるのは ${entryNames(zip).join(', ')}`)
+  }
+
+  // ローカルヘッダーを読み飛ばして本体の先頭を求める。
+  const nameLength = zip.readUInt16LE(entry.offset + 26)
+  const extraLength = zip.readUInt16LE(entry.offset + 28)
+  const start = entry.offset + 30 + nameLength + extraLength
+  const body = zip.subarray(start, start + entry.compressedSize)
+
+  // 0 は無圧縮、8 は deflate。管理コンソールは deflate で書く。
+  const raw = entry.method === 0 ? body : inflateRawSync(body)
+  return raw.toString('utf8')
+}
+
+type CentralEntry = {
+  name: string
+  offset: number
+  compressedSize: number
+  method: number
+}
+
+function centralEntries(zip: Buffer): CentralEntry[] {
+  const end = findEndOfCentralDirectory(zip)
+  const count = zip.readUInt16LE(end + 10)
+  let at = zip.readUInt32LE(end + 16)
+
+  const entries: CentralEntry[] = []
+  for (let i = 0; i < count; i++) {
+    if (zip.readUInt32LE(at) !== 0x02014b50) {
+      throw new Error('中央ディレクトリの並びが壊れている')
+    }
+    const nameLength = zip.readUInt16LE(at + 28)
+    const extraLength = zip.readUInt16LE(at + 30)
+    const commentLength = zip.readUInt16LE(at + 32)
+
+    entries.push({
+      name: zip.subarray(at + 46, at + 46 + nameLength).toString('utf8'),
+      method: zip.readUInt16LE(at + 10),
+      compressedSize: zip.readUInt32LE(at + 20),
+      offset: zip.readUInt32LE(at + 42),
+    })
+    at += 46 + nameLength + extraLength + commentLength
+  }
+  return entries
+}
+
+/** 末尾からレコードの印を探す。コメントが付いていても見つけられる。 */
+function findEndOfCentralDirectory(zip: Buffer): number {
+  for (let at = zip.length - 22; at >= 0; at--) {
+    if (zip.readUInt32LE(at) === 0x06054b50) {
+      return at
+    }
+  }
+  throw new Error('zip の末尾レコードが見つからない')
 }
 
 const CRC_TABLE = buildCrcTable()

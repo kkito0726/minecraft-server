@@ -18,7 +18,7 @@ func TestIssueAndRedeem(t *testing.T) {
 	now := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
 	tickets := newTestTickets(&now)
 
-	url, expiresAt, err := tickets.Issue("backup-26.2-world-20260916-0300.zip")
+	url, expiresAt, err := tickets.Issue("backup-26.2-world-20260916-0300.zip", FormatServer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestIssueAndRedeem(t *testing.T) {
 	}
 
 	token := url[strings.Index(url, "=")+1:]
-	id, ok := tickets.Redeem(token)
+	id, _, ok := tickets.Redeem(token)
 	if !ok || id != "backup-26.2-world-20260916-0300.zip" {
 		t.Errorf("引き換えられない: %q %v", id, ok)
 	}
@@ -50,7 +50,7 @@ func TestRedeemIsRepeatableWithinTTL(t *testing.T) {
 	token := issueToken(t, tickets, "backup.zip")
 
 	for i := range 3 {
-		if _, ok := tickets.Redeem(token); !ok {
+		if _, _, ok := tickets.Redeem(token); !ok {
 			t.Fatalf("%d 回目で引き換えられなくなった", i+1)
 		}
 	}
@@ -64,7 +64,7 @@ func TestRedeemRejectsExpired(t *testing.T) {
 	token := issueToken(t, tickets, "backup.zip")
 
 	now = now.Add(TicketTTL + time.Second)
-	if _, ok := tickets.Redeem(token); ok {
+	if _, _, ok := tickets.Redeem(token); ok {
 		t.Error("期限切れの券が通った")
 	}
 }
@@ -75,10 +75,10 @@ func TestRedeemRejectsUnknownToken(t *testing.T) {
 	now := time.Now()
 	tickets := newTestTickets(&now)
 
-	if _, ok := tickets.Redeem(""); ok {
+	if _, _, ok := tickets.Redeem(""); ok {
 		t.Error("空の券が通った")
 	}
-	if _, ok := tickets.Redeem("知らない券"); ok {
+	if _, _, ok := tickets.Redeem("知らない券"); ok {
 		t.Error("知らない券が通った")
 	}
 }
@@ -122,7 +122,7 @@ func TestOldTicketsAreEvicted(t *testing.T) {
 func issueToken(t *testing.T, tickets *Tickets, backupID string) string {
 	t.Helper()
 
-	url, _, err := tickets.Issue(backupID)
+	url, _, err := tickets.Issue(backupID, FormatServer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestRedeemAtCapKeepsOldestValidTicket(t *testing.T) {
 		issueToken(t, tickets, "backup.zip")
 	}
 
-	id, ok := tickets.Redeem(first)
+	id, _, ok := tickets.Redeem(first)
 	if !ok || id != "backup-first.zip" {
 		t.Errorf("期限内の券が引き換えられない: %q %v", id, ok)
 	}
@@ -172,7 +172,7 @@ func TestRedeemAtCapIsRepeatable(t *testing.T) {
 	}
 
 	for i := range 3 {
-		if _, ok := tickets.Redeem(token); !ok {
+		if _, _, ok := tickets.Redeem(token); !ok {
 			t.Fatalf("%d 回目で引き換えられなくなった", i+1)
 		}
 	}

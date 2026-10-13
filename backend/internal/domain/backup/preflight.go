@@ -11,6 +11,10 @@ import (
 // 「一致しているとき以外は必ず承諾を求める」が原則。ワールドの
 // アップグレードは片道で、新しいバージョンで開いたワールドは
 // 古いサーバーでは二度と開けない。
+//
+// 復元はサーバーの版をアーカイブのワールドに合わせる（versionsync）ため、
+// 版が勝手に上がることは起きない。それでもクライアント側の版は人が
+// 合わせる必要があるので、食い違いは必ず伝える。
 type RestoreDecision struct {
 	Verdict Verdict
 	// LevelNameMismatch はアーカイブのワールド名が現在稼働中のものと違う。
@@ -47,10 +51,15 @@ func warningsFor(verdict Verdict, archiveLevel, currentLevel string) []string {
 	switch verdict {
 	case VerdictOlderWillUpgrade:
 		warnings = append(warnings,
-			"アーカイブの方が古いバージョンです。復元すると片道のアップグレードが再度走り、元のバージョンでは開けなくなります。")
+			"アーカイブの方が古いバージョンです。復元すると、サーバーの版も"+
+				"アーカイブのワールドに合わせて下げます。ワールドが勝手に"+
+				"新しい版へ上がることはありませんが、遊ぶ人はクライアントの版も"+
+				"合わせる必要があります。")
 	case VerdictNewerIncompatible:
 		warnings = append(warnings,
-			"アーカイブの方が新しいバージョンです。現在の MC_VERSION では開けない可能性があります。")
+			"アーカイブの方が新しいバージョンです。復元すると、サーバーの版も"+
+				"アーカイブのワールドに合わせて上げます。遊ぶ人はクライアントの版も"+
+				"合わせる必要があります。")
 	case VerdictUnknown:
 		warnings = append(warnings,
 			"バージョンを読み取れませんでした。復元後にワールドが開けるかを確認できません。")

@@ -14,6 +14,16 @@ import (
 
 // ExtractOptions は展開時の指定。
 type ExtractOptions struct {
+	/*
+		Layout はアーカイブのエントリの形。Inspect が判定したものを渡す。
+
+		形によって変えるのは置き場所の検証だけで、エントリ名は書き換えない。
+		代わりに展開の基点（destRoot）を呼び出し側が変える。
+
+		  LayoutUnderData   エントリは data/... なので基点はプロジェクトディレクトリ
+		  LayoutWorldRoot   エントリは <ワールド>/... なので基点は data/
+	*/
+	Layout Layout
 	// RewritePrefix はエントリ名の接頭辞を置き換える。
 	//
 	// 復元先のワールド名を変える場合に使う。これが無いと、
@@ -94,10 +104,10 @@ func buildPlan(r *zip.ReadCloser, opts ExtractOptions) ([]planItem, int64, error
 
 		// 書き換え前後の両方を検証する。書き換えの結果が
 		// 展開先の外を指すこともあるため。
-		if _, err := safeEntryName(name); err != nil {
+		if _, err := safeEntryName(name, opts.Layout); err != nil {
 			return nil, 0, err
 		}
-		rewritten, err := safeEntryName(opts.rewrite(name))
+		rewritten, err := safeEntryName(opts.rewrite(name), opts.Layout)
 		if err != nil {
 			return nil, 0, err
 		}

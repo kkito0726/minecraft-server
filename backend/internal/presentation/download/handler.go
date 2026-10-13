@@ -16,6 +16,8 @@ const TokenParam = "t"
 // Opener は保管済みのアーカイブを開く口。
 type Opener interface {
 	OpenForDownload(ctx context.Context, backupID string) (port.ArchiveFile, error)
+	// OpenForSingleplayer はシングルプレイで読める形へ包み直して開く。
+	OpenForSingleplayer(ctx context.Context, backupID string) (port.ArchiveFile, error)
 }
 
 // Handler は受取券と引き換えにアーカイブを流す。
@@ -44,7 +46,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	backupID, ok := h.tickets.Redeem(r.URL.Query().Get(TokenParam))
+	backupID, format, ok := h.tickets.Redeem(r.URL.Query().Get(TokenParam))
 	if !ok {
 		// 券の有無以上のことは言わない。存在するバックアップの名前を
 		// 当てにきた相手に、手がかりを渡す理由がない。
@@ -53,22 +55,39 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := h.opener.OpenForDownload(r.Context(), backupID)
+	file, err := h.open(r.Context(), backupID, format)
 	if err != nil {
 		h.fail(w, backupID, err)
 		return
 	}
 	defer func() { _ = file.Body.Close() }()
 
+	// 保存される名前。シングルプレイ用は印を付けて見分けられるようにする。
+	// 同じワールドの zip が 2 つ手元に並ぶため。
+	fileName := backupID
+	if format == FormatSingleplayer {
+		fileName = backup.SingleplayerFileName(backupID)
+	}
+
 	w.Header().Set("Content-Type", "application/zip")
 	// ファイル名は英数字と . - _ だけ（backup.NewID が保証する）。
-	w.Header().Set("Content-Disposition", `attachment; filename="`+backupID+`"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+fileName+`"`)
 	// 中身はワールドそのもの。共有の経路に残さない。
 	w.Header().Set("Cache-Control", "no-store")
 
 	// ServeContent が Range 要求と条件付き GET を扱う。
 	// 途中で切れた転送を、続きから取り直せるようにするため。
-	http.ServeContent(w, r, backupID, file.Info.CreatedAt, file.Body)
+	http.ServeContent(w, r, fileName, file.Info.CreatedAt, file.Body)
+}
+
+// open は券に載っている形でアーカイブを開く。
+func (h *Handler) open(
+	ctx context.Context, backupID string, format Format,
+) (port.ArchiveFile, error) {
+	if format == FormatSingleplayer {
+		return h.opener.OpenForSingleplayer(ctx, backupID)
+	}
+	return h.opener.OpenForDownload(ctx, backupID)
 }
 
 func (h *Handler) fail(w http.ResponseWriter, backupID string, err error) {
