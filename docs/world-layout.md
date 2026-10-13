@@ -171,6 +171,23 @@ ALERT の猶予はログで 2 回とも `23:57:12 → 23:57:42` のようにち�
 復元では**両方の形を受け付ける**。過去に取った Paper 配置のアーカイブは
 これまでどおり移行なしで戻る。
 
+### 通しで確認した（2026-10-12）
+
+結合テスト環境（実物の `mcadmind` + 実物の Paper 26.2）で、コンソールの
+API だけを使って往復させた。
+
+1. `CreateBackup` で取得 → 74MB、ルートは
+   `[demo_world_01, plugins, config, bukkit.yml, spigot.yml]`（新しい形）
+2. 同じ保管先にある 2026-09 のアーカイブはルートが `[data/demo_world_01]`
+   のまま一覧に出て読める（**両方の形が併存する**）
+3. `PreflightRestore` が新しい形には移行の通知を返し、古い形には返さない
+4. `RestoreBackup` が成功
+5. Paper が `WorldFolderMigration` → `VanillaWorldMigration` を経て
+   `Done (41.818s)!` で起動
+6. 復元前後で region 62 ファイルの sha256 が**完全一致**。移行後の配置は
+   Paper の形（5 ファイルがディメンション側）に戻り、`bukkit.yml` /
+   `spigot.yml` / `plugins` / `config` も揃っていた
+
 アーカイブの中身は `docs/backup-restore.md` の「バックアップ対象」を参照。
 置き場所の変換規則は `backend/internal/domain/backup/vanilla.go` にあり、
 そこが唯一の出典である。
